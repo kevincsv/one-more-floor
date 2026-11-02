@@ -4,7 +4,7 @@ Envuelve el prototipo HTML5 (`prototipo/one-more-floor.html`) en una app nativa 
 Cada vez que el juego cambie, vuelves a ejecutar el script y tienes la última versión.
 
 ## Qué necesitas
-- Un Mac con **Xcode** (App Store, gratis) y **Node.js 20+** (`brew install node`).
+- Un Mac con **Xcode** (App Store, gratis) y **Node.js 20+** y CocoaPods (`brew install node cocoapods`).
 - Tu **Apple ID** añadido en Xcode → Settings → Accounts.
   - Gratis: instala en tu propio iPhone, la app caduca a los 7 días.
   - Apple Developer Program (99 USD/año): IPA ad hoc, TestFlight y App Store.
@@ -44,6 +44,7 @@ sin zoom, zona segura del notch) y descarga las fuentes para que el juego funcio
    y activar Modo desarrollador.
 
 ## Versión web (PWA)
+Una sola vez: repo → Settings → Pages → Source: **GitHub Actions**.
 **Actions → "Web (GitHub Pages)"** publica el juego en `https://<usuario>.github.io/<repo>/`.
 Ábrelo en Safari → Compartir → **Añadir a pantalla de inicio**: se abre a pantalla completa y funciona sin internet.
 Para generarla en local: `node scripts/build-pwa.mjs` (sale en `pwa/`).

@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 [ -d node_modules ] || npm install
 node scripts/sync-game.mjs "${GAME_HTML:-}"
-[ -d ios ] || npx cap add ios --packagemanager SPM
+[ -d ios ] || npx cap add ios
 npx cap sync ios
 
 if [ "${1:-}" != "ipa" ]; then npx cap open ios; exit 0; fi
@@ -14,7 +14,7 @@ if [ "${1:-}" != "ipa" ]; then npx cap open ios; exit 0; fi
 : "${TEAM_ID:?Pon tu Team ID de Apple: TEAM_ID=XXXXXXXXXX ./build-ios.sh ipa}"
 METHOD="${METHOD:-debugging}"   # debugging (Apple ID gratis / dev) | release-testing (ad hoc) | app-store-connect (TestFlight)
 mkdir -p build
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
   -archivePath build/App.xcarchive -destination 'generic/platform=iOS' \
   -allowProvisioningUpdates DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic archive
 cat > build/ExportOptions.plist <<PLIST
