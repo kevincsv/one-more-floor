@@ -244,7 +244,7 @@ function buildFloor() {
   if (!boss && (forceVert || (has("grav") && vroll < 0.35))) { buildVertical(true); return; }
   if (!boss && (forceClimb || vroll2 < 0.45)) { buildVertical(false); return; }
   S.vertical = false; S.rising = false; S.LH = H; S.camY = 0;
-  const LW = boss ? 44 : Math.min(120, 52 + f * 4);
+  const LW = boss ? 44 : Math.min(120, 52 + f * 4), JR = has("shrink") ? 2 : 3;
   const hgt = new Array(LW).fill(3);
   const spikes = [], ladders = [], plats = [], movers = [], springs = [], conveyors = [], drops = [], torches = [], extraEnemies = [];
   let chestAt = -1, curType = "", curStart = 0;
@@ -279,7 +279,7 @@ function buildFloor() {
         x += w;
       } else if (t === "step") {
         const w = rri(R, 3, 6); let nc = clamp(cur + rri(R, -3, 3), 2, 12); if (nc === cur) nc = cur < 12 ? cur + 2 : cur - 2;
-        if (nc - cur > 3) nc = cur + 3;
+        if (nc - cur > JR) nc = cur + JR;
         flat(w, nc);
         if (nc > cur && nj) for (let y = H - nc - 1; y <= H - cur - 1; y++) ladders.push([x - 1, y]);
         cur = nc; x += w;
@@ -312,7 +312,7 @@ function buildFloor() {
         flat(3, cur); springs.push([x + 1, H - cur]); x += 3;
         cur = nc; const w = rri(R, 4, 7); flat(w, cur); x += w;
       } else if (t === "conveyor") {
-        const w = rri(R, 6, 10); flat(w, cur); const dir = R() < 0.5 ? 4 : 5;
+        const w = rri(R, 6, 10); flat(w, cur); const dir = nj || R() < 0.5 ? 4 : 5;
         for (let k = 0; k < w; k++) conveyors.push([x + k, H - cur, dir]);
         if (R() < 0.6) { ph += 0.7; addSpike(x + (dir === 4 ? w - 1 : 0), H - cur - 1, false, ph); }
         x += w;
@@ -426,6 +426,13 @@ function buildFloor() {
     movers.push({ kind: "move", x: 17 * TS, y: 10 * TS, w: 3 * TS, h: TS / 2, bx: 17 * TS, by: 10 * TS, ax: 6 * TS, ay: 0, per: 5, ph: 0, solid: true });
     torches.push([4, 12], [LW - 5, 12], [22, 6]);
   }
+  // keep the air above springs and lifts clear of floating platforms
+  const clearCols = springs.map(([sx]) => sx).concat(movers.filter(m => m.kind === "move" && m.ay > 0).flatMap(m => [Math.floor(m.x / TS), Math.floor(m.x / TS) + 1]));
+  const ladSet = new Set(ladders.map(([lx, ly]) => ly * LW + lx));
+  for (let i = plats.length - 1; i >= 0; i--) {
+    const [qx, qy] = plats[i];
+    if (clearCols.some(c => Math.abs(qx - c) <= 1) || ladSet.has(qy * LW + qx) || ladSet.has((qy + 1) * LW + qx) || ladSet.has((qy + 1) * LW + qx - 1) || ladSet.has((qy + 1) * LW + qx + 1)) plats.splice(i, 1);
+  }
   const g = Array.from({ length: H }, () => new Array(LW).fill(0));
   for (let x = 0; x < LW; x++) { for (let y = 0; y < ceilH[x]; y++) g[y][x] = 1; for (let y = H - hgt[x]; y < H; y++) g[y][x] = 1; }
   for (let y = 0; y < H; y++) { g[y][0] = 1; g[y][LW - 1] = 1; }
@@ -518,8 +525,9 @@ function buildVertical(rising) {
   const spikes = [], coins = [], tops = [], vmovers = [], vtorches = [];
   let prev = [[3, LW - 4]], row = LH - 2, ph = 0, drift = R() < 0.5 ? -1 : 1;
   const ZONES = [[2, 12], [14, 25], [27, LW - 3]];
-  while (row - 3 > 5) {
-    const nr = row - 3, len = rri(R, 4, 6);
+  const JR = has("shrink") ? 2 : 3;
+  while (row - JR > 5) {
+    const nr = row - JR, len = rri(R, 4, 6);
     // main platform: always within reach of a platform on the level below, drifting across the whole width
     const P = prev[rri(R, 0, prev.length - 1)];
     const c = rri(R, Math.max(2, P[0]), Math.min(LW - 3, P[1]));
@@ -555,6 +563,8 @@ function buildVertical(rising) {
     const [m0, m1] = spans[0];
     prev = spans.slice(0, 1).concat(spans.slice(1).filter(([a, b]) => !nj && (a - m1 <= 5 && a > m1 || m0 - b <= 5 && b < m0))); row = nr;
   }
+  // without jumping, the top platform needs a ladder up into the exit
+  if (nj && tops.length) { const [lx0, , lnr] = tops[tops.length - 1]; for (let y = 2; y < lnr; y++) if (g[y][lx0] === 0) g[y][lx0] = 3; }
   // hidden rooms built into the shaft walls, reached from a main platform through a cracked wall
   const vrooms = [], vitems = [], vbg = [];
   const order = tops.map((t, i) => i).filter(i => tops[i][2] < LH - 10 && tops[i][2] > 12);
@@ -579,7 +589,7 @@ function buildVertical(rising) {
   }
   S.vertical = true; S.LW = LW; S.LH = LH; S.grid = g; S.vtops = tops; S.hgt = new Array(LW).fill(2);
   S.spikes = spikes; S.exitX = 1e9; S.exitY = 4 * TS; S.items = vitems; S.secretBg = vbg; S.rooms = vrooms; S.decor = []; S.movers = vmovers; S.torches = vtorches; S.drops = [];
-  S.player = { x: (LW / 2) * TS, y: (LH - 3) * TS - 23, w: 16, h: 22, vx: 0, vy: 0, ground: false, face: 1, lock: 1, inv: 0, coyote: 0, buf: 0, atk: 0, cd: 0,
+  S.player = { x: (LW / 2) * TS, y: (LH - 2) * TS - 23, w: 16, h: 22, vx: 0, vy: 0, ground: false, face: 1, lock: 1, inv: 0, coyote: 0, buf: 0, atk: 0, cd: 0,
     air: 0, climb: false, breath: maxBreath(), launchT: 0, airLaunch: false };
   S.enemies = []; S.coinsL = coins.map(([x, y]) => ({ x: x * TS + 7, y: y * TS + 6, w: 10, h: 12, v: 1 })); S.chest = null; S.parts = []; S.rings = [];
   if (!rising) {
@@ -623,7 +633,8 @@ function reachGraph() {
     }
   });
   for (let k = 0; k < N; k++) if (ride[k] >= 0) { if (sol[k]) { ride[k] = -1; continue; } if (!rideList.has(ride[k])) rideList.set(ride[k], []); rideList.get(ride[k]).push(k); }
-  for (const s of S.spikes) if (!s.trap) spk.set(s.ty * LW + s.tx, spikeBox(s));
+  // with No jump the spikes switch on and off, so they only cost waiting time
+  if (!has("nojump")) for (const s of S.spikes) if (!s.trap) spk.set(s.ty * LW + s.tx, spikeBox(s));
   const solPx = (px, py) => { const tx = Math.floor(px / TS), ty = Math.floor(py / TS); if (tx < 0 || tx >= LW || ty < 0) return true; if (ty >= LH) return false; return sol[ty * LW + tx] === 1; };
   const isStand = (x, y) => x > 0 && x < LW - 1 && y >= 0 && y < LH - 1 && !sol[y * LW + x] && !spk.has(y * LW + x) && (sol[(y + 1) * LW + x] || ride[y * LW + x] >= 0 || g[y][x] === 3);
   const spikeHit = (x, y) => {
@@ -675,7 +686,10 @@ function reachGraph() {
     if (ride[u] >= 0) { const mi = ride[u], m = S.movers[mi]; for (const k of rideList.get(mi)) if (k !== u) out.push([k, (m.per || 4) / 2, null]); }
     const sx = x * TS + (TS - pw) / 2, sy = (y + 1) * TS - ph - 0.01;
     const runs = [];
-    if (standing && under === 6) for (const d of DIRS) runs.push([sx, sy, d * 255, -880, 0.4, d * 255]);
+    if (standing && under === 6) {
+      for (const d of DIRS) runs.push([sx, sy, d * 255, -880, 0.4, d * 255]);
+      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1]]) runs.push([sx, sy, a * 255, -880, 0.4, a * 255, b2 * 255]);
+    }
     else if (standing && !nj) for (const h of HOLDS) {
       for (const d of DIRS) runs.push([sx, sy, d * 255, -jv, h, d * 255]);
       // jump first, steer at the top of the arc: how players get around overhangs
@@ -724,15 +738,25 @@ function repairStep(A) {
   const free = (x, y) => x > 0 && x < LW - 1 && y > 0 && y < LH - 1 && g[y][x] === 0;
   const dir = tx >= bx ? 1 : -1;
   if (nj) {
-    // ladder from the target row down to the ground, next to the target
-    for (const c of [tx - dir, tx - 2 * dir, bx + dir]) {
-      let y = Math.min(ty, by), cells = [];
-      while (y < LH - 1 && free(c, y) && !A.sol[(y + 1) * LW + c]) { cells.push(y); y++; }
-      if (free(c, y)) cells.push(y);
-      if (cells.length >= 2 && y >= by) { for (const yy of cells) g[yy][c] = 3; S.graphFix.push([c, cells[0], "ladder"]); return true; }
+    // without jumping, connect with a ladder: from a reachable spot straight up to the edge of an unreachable ledge
+    const R2 = i => dist[i] < Infinity;
+    let best = null;
+    for (const T of stands) {
+      if (R2(T)) continue;
+      const tx2 = T % LW, ty2 = (T - tx2) / LW;
+      if (S.vertical ? ty2 >= by || ty2 < by - 12 : tx2 <= bx - 2 || tx2 > bx + 12) continue;
+      for (const c of [tx2 - 1, tx2 + 1]) {
+        if (!free(c, ty2)) continue;
+        let y = ty2; const cells = [];
+        while (y < LH - 1 && (g[y][c] === 0 || g[y][c] === 3)) { cells.push(y); if (R2(y * LW + c) || R2(y * LW + c - 1) || R2(y * LW + c + 1)) break; y++; }
+        const yb = cells[cells.length - 1];
+        if (!(R2(yb * LW + c) || R2(yb * LW + c - 1) || R2(yb * LW + c + 1))) continue;
+        const score = (S.vertical ? -ty2 * 3 : tx2) - cells.length * 0.2;
+        if (!best || score > best[0]) best = [score, c, cells];
+      }
     }
-    for (let x = bx + dir; x !== tx; x += dir) if (free(x, by + 1)) g[by + 1][x] = 1;
-    S.graphFix.push([bx + dir, by + 1, "bridge"]); return true;
+    if (best) { for (const yy of best[2]) g[yy][best[1]] = 3; S.graphFix.push([best[1], best[2][0], "ladder"]); return true; }
+    return false;
   }
   // stepping stone: within a short jump of the frontier, with open air above so the next jump is possible
   const opts = [];
@@ -1305,7 +1329,7 @@ function noise(x, y) {
   S.rings.push({ x: x + 8, y: y + 11, r: 0, max });
   for (const e of S.enemies) if (Math.hypot(e.x - x, e.y - y) < max) { e.alert = 4; if (has("dark")) e.reveal = 1.4; }
 }
-function toast(text) { S.toasts.push({ text, t: 2.2 }); }
+function toast(text) { if (S.toasts.some(t => t.text === text)) return; S.toasts.push({ text, t: 2.2 }); }
 function puff(x, y, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-40, 40), vy: rnd(-30, 0) * S.gdir, life: rnd(.3, .6), c: "#9a94b8", s: 3 }); }
 function puffC(x, y, c, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-50, 50), vy: rnd(-60, 0), life: rnd(.3, .5), c, s: 3 }); }
 function burst(x, y, c, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-180, 180), vy: rnd(-200, 120), g: 500 * S.gdir, life: rnd(.4, .8), c, s: 4 }); }
@@ -1341,8 +1365,8 @@ function applyRule(id) {
   S.rules.push(id);
 }
 function startFloor() {
-  buildFloor();
-  analyzeFloor();
+  // rebuild the rare floor the repair pass could not connect
+  for (let tries = 0; tries < 4; tries++) { buildFloor(); analyzeFloor(); if (S.graph.ok) break; }
   S.mode = "play"; ov.hidden = true;
   for (const c of activeCombos()) if (!META.combos.includes(c.name)) { META.combos.push(c.name); saveMeta(); toast("Combinación descubierta: " + c.name); }
   lastHud = ""; updateHud(); buildLab();
@@ -1480,6 +1504,508 @@ const BIOMES = [
   { name: "Vacío", stone: "#1f2840", seam: "#161d30", edge: "#3e5a90", bgA: "#0c1124", bgB: "#070a16", win: "rgba(140,170,255,.06)" },
 ];
 const biome = () => BIOMES[Math.floor((S.floor - 1) / 5) % BIOMES.length];
+// ===================================================================
+// One More Floor · SPRITES PATCH (from the art bible thread)
+// Art bible: https://claude.ai/artifact/D5uFa8X9msQuPsHMxLZxGu
+//
+// HOW TO INTEGRATE (3 steps, drawing only, no game logic touched):
+//
+// 1) Paste this whole file as a <script> block (or inline) ANYWHERE BEFORE
+//    `function draw()`. It only defines globals prefixed SPR_ / spr* and
+//    reads `S`, `has`, `ctx` lazily at call time.
+//
+// 2) ENEMIES. Inside draw(), in the loop `for (const e of S.enemies) {`,
+//    right AFTER the line `const bobY = Math.sin(S.t * 5 + e.ph) * 1.2;`
+//    insert:
+//
+//        if (sprDrawEnemy(e, p, white, bobY)) { ctx.globalAlpha = 1; continue; }
+//
+//    It returns true for walker, hopper, bat, shooter, charger, spider,
+//    wisp, knight, bomber and boss, and false for anything else (rat, or
+//    future types), which then fall through to the existing drawing.
+//    The old per-type blocks can stay as dead code or be deleted later.
+//
+// 3) PLAYER. Replace the 3 lines that start with
+//        ctx.fillStyle = S.char.color; ctx.fillRect(p.x, p.y, p.w, p.h);
+//        ctx.fillStyle = S.char.dark; ...
+//        ctx.fillStyle = "#100e1a"; const ey = ... ; ctx.fillRect(p.x + (p.face ...
+//    with:
+//        sprDrawPlayer(p, flipped);
+//    Keep the following `if (S.carry) {...}` line as is.
+//
+// Characters without a grid here fall back to Kai's sprite tinted with
+// nothing special, so new characters keep working.
+// Sprites face RIGHT in the data; they are mirrored by e.dir / e.face /
+// p.face and flipped vertically when gravity is inverted (S.gdir < 0).
+// Everything is pre-rendered once per (sprite, zone, white) into small
+// offscreen canvases, so the per-frame cost is one drawImage per entity.
+// ===================================================================
+
+const SPR = {
+kai: [
+"......oooo......",
+"....oohhhhoo....",
+"...ohhhhhhhho...",
+"...ohhhsssssho..",
+"...ohhssssesso..",
+"...ohsssssssso..",
+"....oSssssSso...",
+"..orrrrrrrrro...",
+"rRroyyrrryyyo...",
+".rRoyyyyyyyyo...",
+"..roYyyyyyyyso..",
+"...oYyyyyyyySo..",
+"...oYyyyyyyyo...",
+"...obbbbbbbbo...",
+"...oppppppppo...",
+"...opppoopppo...",
+"...opppo.oppo...",
+"...oppo..oppo...",
+"...oppo..oppo...",
+"..obbbo..obbbo..",
+"..oooo....oooo..",
+],
+nyx: [
+".....oooooo.....",
+"....ovvvvvvo....",
+"...ovvvvvvvvo...",
+"..ovvVoooooVo...",
+"..ovVoooolooVo..",
+"..ovVooooooovo..",
+"..ovvVoooooVvo..",
+"..ovvvvvvvvvvo..",
+"..oVvvvvvvvvvo..",
+"..oVvvvvvvvvvoo.",
+"..oVvvvvvvvvvoLo",
+"..oVvvvvvvvvoLlLo",
+"..oVVvvvvvvvoLLLo",
+"..oVVvvvvvvvvoLo",
+"..oVVVvvvvvvvvo.",
+"..oVVVVvvvvvvvo.",
+"..oVVVVVvvvvvvo.",
+"..ooVVVVVVVVVo..",
+"....odo...odo...",
+"....odo...odo...",
+"...oddo..oddo...",
+"...ooo...ooo....",
+],
+rolo: [
+"................",
+".....oooooo.....",
+"...oohhhhhhoo...",
+"..ohhhhhhhhhho..",
+"..ohhwhhhhhhho..",
+"..oHHHHHHHHHHo..",
+"..ossssssesso...",
+"..oSsssssssso...",
+"...oSSsssSSo....",
+".oooggggggggooo.",
+"oGGoggggggggoGGo",
+"oGGGoggGGgggoGGGo",
+"oGGGoggggggoGGGo",
+"oGGGoggggggoGGGo",
+".ooooggggggoooo.",
+"....obbbbbbo....",
+"...oddddddddo...",
+"...oddddoddddo..",
+"...odddo.odddo..",
+"...odddo.odddo..",
+"..obbbbo.obbbbo.",
+"..ooooo...ooooo.",
+],
+pip: [
+"................",
+"................",
+"................",
+"................",
+"................",
+"................",
+"....oooooooo....",
+"..oommwmmmmmoo..",
+".ommmmmmmwmmmmo.",
+".ommwmmmmmmmmmo.",
+"..oooooooooooo..",
+"....ossssesso...",
+"....osssssso....",
+"....oteeeeto....",
+"...ottttttttto..",
+"....otttttto....",
+"....oto..oto....",
+"....oo....oo....",
+],
+vela: [
+".......oo.......",
+"......oflo......",
+".....oflFlo.....",
+".....ofFFfo.....",
+"......offo......",
+".......oo.......",
+"......owwo......",
+"....oowwwwoo....",
+"...owwwwwwwwo...",
+"...owwwwwweww...",
+"...owwwwwwwwwo..",
+"...oWwwwwwwwwo..",
+"...oWwwwwwwwwo..",
+"..oWWwwwwwwwwwo.",
+"..oWWwwwwwwwWWo.",
+"..oWWwwwwwwwWWo.",
+"..oWWWwwwwwWWWo.",
+"..oWWWWwwwWWWWo.",
+"...oooooooooooo.",
+"...odddddddddo..",
+"..oddddo.ddddo..",
+"..ooooo..ooooo..",
+],
+ancla: [
+"....oooooooo....",
+"...oCCCCCCCCo...",
+"..oCCooooooCCo..",
+"..oCoggggggoCo..",
+"..oCogwgggeoCo..",
+"..oCoggggggoCo..",
+"..oCCooooooCCo..",
+"...oCCCCCCCCo...",
+"..ottttttttttoo.",
+".ottttTTtttttoCo",
+".otttTTTTttttoCo",
+".otttTTTTttttoCo",
+".ottttTTtttttoo.",
+"..otttttttttto..",
+"..oCCCCCCCCCCo..",
+"..otttttttttto..",
+"..ottto..ottto..",
+"..ottto..ottto..",
+"..ottto..ottto..",
+".oCCCCo..oCCCCo.",
+".oCCCCo..oCCCCo.",
+".oooooo..oooooo.",
+],
+// enemies
+walker: [
+"....oooooooo....",
+"...oaaaaaaaao...",
+"..oaacaaaaaaao..",
+".oaacaaaaaaaaao.",
+".oaaaaaoooaaaao.",
+".oaaaaaoewoaaao.",
+".oaaaaaoooaaaao.",
+".oAaaaaaaaaaaAo.",
+".oAAaaaaaaaaAAo.",
+"..oAAAAAAAAAAo..",
+"...oAAoooooAAo..",
+"...oAo.....oAo..",
+"..ooAo.....oAoo.",
+"..oooo.....oooo.",
+],
+hopper: [
+".....oooooo.....",
+"....oaaaaaao....",
+"...oaawoaaaao...",
+"...oaeooaaaaao..",
+"..oaaaaaaaaaaao.",
+"..occccccaaaaao.",
+".oAaaaaaaaaaaAo.",
+"oAAAAAAAAAAAAAAo",
+"oAo..oAAAAo..oAo",
+"oo....oooo....oo",
+],
+bat: [
+"oo....o..o....oo",
+"oAo..oaooao..oAo",
+"oAAo.oaaaao.oAAo",
+"oAaAooaeeaooAaAo",
+"oAaaaaaaaaaaaaAo",
+".oAaoaaccaaoaAo.",
+"..oo.oaaaao.oo..",
+"......oaao......",
+".......oo.......",
+],
+shooter: [
+"....oooooo......",
+"...oaaaaaao.....",
+"..oaaaaaaaao....",
+"..oaoooooooao...",
+"..oaooeooeoao...",
+"..oaoooooooao...",
+"..oaaaaaaaaaoooo",
+"..oaccaaaaaaoccc",
+"..oaaaaaaaaaoooo",
+"..oAaaaaaaaAo...",
+"..oAAaaaaaAAo...",
+".oAAAAAAAAAAAo..",
+".ooooooooooooo..",
+],
+spider: [
+"........c.......",
+"........c.......",
+"......oooo......",
+".o..ooaaaaoo..o.",
+"oAo.oaaaaaao.oAo",
+"o.oAaaeaaeaaAo.o",
+"..oAaaaaaaaaAo..",
+".oAooAaccaAooAo.",
+"oA..oAAAAAAo..Ao",
+"o....oooooo....o",
+],
+charger: [
+"......oooooooo......",
+"....ooaaaaaaaaoo....",
+"..ooaaaaaaaaaaaao...",
+".oaaaaaaaaaaaaaaaoo.",
+"oaaaaaaaaaaaaaaoeaao",
+"oAaaaaaaaaaaaaaaaaco",
+"oAAaaaaaaaaaaaaaacco",
+"oAAAaaaaaaaaaaaaoco.",
+".oAAAAAAAAAAAAAAoo..",
+"..oAAo.oAAo.oAAo....",
+"..oAAo.oAAo.oAAo....",
+"..oooo.oooo.oooo....",
+],
+wisp: [
+".......o........",
+"......oco.......",
+".....occo..o....",
+"....occcco.oo...",
+"...occaaccoco...",
+"...ocaaaaacco...",
+"..ocaaaaaaaco...",
+"..ocaaeaaeaco...",
+"..ocaaaaaaaco...",
+"...ocaaaaaco....",
+"....occccco.....",
+".....ooooo......",
+],
+bomber: [
+"......oooo........",
+".....oaaaao.......",
+"..ooaaaeaaacco....",
+".oAAaaaaaaaaooo...",
+"oAAAAaaaaaaao.....",
+".ooAAAAAaaao......",
+"...ooooAAAo.......",
+"........o.........",
+".......ooo........",
+"......oyyyo.......",
+"......oyyyo.......",
+".......ooo........",
+],
+knight: [
+".....oooooo.....",
+"....oaaaaaao.c..",
+"...oaaaaaaaaoc..",
+"...oaoooooooaoc.",
+"...oaoeooeooao..",
+"...oaaaaaaaaao..",
+"..ooAaaaaaaaAoo.",
+".oaaoAaaaaaAoaao",
+".oaaoAAccAAAoaao",
+".oAAoAAccAAAoAAo",
+"..ooAAAAAAAAAoo.",
+"...oAAAAAAAAAo..",
+"...oAAAoooAAAo..",
+"...oAAo...oAAo..",
+"..oaaao...oaaao.",
+"..ooooo...ooooo.",
+],
+// bosses
+campanera: [
+"..........oooo..........",
+"..........ocao..........",
+".........ooaaoo.........",
+".......ooaaaaaaoo.......",
+"......oaaaaaaaaaao......",
+".....oaaaaaaaaaaaao.....",
+".....oaccaaaaaaaaao.....",
+"....oaacaaaaaaaaaaao....",
+"....oaaaaaaaaaaaaaao....",
+"....oaaaaaaaaaaaaaao....",
+"...oaaaaaaaaaaaaaaaao...",
+"...oAaaaaaaaaaaaaaaAo...",
+"..oAAaaaaaaaaaaaaaaAAo..",
+"..oAAAAAAAAAAAAAAAAAAo..",
+".oAAAAAAAAAAAAAAAAAAAAo.",
+".oooooooooooooooooooooo.",
+"....oo..oeeo.oeeo..oo...",
+"...oAo..oeeo.oeeo..oAo..",
+"..oAAo...oo...oo...oAAo.",
+"..ooo...............ooo.",
+],
+raiz: [
+"....oo..........oo......",
+"...occo..oooo..occo.....",
+"...ocaco.occo.ocaco.....",
+"....ocaooaccaooaco......",
+".....oaaaaaaaaaaao......",
+"....oaaaaaaaaaaaaao.....",
+"...oaaaaaaaaaaaaaaao....",
+"...oaaaooaaaaaooaaao....",
+"...oaaoeeoaaaoeeoaao....",
+"...oaaaooaaaaaooaaao....",
+"...oAaaaaaaaaaaaaaAo....",
+"...oAAaaaoooooaaaAAo....",
+"....oAAAaoccccoaAAo.....",
+".....oAAAAAAAAAAAo......",
+"...ooAoAAoAAAoAAoAoo....",
+"..oAo.oAo.oAo.oAo.oAo...",
+".oAo..oAo..oAo.oAo.oAo..",
+".oo....oo...oo..oo..oo..",
+],
+fuelle: [
+"......oo......oo........",
+".....oaao....oaao.......",
+"....oaaaaooooaaaao......",
+"....oaaaaaaaaaaaao......",
+"...oaaaoaaaaaaoaaao.....",
+"...oaaoeoaaaaoeoaao.....",
+"...oaaaoaaaaaaoaaao.....",
+"...oAaaaaaaaaaaaaaAo....",
+"...oAAooooooooooAAo.....",
+"...oAAoccccccccoAAo.....",
+"...oAAocyyyyyyocAAo.....",
+"...oAAoccccccccoAAo.....",
+"...oAAooooooooooAAo.....",
+"...oAAAAAAAAAAAAAAo.....",
+"..oaaoAAAAAAAAAAoaao....",
+".oaaaaoooooooooooaaao...",
+".oooooo.........oooooo..",
+],
+notario: [
+"...........oo...........",
+"..........occo..........",
+".........occco..........",
+"........occco...........",
+".......occco............",
+"......oooooooooooo......",
+".....occccccccccccco....",
+".....oc..........co.....",
+".....oc..oo..oo..co.....",
+".....oc..oe..oe..co.....",
+".....oc..........co.....",
+".....oc...oooo...co.....",
+".....occccccccccccco....",
+"......oooooooooooo......",
+"..ooo.............ooo...",
+"..oyo....oo.oo....oyo...",
+"..ooo....o.o.o....ooo...",
+"..........o.o...........",
+],
+};
+const SPR_BAT_UP = ["o..............o","oo............oo","oAo...o..o...oAo","oAAo.oaooao.oAAo",".oAAooaaaaooAAo.","..oAaaaeeaaaAo..","...oaaaaaaaao...",".....oaccao.....",".....oaaaao.....","......oaao......",".......oo......."];
+const SPR_BAT_MID = ["................","................","......o..o......",".....oaooao.....","oooooaaaaaaooooo","oAAAaaaeeaaaAAAo",".oAAoaaaaaaoAAo.","..oo.oaccao.oo..",".....oaaaao.....","......oaao......",".......oo......."];
+const SPR_BAT_DN = ["................","................","......o..o......",".....oaooao.....","....oaaaaaao....","...oaaaeeaaao...","..oAoaaaaaaoAo..",".oAAooaccaooAAo.","oAAo.oaaaao.oAAo","oAo...oaao...oAo","oo.....oo.....oo"];
+const SPR_ARC_IDLE = ["....oooooo","...oaaaaaao...c","..oaaaaaaaao.wc","..oaoooooooaow.c","..oaooeooeoaow.c","..oaoooooooaow.c","..oaaaaaaaaaoo.c","..oaccaaaaaaow.c","..oaaaaaaaaaow.c","..oAaaaaaaaAowc","..oAAaaaaaAAo.c",".oAAAAAAAAAAAo",".ooooooooooooo"];
+const SPR_ARC_DRAW = ["....oooooo","...oaaaaaao...c","..oaaaaaaaao.wc","..oaoooooooaow.c","..oaooeooeoaw..c","..oaoooooooaw..c","..oaaaaaaaawyyyyyw","..oaccaaaaaaw..c","..oaaaaaaaaaw..c","..oAaaaaaaaAowc","..oAAaaaaaAAo.c",".oAAAAAAAAAAAo",".ooooooooooooo"];
+const SPR_ARC_REL = ["....oooooo","...oaaaaaao...c","..oaaaaaaaao.wc","..oaoooooooao.wc","..oaooeooeoao.wc","..oaoooooooao.wc","..oaaaaaaaaaoowc.w","..oaccaaaaaao.wc","..oaaaaaaaaao.wc","..oAaaaaaaaAowc","..oAAaaaaaAAo.c",".oAAAAAAAAAAAo",".ooooooooooooo"];
+const SPR_BMB_UP = ["..oo..............","..oAo.............","..oAAo..oooo......","...oAAooaaaao.....","....oAAaaaeaacco..","...ooaaaaaaaaooo..","..oaaaaaaaaao.....","...oooAAAAo......."];
+const SPR_BMB_MID = ["..................","..................","........oooo......",".......oaaaao.....","..oooooaaaeaacco..",".oAAAAaaaaaaaooo..","..oaaaaaaaaao.....","...oooAAAAo......."];
+const SPR_BMB_DN = ["..................","..................","........oooo......",".......oaaaao.....","......oaaaeaacco..","...ooaaaaaaaaooo..","..oaaaaaaaaao.....","..oAAAoAAAAo......",".oAAo.............","oAAo..............","oo................"];
+for (const k in SPR) { const w = Math.max(...SPR[k].map(r => r.length)); SPR[k] = SPR[k].map(r => r.padEnd(w, ".")); }
+{
+  const fit = list => { const w = Math.max(...list.flat().map(r => r.length)), h = Math.max(...list.map(f => f.length));
+    return list.map(f => { const g = f.map(r => r.padEnd(w, ".")); while (g.length < h) g.unshift(".".repeat(w)); return g; }); };
+  [SPR.bat0, SPR.bat1, SPR.bat2] = fit([SPR_BAT_UP, SPR_BAT_MID, SPR_BAT_DN]);
+  [SPR.bmb0, SPR.bmb1, SPR.bmb2] = fit([SPR_BMB_UP, SPR_BMB_MID, SPR_BMB_DN]);
+  [SPR.arc0, SPR.arc1, SPR.arc2] = fit([SPR_ARC_IDLE, SPR_ARC_DRAW, SPR_ARC_REL]);
+}
+const SPR_FLAP = [0, 1, 2, 1];
+const SPR_O = "#0d0a16", SPR_EYE = "#ff4fa3", SPR_AMB = "#f2c14e";
+// enemy palette per zone (Cripta, Jardín hundido, Forja, Vacío): body a, shade A, detail c
+const SPR_ZONE = [
+  { a: "#d9d2c0", A: "#8f8578", c: "#5fd1c4", o: SPR_O },
+  { a: "#7fbf6a", A: "#3f6b55", c: "#e8d36a", o: SPR_O },
+  { a: "#8a8f9c", A: "#4b4e5a", c: "#ff8a4a", o: SPR_O },
+  { a: "#28365e", A: "#18213d", c: "#cfe0ff", o: "#8ea8ff" },
+];
+const SPR_BOSS = ["campanera", "raiz", "fuelle", "notario"];
+const SPR_CHAR = {
+  kai:  { o: SPR_O, h: "#3a2a4a", s: "#f0c8a0", S: "#c8956e", e: SPR_O, r: "#e0566b", R: "#a8384c", y: "#f2c14e", Y: "#b8862a", b: "#5a3a2a", p: "#4a4470" },
+  nyx:  { o: SPR_O, v: "#b9a7ff", V: "#7a68c4", l: "#fff3b0", L: "#5fd1c4", d: "#3a2f66" },
+  rolo: { o: SPR_O, h: "#ff9a5a", H: "#b8602e", w: "#ffd0a8", s: "#e8b48a", S: "#b9825e", e: SPR_O, g: "#ff9a5a", G: "#8a4a2a", b: "#5a3a2a", d: "#4a4470" },
+  pip:  { o: SPR_O, m: "#5fd1c4", w: "#e8fffb", s: "#f4e1c8", e: SPR_O, t: "#2f8a80" },
+  vela: { o: SPR_O, f: "#ff8a4a", F: "#ffe08a", l: "#ffd0a0", w: "#f3ead8", W: "#c9bca0", e: SPR_O, d: "#7a3f32" },
+  ancla:{ o: SPR_O, C: "#c08a3a", g: "#2a3e5a", w: "#bfe6ff", e: "#5fd1c4", t: "#3e6a8a", T: "#2a4a66" },
+};
+const sprCache = new Map();
+function sprCanvas(name, palKey, pal, white) {
+  const key = name + "|" + palKey + "|" + (white ? 1 : 0);
+  let cv = sprCache.get(key); if (cv) return cv;
+  const g = SPR[name]; cv = document.createElement("canvas"); cv.width = g[0].length; cv.height = g.length;
+  const c = cv.getContext("2d");
+  for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+    const ch = g[y][x]; if (ch === ".") continue;
+    const col = ch === "e" && !palKey.startsWith("c:") ? SPR_EYE : ch === "w" && !palKey.startsWith("c:") ? "#ffffff" : ch === "y" && !palKey.startsWith("c:") ? SPR_AMB : pal[ch];
+    if (!col) continue; c.fillStyle = white ? "#ffffff" : col; c.fillRect(x, y, 1, 1);
+  }
+  sprCache.set(key, cv); return cv;
+}
+// draws sprite `name` so that its bottom-center sits at (cx, by); sc = scale
+function sprBlit(cv, cx, by, sc, flipH, flipV) {
+  const w = cv.width * sc, h = cv.height * sc;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.translate(Math.round(cx), Math.round(by));
+  ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+  ctx.drawImage(cv, -w / 2, -h, w, h);
+  ctx.restore();
+}
+function sprZone() { return Math.floor((S.floor - 1) / 5) % 4; }
+
+function sprDrawEnemy(e, p, white, bobY) {
+  const zi = sprZone(), pal = SPR_ZONE[zi], pk = "z" + zi, vf = S.gdir < 0;
+  let name, sc = 1, fl = false, mid = false, w = white;
+  const toP = Math.sign(p.x - e.x) || 1;
+  switch (e.type) {
+    case "walker": name = "walker"; fl = (e.dir || toP) < 0; break;
+    case "hopper": name = "hopper"; fl = toP > 0; break; // drawn facing left
+    case "bat": name = "bat" + SPR_FLAP[Math.floor(S.t * 12 + (e.ph || 0) * 3) % 4]; mid = true; break;
+    case "bomber": name = "bmb" + SPR_FLAP[Math.floor(S.t * 9 + (e.ph || 0) * 3) % 4]; fl = (e.dir || 1) < 0; mid = true; break;
+    case "shooter": {
+      if (e.tele > 0) e._sprArm = 1; else if (e._sprArm) { e._sprArm = 0; e._sprRel = 0.25; }
+      if (e._sprRel > 0) e._sprRel -= 1 / 60;
+      name = e.tele > 0 ? "arc1" : e._sprRel > 0 ? "arc2" : "arc0"; fl = (e.face || toP) < 0; w = white && !(e.tele > 0); break;
+    }
+    case "charger": name = "charger"; fl = (e.dir || 1) < 0; w = white || (e.st === "tele" && Math.floor(S.t * 14) % 2 === 1); break;
+    case "spider": name = "spider"; mid = true; break;
+    case "wisp": name = "wisp"; mid = true; break;
+    case "knight": name = "knight"; fl = (e.face || toP) < 0; break;
+    default:
+      if (!e.boss) return false;
+      name = SPR_BOSS[zi]; sc = 2; fl = toP < 0;
+      w = (e.st === "tele" && Math.floor(S.t * 12) % 2 === 1) || e.flash > 0.3;
+  }
+  if (e.boss && e.type !== "boss" && !SPR[name]) return false;
+  // extras that belong to the world, not the body
+  if (e.type === "spider") { ctx.strokeStyle = "rgba(220,220,235,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(e.x + e.w / 2, e.anchor - 4); ctx.lineTo(e.x + e.w / 2, e.y); ctx.stroke(); }
+  if (e.type === "wisp") {
+    const gr = ctx.createRadialGradient(e.x + 8, e.y + 8, 1, e.x + 8, e.y + 8, 16); gr.addColorStop(0, "rgba(255,255,255,.35)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(e.x + 8, e.y + 8, 16, 0, Math.PI * 2); ctx.fill();
+  }
+  const cv = sprCanvas(name, pk, pal, w);
+  const h = cv.height * sc, cx = e.x + e.w / 2;
+  let by;
+  if (mid) by = e.y + e.h / 2 + h / 2 + (vf ? -h : 0) * 0; // centered on the box
+  else by = vf ? e.y : e.y + e.h; // feet on the floor (or ceiling)
+  if (e.type === "knight") by += bobY;
+  if (mid) { const cy = e.y + e.h / 2; sprBlit(cv, cx, vf ? cy - h / 2 : cy + h / 2, sc, fl, vf); }
+  else sprBlit(cv, cx, by, sc, fl, vf);
+  if (e.type === "bomber" && e.cd < 0.6) {
+    const bx = e.x + e.w / 2 + (fl ? 2 : -2), byy = vf ? e.y - 4 : e.y + e.h + 4;
+    ctx.fillStyle = SPR_O; ctx.beginPath(); ctx.arc(bx, byy, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = Math.floor(S.t * 10) % 2 ? "#e0566b" : SPR_AMB; ctx.fillRect(bx - 1, byy - 2, 2, 2);
+  }
+  if (e.type === "charger" && e.st === "dazed") { ctx.fillStyle = SPR_AMB; for (let k = 0; k < 3; k++) ctx.fillRect(e.x + 13 + Math.cos(S.t * 6 + k * 2) * 10, e.y - 6 + Math.sin(S.t * 6 + k * 2) * 3, 3, 3); }
+  return true;
+}
+
+function sprDrawPlayer(p, flipped) {
+  const id = SPR[S.char.id] && SPR_CHAR[S.char.id] ? S.char.id : "kai";
+  const cv = sprCanvas(id, "c:" + id, SPR_CHAR[id], false);
+  const sc = p.w / 16; // 1 normally, 0.625 with Diminuto
+  const run = p.ground && Math.abs(p.vx) > 30 ? Math.floor(S.t * 12) % 2 : 0;
+  const by = flipped ? p.y - run : p.y + p.h + run * 0;
+  sprBlit(cv, p.x + p.w / 2, flipped ? p.y : p.y + p.h - run, sc, p.face < 0, flipped);
+}
+
 function draw() {
   if (!S.grid) { ctx.fillStyle = "#15122a"; ctx.fillRect(0, 0, CW, CH); return; }
   const flipped = S.gdir < 0, cx = Math.round(S.camX), cy = Math.round(S.camY || 0);
@@ -1640,6 +2166,7 @@ function draw() {
     ctx.globalAlpha = a;
     const white = e.flash > 0.35 && !e.boss;
     const bobY = Math.sin(S.t * 5 + e.ph) * 1.2;
+    if (sprDrawEnemy(e, p, white, bobY)) { ctx.globalAlpha = 1; continue; }
     if (e.type === "rat") {
       ctx.fillStyle = "#8a8496"; ctx.fillRect(e.x, e.y + 2, 10, 6); ctx.fillRect(e.dir > 0 ? e.x + 8 : e.x - 2, e.y, 4, 5);
       ctx.fillStyle = "#c9a0a0"; ctx.fillRect(e.dir > 0 ? e.x - 5 : e.x + 10, e.y + 5, 6, 1);
@@ -1724,10 +2251,7 @@ function draw() {
   }
   if (has("hot") && (p.still || 0) > 0.3) { ctx.fillStyle = `rgba(255,122,58,${Math.min(0.8, p.still / 2)})`; ctx.fillRect(p.x - 6, S.gdir > 0 ? p.y + p.h : p.y - 4, p.w + 12, 4); }
   if (!(p.inv > 0 && Math.floor(S.t * 16) % 2)) {
-    ctx.fillStyle = S.char.color; ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.fillStyle = S.char.dark; ctx.fillRect(p.x, flipped ? p.y : p.y + p.h - 5, p.w, 5);
-    ctx.fillStyle = "#100e1a"; const ey = flipped ? p.y + p.h - 10 : p.y + 6;
-    ctx.fillRect(p.x + (p.face > 0 ? p.w - 6 : 3), has("shrink") ? (flipped ? p.y + p.h - 6 : p.y + 3) : ey, 3, has("shrink") ? 3 : 4);
+    sprDrawPlayer(p, flipped);
     if (S.carry) { ctx.fillStyle = "#f2c14e"; ctx.fillRect(p.x + (p.face > 0 ? -5 : p.w + 1), p.y + 10, 4, Math.min(10, 2 + S.carry)); }
   }
   if (p.atk > 0) {
