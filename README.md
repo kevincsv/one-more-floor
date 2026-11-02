@@ -37,7 +37,7 @@ sin zoom, zona segura del notch) y descarga las fuentes para que el juego funcio
 
 ## Sin Mac (desde Windows)
 1. El juego vive en `game/one-more-floor.html`. Cada push a `main` lanza dos compilaciones.
-2. **Actions → "iOS IPA (sin firmar)"**: descarga `OneMoreFloor-unsigned.ipa` del resultado.
+2. Descarga `OneMoreFloor-unsigned.ipa` de la release **latest** (Releases), o del resultado en Actions.
 3. Instala **Sideloadly** (sideloadly.io) e iTunes en Windows, conecta el iPhone, arrastra el IPA
    y entra con tu Apple ID: lo firma e instala. Con cuenta gratis caduca a los 7 días (se reinstala igual).
 4. La primera vez, en el iPhone: Ajustes → General → VPN y gestión de dispositivos → confiar en tu Apple ID,

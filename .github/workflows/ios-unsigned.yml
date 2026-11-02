@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+permissions: { contents: write }
 jobs:
   build:
     runs-on: macos-15
@@ -25,3 +26,12 @@ jobs:
           zip -qr OneMoreFloor-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with: { name: OneMoreFloor-unsigned-ipa, path: OneMoreFloor-unsigned.ipa }
+      - name: Publicar en la release "latest"
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Última versión (IPA sin firmar)
+          prerelease: true
+          make_latest: false
+          files: OneMoreFloor-unsigned.ipa
