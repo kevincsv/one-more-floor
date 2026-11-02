@@ -34,6 +34,7 @@ body {
 .stat b { color: var(--teal); font-weight: 400; }
 .hearts { color: var(--red); letter-spacing: 2px; font-size: 15px; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; min-width: 0; }
+.broken #hHearts, .broken #hCoins, .broken #hCarry { visibility: hidden; }
 .chip { font-size: 12px; font-weight: 600; padding: 2px 7px; border: 1px solid var(--line); background: var(--panel); border-radius: 3px; white-space: nowrap; }
 .chip .ic { color: var(--amber); margin-right: 4px; }
 .chip.combo { color: var(--bg); background: var(--teal); border-color: var(--teal); font-family: var(--font-display); font-weight: 400; }
@@ -157,6 +158,39 @@ const RULES = [
   { id: "slow", cat: "tie", name: "Cámara lenta", icon: "\u25F7", cost: 1, desc: "Todo va a mitad de velocidad menos tú." },
   { id: "swap", cat: "ent", name: "Intercambio", icon: "\u21CB", cost: 3, desc: "Cada 7 s cambias de sitio con un enemigo al azar. Avisa 1 s antes." },
   { id: "wind", cat: "ent", name: "Viento", icon: "\u224B", cost: 2, desc: "Una ráfaga te empuja hacia un lado y cambia de dirección cada 6 s." },
+  { id: "moon", cat: "mov", name: "Luna", icon: "\u263E", cost: 1, desc: "Gravedad baja: saltos largos y flotantes." },
+  { id: "sticky", cat: "mov", name: "Paredes pegajosas", icon: "\u2317", cost: 1, desc: "Te pegas a paredes y techos al tocarlos. Salta para soltarte." },
+  { id: "charge", cat: "mov", name: "Salto cargado", icon: "\u2191", cost: 2, desc: "Mantén el salto para cargarlo y suéltalo para saltar. Poca carga, salto corto." },
+  { id: "blink", cat: "mov", name: "Parpadeo", icon: "\u2726", cost: 2, desc: "En vez de saltar te teletransportas 3 casillas hacia donde apuntas. Silueta verde: puedes; roja: no." },
+  { id: "noback", cat: "mov", name: "No mires atrás", icon: "\u21A9", cost: 2, desc: "Si miras hacia atrás más de un instante, pierdes vida." },
+  { id: "wax", cat: "mov", name: "Alas de cera", icon: "\u2600", cost: 2, desc: "Mantén el salto para volar. Cerca del techo te quemas." },
+  { id: "decoy", cat: "per", name: "Señuelos", icon: "\u2687", cost: 1, desc: "La mitad de los enemigos son ilusiones inofensivas. No sabes cuáles." },
+  { id: "broken", cat: "per", name: "Pantalla rota", icon: "\u2592", cost: 1, desc: "No ves tu vida, tu oro ni el tiempo." },
+  { id: "blackout", cat: "per", name: "Apagón", icon: "\u25A0", cost: 2, desc: "La pantalla se pone negra 1 s cada 5 s. El juego sigue." },
+  { id: "liar", cat: "per", name: "Mentiroso", icon: "\u2048", cost: 1, desc: "Una de las reglas del piso está oculta durante los primeros 15 s." },
+  { id: "vamp", cat: "com", name: "Vampiro", icon: "\u2625", cost: 2, desc: "Pierdes un corazón cada 8 s (nunca el último). Cada enemigo que vences te cura." },
+  { id: "ammo", cat: "com", name: "Munición", icon: "\u2059", cost: 2, desc: "Solo 5 ataques. Se recargan al tocar el suelo." },
+  { id: "shields", cat: "com", name: "Escudos", icon: "\u26E8", cost: 2, desc: "Todos los enemigos se cubren por delante: golpéalos por detrás o desde arriba." },
+  { id: "recoil", cat: "com", name: "Retroceso", icon: "\u21DC", cost: 1, desc: "Cada golpe te empuja con fuerza en sentido contrario." },
+  { id: "rings", cat: "com", name: "Anillos", icon: "\u25CB", cost: 2, desc: "Al recibir daño sueltas oro en vez de vida. Sin oro, mueres." },
+  { id: "glutton", cat: "com", name: "Glotón", icon: "\u25D5", cost: 2, desc: "Absorbes a los enemigos más pequeños que tú y creces." },
+  { id: "hunter", cat: "com", name: "Cazador", icon: "\u25C9", cost: 2, desc: "No haces daño hasta coger un orbe. Luego tienes 8 s y los enemigos huyen." },
+  { id: "midnight", cat: "com", name: "Medianoche", icon: "\u263D", cost: 1, desc: "Los primeros 30 s haces el doble de daño. Después, la mitad." },
+  { id: "portals", cat: "ent", name: "Portales", icon: "\u25CE", cost: 1, desc: "Portales conectan puntos del piso, también para los enemigos. En los pisos verticales, las paredes laterales están conectadas." },
+  { id: "quake", cat: "ent", name: "Terremoto", icon: "\u224C", cost: 2, desc: "Cada 10 s tiembla todo, caen rocas y se rompen plataformas." },
+  { id: "sweep", cat: "ent", name: "Barrido", icon: "\u2759", cost: 2, desc: "Cada 8 s un rayo cruza la pantalla. Cúbrete detrás de una pared." },
+  { id: "statues", cat: "ent", name: "Estatuas", icon: "\u265C", cost: 2, desc: "Los enemigos a los que miras se congelan. Los que están a tu espalda avanzan más rápido." },
+  { id: "maze", cat: "ent", name: "Laberinto", icon: "\u2649", cost: 3, desc: "Una bestia imposible de matar te persigue atravesando paredes. Huye hacia la salida." },
+  { id: "crumbs", cat: "ent", name: "Migas", icon: "\u2237", cost: 2, desc: "Las plataformas que pisas se derrumban poco después y vuelven a los 6 s." },
+  { id: "bean", cat: "ent", name: "Habichuela", icon: "\u2618", cost: 1, desc: "Atacar hacia el suelo hace crecer una enredadera que puedes trepar." },
+  { id: "shadow", cat: "ent", name: "Sombra suelta", icon: "\u25D0", cost: 2, desc: "Tu sombra huye de ti. Atrápala para abrir la salida." },
+  { id: "sirens", cat: "ent", name: "Sirenas", icon: "\u266B", cost: 2, desc: "Un canto te arrastra hacia los pinchos. Mantén Atacar para taparte los oídos (y no atacar)." },
+  { id: "switch", cat: "ent", name: "Interruptor", icon: "\u25E9", cost: 2, desc: "Cada ataque cambia qué plataformas son sólidas: las rojas o las azules." },
+  { id: "debris", cat: "ent", name: "Escombros", icon: "\u25A3", cost: 2, desc: "Caen bloques que hacen daño y se quedan como plataformas nuevas." },
+  { id: "tail", cat: "ent", name: "Cola", icon: "\u2026", cost: 1, desc: "Los enemigos vencidos te siguen en fila. Si chocas con la fila, te haces daño." },
+  { id: "pause", cat: "tie", name: "Pausa", icon: "\u23F8", cost: 2, desc: "El tiempo solo avanza cuando te mueves." },
+  { id: "rhythm", cat: "tie", name: "Ritmo", icon: "\u2669", cost: 3, desc: "Solo puedes saltar y atacar al compás del pulso." },
+  { id: "right", cat: "tie", name: "Tiempo a la derecha", icon: "\u21E5", cost: 2, desc: "El tiempo solo avanza cuando vas hacia la salida." },
 ];
 const RULE = Object.fromEntries(RULES.map(r => [r.id, r]));
 const START_DECK = ["nojump", "invis", "grav", "noatk", "dark", "ice"];
@@ -176,6 +210,16 @@ const COMBOS = [
   { a: "echo", b: "mirror", name: "Reflejo", desc: "Tus controles invertidos y tu pasado persiguiéndote." },
   { a: "wind", b: "bouncy", name: "Globo", desc: "Cada rebote te lleva donde quiera el viento." },
   { a: "magnet", b: "clone", name: "Enjambre", desc: "Cada enemigo que vences atrae a dos más." },
+  { a: "pause", b: "hot", name: "Dilema", desc: "Quedarte quieto congela el mundo, pero te quema." },
+  { a: "decoy", b: "invis", name: "Paranoia", desc: "Las sombras falsas también levantan polvo." },
+  { a: "sticky", b: "grav", name: "Araña", desc: "El techo pasa a ser tu suelo." },
+  { a: "portals", b: "wind", name: "Tornado", desc: "El viento te hace dar vueltas por el mapa." },
+  { a: "vamp", b: "clone", name: "Banquete", desc: "Más enemigos, más comida." },
+  { a: "rhythm", b: "bouncy", name: "Discoteca", desc: "Rebotas al compás." },
+  { a: "noback", b: "grav", name: "Descenso al Hades", desc: "Cuando la gravedad se invierte, girarse es inevitable." },
+  { a: "statues", b: "blackout", name: "Juego de estatuas", desc: "En cada apagón, los enemigos avanzan." },
+  { a: "wax", b: "grav", name: "Sol de mediodía", desc: "Con la gravedad invertida, el suelo es el techo y quema." },
+  { a: "glutton", b: "clone", name: "Glotón infinito", desc: "Comida sin fin, pero cada vez eres un blanco más grande." },
 ];
 const RELICS = [
   { id: "linterna", name: "Linterna", desc: "Ves mucho más lejos en la Oscuridad.", price: 20 },
@@ -490,7 +534,7 @@ function buildFloor() {
       else if (type === "spider") { if (ceilH[tx] < H - hgt[tx] - 6) S.enemies.push(mkEnemy(type, tx * TS + 3, (ceilH[tx]) * TS + 2)); }
       else S.enemies.push(mkEnemy(type, tx * TS, surf(tx) - (type === "knight" ? 27 : 23)));
     }
-    for (let i = 0; i < Math.floor(LW / 6); i++) {
+    for (let i = 0; i < Math.floor(LW / 12); i++) {
       const tx = rri(R, 6, LW - 6);
       let ty = H - hgt[tx] - 1;
       for (let y = 2; y < H - hgt[tx]; y++) if (g[y + 1][tx] === 1 && g[y][tx] === 0 && R() < 0.5) { ty = y; break; }
@@ -555,7 +599,7 @@ function buildVertical(rising) {
       else {
         for (let k = 0; k < dl; k++) g[nr][dx + k] = 1;
         spans.push([dx, dx + dl - 1]);
-        if (R() < 0.35 + f * 0.03) { ph += 0.7; spikes.push({ tx: dx + rri(R, 0, dl - 1), ty: nr - 1, ceil: false, phase: ph }); } else if (R() < 0.6) coins.push([dx + 1, nr - 1]);
+        if (R() < 0.35 + f * 0.03) { ph += 0.7; spikes.push({ tx: dx + rri(R, 0, dl - 1), ty: nr - 1, ceil: false, phase: ph }); } else if (R() < 0.3) coins.push([dx + 1, nr - 1]);
       }
     }
     if (R() < 0.25) vtorches.push({ x: rri(R, 3, LW - 4) * TS + 12, y: (nr - 2) * TS + 12 });
@@ -600,7 +644,7 @@ function buildVertical(rising) {
     }
     if (R() < 0.55 && tops.length > 4) { const [x0, len, nr] = tops[rri(R, 2, tops.length - 2)]; S.chest = { x: x0 * TS + 2, y: nr * TS - 18, w: 20, h: 18, open: false }; }
   }
-  for (const [x0, len, nr] of tops) if (R() < 0.35) S.coinsL.push({ x: (x0 + Math.floor(len / 2)) * TS + 7, y: (nr - 1) * TS + 6, w: 10, h: 12, v: 1 });
+  for (const [x0, len, nr] of tops) if (R() < 0.15) S.coinsL.push({ x: (x0 + Math.floor(len / 2)) * TS + 7, y: (nr - 1) * TS + 6, w: 10, h: 12, v: 1 });
   const nb = 3 + Math.floor(f / 2);
   for (let i = 0; i < nb; i++) { const ft = f >= 4 && R() < 0.35 ? (R() < 0.5 ? "wisp" : "bomber") : "bat"; S.enemies.push(mkEnemy(ft, rri(R, 4, LW - 6) * TS, rri(R, 8, LH - 14) * TS)); }
   if (!rising && f >= 2) for (const [x0, len, nr] of tops) if (nr < LH - 10 && R() < 0.12) S.enemies.push(mkEnemy("shooter", (x0 + 1) * TS, nr * TS - 23));
@@ -680,22 +724,22 @@ function reachGraph() {
     if (S.vertical ? y <= 3 : x >= LW - 4) out.push([EXIT, 0, null]);
     for (const d of [-1, 1]) {
       const v = u + d;
-      if (isStand(x + d, y) && !(standing && ((under === 4 && d < 0) || (under === 5 && d > 0)))) out.push([v, TS / 255, null]);
+      if (isStand(x + d, y) && !(standing && ((under === 4 && d < 0) || (under === 5 && d > 0)))) out.push([v, TS / RUN, null]);
     }
     if (c === 3) { if (y > 0 && g[y - 1][x] === 3) out.push([u - LW, TS / 140, null]); if (g[y + 1] && g[y + 1][x] === 3) out.push([u + LW, TS / 160, null]); }
     if (ride[u] >= 0) { const mi = ride[u], m = S.movers[mi]; for (const k of rideList.get(mi)) if (k !== u) out.push([k, (m.per || 4) / 2, null]); }
     const sx = x * TS + (TS - pw) / 2, sy = (y + 1) * TS - ph - 0.01;
     const runs = [];
     if (standing && under === 6) {
-      for (const d of DIRS) runs.push([sx, sy, d * 255, -880, 0.4, d * 255]);
-      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1]]) runs.push([sx, sy, a * 255, -880, 0.4, a * 255, b2 * 255]);
+      for (const d of DIRS) runs.push([sx, sy, d * RUN, -880, 0.4, d * RUN]);
+      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1]]) runs.push([sx, sy, a * RUN, -880, 0.4, a * RUN, b2 * RUN]);
     }
     else if (standing && !nj) for (const h of HOLDS) {
-      for (const d of DIRS) runs.push([sx, sy, d * 255, -jv, h, d * 255]);
+      for (const d of DIRS) runs.push([sx, sy, d * RUN, -jv, h, d * RUN]);
       // jump first, steer at the top of the arc: how players get around overhangs
-      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1], [1, -1], [-1, 1]]) runs.push([sx, sy, a * 255, -jv, h, a * 255, b2 * 255]);
+      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1], [1, -1], [-1, 1]]) runs.push([sx, sy, a * RUN, -jv, h, a * RUN, b2 * RUN]);
     }
-    for (const d of [-1, 1]) if (!isStand(x + d, y) && !sol[y * LW + x + d]) for (const k of [1, 0.4, 0.1, -0.3]) runs.push([sx + d * TS * 0.7, sy, d * 255 * Math.max(0.2, k), 0, 0, d * 255 * k]);
+    for (const d of [-1, 1]) if (!isStand(x + d, y) && !sol[y * LW + x + d]) for (const k of [1, 0.4, 0.1, -0.3]) runs.push([sx + d * TS * 0.7, sy, d * RUN * Math.max(0.2, k), 0, 0, d * RUN * k]);
     for (const r of runs) {
       const trail = [], res = arc(r[0], r[1], r[2], r[3], r[4], r[5], trail, r[6]);
       if (res && res.id !== u) out.push([res.id, res.t, trail]);
@@ -838,6 +882,216 @@ function drawGraph() {
   for (const [x, y] of S.graphFix) ctx.strokeRect(x * TS + 1, y * TS + 1, TS * 2 - 2, TS - 2);
   ctx.globalAlpha = 1;
 }
+/* ---------- second wave of rules: per-floor state and systems ---------- */
+const onBeat = () => { const ph = (S.floorT || 0) % 0.6; return ph < 0.13 || ph > 0.47; };
+function missBeat(p) { puffC(p.x + p.w / 2, p.y, "#e0566b", 4); if (!S.beatTip) { S.beatTip = true; toast("Fuera de ritmo: espera al pulso"); } }
+function freeBox(x, y, w, h) {
+  for (const [px, py] of [[x + 1, y + 1], [x + w - 1, y + 1], [x + 1, y + h - 1], [x + w - 1, y + h - 1], [x + w / 2, y + h / 2]]) if (solid(px, py)) return false;
+  return true;
+}
+function initRuleState() {
+  const R = S.rng, p = S.player, Gr = S.graph;
+  S.floorT = 0; S.wt = S.wt || 0; S.ws = 1; S.ammo = 5; S.huntT = 0; S.grow = 1; S.tail = []; S.ptrail = []; S.crumbs = new Map(); S.debris = [];
+  S.vampT = 8; S.quakeT = 10; S.shake = 0; S.sweepT = 8; S.sweep = null; S.sirenT = 6; S.siren = 0; S.sirenPull = 0; S.debT = 3.5; S.swc = 0;
+  S.beast = null; S.shadowE = null; S.portals = []; S.orbs = []; S.liarHide = null; S.halfHit = false;
+  const pathAt = fr => { if (!Gr || !Gr.path.length) return null; const k = Gr.path[Math.floor(clamp(fr, 0, 0.999) * Gr.path.length)]; return { x: (k % Gr.LW) * TS, y: Math.floor(k / Gr.LW) * TS }; };
+  if (has("decoy")) S.enemies.forEach((e, i) => { if (!e.boss && !e.critter && R() < 0.5) { e.decoy = true; e.cd = 1e9; } });
+  if (has("liar")) { const others = S.rules.filter(r => r !== "liar"); if (others.length) S.liarHide = others[Math.floor(R() * others.length)]; }
+  if (has("hunter")) for (const fr of [0.2, 0.5, 0.8]) { const q = pathAt(fr); if (q) S.orbs.push({ x: q.x + 5, y: q.y + 5, w: 14, h: 14 }); }
+  if (has("portals") && !S.vertical) for (const [a, b] of [[0.18, 0.45], [0.55, 0.82]]) { const A = pathAt(a), B = pathAt(b); if (A && B) { const id = S.portals.length / 2; S.portals.push({ x: A.x + 2, y: A.y - 14, w: 20, h: 36, to: S.portals.length + 1, id }, { x: B.x + 2, y: B.y - 14, w: 20, h: 36, to: S.portals.length, id }); } }
+  if (has("shadow")) { const q = pathAt(0.3) || { x: p.x + 6 * TS, y: p.y }; S.shadowE = { x: q.x, y: q.y - 2, w: 14, h: 20, caught: false, ph: 0 }; }
+  if (has("switch")) {
+    for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.kind = "sw"; m.h = TS / 2; }
+    // floating runs of the grid become red and blue switch platforms too
+    const g = S.grid; let n = 0;
+    for (let y = 2; y < S.LH - 3; y++) for (let x = 1; x < S.LW - 1; x++) {
+      if (g[y][x] !== 1 || g[y - 1][x] !== 0 || g[y + 1][x] !== 0) continue;
+      let L = 0; while (x + L < S.LW - 1 && g[y][x + L] === 1 && g[y - 1][x + L] === 0 && g[y + 1][x + L] === 0) L++;
+      if (L >= 2 && R() < 0.5) { for (let k = 0; k < L; k++) g[y][x + k] = 0; S.movers.push({ kind: "sw", x: x * TS, y: y * TS, w: L * TS, h: TS / 2, solid: false }); n++; }
+      x += L;
+    }
+    let i = 0; for (const m of S.movers) if (m.kind === "sw") { m.col = i++ % 2; m.solid = m.col === S.swc; }
+  }
+}
+function updateRules(dt, dtW, p) {
+  S.floorT += dt;
+  if (has("vamp")) { S.vampT -= dtW; if (S.vampT <= 0) { S.vampT = 8; if (S.hp > 1) { S.hp--; burst(p.x + p.w / 2, p.y + p.h / 2, "#8a1f35", 8); toast("Vampiro: −1 corazón"); } } }
+  if (has("ammo") && (p.ground || p.climb)) S.ammo = 5;
+  S.huntT = Math.max(0, S.huntT - dt);
+  if (S.liarHide && S.floorT > 15) { toast("Mentiroso: la regla oculta era " + RULE[S.liarHide].name); S.liarHide = null; updateHud(true); }
+  S.blackout = has("blackout") && S.floorT % 5 > 4;
+  S.shake = Math.max(0, S.shake - dt);
+  if (has("quake")) {
+    S.quakeT -= dtW;
+    if (S.quakeT <= 0) {
+      S.quakeT = 10; S.shake = 1; toast("¡Terremoto!");
+      for (let i = 0; i < 4; i++) {
+        const tx = clamp(Math.floor(p.x / TS) + rri(Math.random, -9, 9), 1, S.LW - 2);
+        let ty = Math.max(0, Math.floor((S.camY || 0) / TS)); while (ty < S.LH - 1 && S.grid[ty][tx] !== 0) ty++;
+        S.drops.push({ x: tx * TS + 6, y: ty * TS, w: 12, h: 18, st: "fall", vy: rnd(0, 120) });
+      }
+      for (const m of S.movers) if ((m.kind === "crumble" || m.kind === "flip") && m.st === "ok" && Math.abs(m.x - p.x) < CW && Math.random() < 0.4) { m.st = "shake"; m.t = 0.6; }
+    }
+  }
+  if (has("sweep")) {
+    S.sweepT -= dtW;
+    if (!S.sweep && S.sweepT <= 0) S.sweep = { x: S.camX - 10 };
+    if (S.sweep) {
+      const ox = S.sweep.x; S.sweep.x += CW / 1.3 * dtW;
+      const pcx = p.x + p.w / 2, row = Math.floor((p.y + p.h / 2) / TS);
+      if (ox < pcx && S.sweep.x >= pcx) {
+        let cover = false; for (let tx = Math.max(0, Math.floor(S.camX / TS)); tx < Math.floor(pcx / TS); tx++) if (S.grid[row] && isSolidTile(S.grid[row][tx])) cover = true;
+        if (!cover) hurt(1);
+      }
+      if (S.sweep.x > S.camX + CW + 10) { S.sweep = null; S.sweepT = 8; }
+    }
+  }
+  if (has("sirens")) {
+    S.sirenT -= dtW;
+    if (S.sirenT <= 0 && S.siren <= 0) { S.siren = 3; S.sirenT = 9; }
+    S.siren = Math.max(0, S.siren - dtW);
+    S.sirenPull = 0;
+    if (S.siren > 0) {
+      if (Math.random() < dt * 8) S.parts.push({ x: p.x + rnd(-60, 60), y: p.y - rnd(10, 40), vx: 0, vy: -30, life: 1, c: "#ff8ad8", s: 3 });
+      if (!input.attack) {
+        let best = null, bd = 1e9; for (const s of S.spikes) { const d = Math.abs(s.tx * TS + 12 - (p.x + p.w / 2)); if (d < bd && d < 14 * TS) { bd = d; best = s; } }
+        S.sirenPull = best ? Math.sign(best.tx * TS + 12 - (p.x + p.w / 2)) : -1;
+      }
+    }
+  }
+  if (has("crumbs") && p.ground && !p.climb) {
+    const tx = Math.floor((p.x + p.w / 2) / TS), ty = Math.floor((S.gdir > 0 ? p.y + p.h + 2 : p.y - 2) / TS);
+    const plat = S.vertical ? ty < S.LH - 2 && tx > 0 && tx < S.LW - 1 : ty < H - S.hgt[tx];
+    if (plat && S.grid[ty] && S.grid[ty][tx] === 1 && !S.crumbs.has(ty * S.LW + tx)) S.crumbs.set(ty * S.LW + tx, { tx, ty, t: 0.7, st: "shake" });
+  }
+  for (const [k, c] of S.crumbs) {
+    c.t -= dtW;
+    if (c.st === "shake" && c.t <= 0) { S.grid[c.ty][c.tx] = 0; c.st = "gone"; c.t = 6; burst(c.tx * TS + 12, c.ty * TS + 12, "#8a6a4a", 8); }
+    else if (c.st === "gone" && c.t <= 0 && !overlap(p, { x: c.tx * TS, y: c.ty * TS, w: TS, h: TS })) { S.grid[c.ty][c.tx] = 1; S.crumbs.delete(k); }
+  }
+  if (has("debris")) {
+    S.debT -= dtW;
+    if (S.debT <= 0) {
+      S.debT = 3.5;
+      const tx = clamp(Math.floor((p.x + p.w / 2) / TS) + rri(Math.random, -6, 6), 2, S.LW - 3);
+      let ty = Math.max(0, Math.floor((S.camY || 0) / TS)); while (ty < S.LH - 1 && S.grid[ty][tx] !== 0) ty++;
+      S.debris.push({ x: tx * TS, y: ty * TS, w: TS, h: TS, vy: 0, warn: 0.8 });
+    }
+    for (const d of S.debris) {
+      if (d.warn > 0) { d.warn -= dtW; continue; }
+      d.vy = Math.min(600, d.vy + G * 0.6 * dtW); d.y += d.vy * dtW;
+      if (p.inv <= 0 && overlap(p, d)) { hurt(Math.sign(p.x - d.x) || 1); }
+      const tx = Math.floor((d.x + 12) / TS), ty = Math.floor((d.y + TS) / TS);
+      if (ty >= S.LH - 1 || (S.grid[ty] && S.grid[ty][tx] !== 0) || S.movers.some(m => m.solid && overlap(m, { x: d.x + 2, y: d.y + TS - 2, w: TS - 4, h: 4 }))) {
+        const ry = ty - 1; d.dead = true; burst(d.x + 12, d.y + 20, "#8a7a6a", 8);
+        if (!has("nojump") && ry > 0 && S.grid[ry][tx] === 0 && !overlap(p, { x: tx * TS, y: ry * TS, w: TS, h: TS })) S.grid[ry][tx] = 1;
+      }
+    }
+    S.debris = S.debris.filter(d => !d.dead);
+  }
+  if (has("tail")) {
+    const last = S.ptrail[S.ptrail.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 6) { S.ptrail.push({ x: p.x, y: p.y + p.h }); if (S.ptrail.length > 80) S.ptrail.shift(); }
+    S.tail.forEach((s, i) => {
+      const q = S.ptrail[S.ptrail.length - 1 - (i + 1) * 6];
+      if (!q) { s.on = false; return; }
+      s.on = true; s.x = q.x + 8 - s.w / 2; s.y = q.y - s.h;
+      if (S.t - s.born > 1 && p.inv <= 0 && overlap({ x: p.x + 2, y: p.y + 2, w: p.w - 4, h: p.h - 4 }, s)) hurt(Math.sign(p.x - s.x) || 1);
+    });
+  }
+  if (S.shadowE && !S.shadowE.caught) {
+    const s = S.shadowE, dx = s.x - p.x, dy = s.y - p.y, d = Math.hypot(dx, dy) || 1;
+    s.ph += dtW;
+    let vx = 0, vy = 0;
+    if (d < 7 * TS) { vx = dx / d * 165; vy = dy / d * 165; } else { vx = Math.sin(s.ph) * 30; vy = Math.cos(s.ph * 1.3) * 20; }
+    const nx = s.x + vx * dtW, ny = s.y + vy * dtW;
+    const maxX = S.vertical ? (S.LW - 2) * TS : S.exitX - 2 * TS, minY = S.vertical ? S.exitY + TS : TS;
+    if (freeBox(nx, s.y, s.w, s.h) && nx > TS && nx < maxX) s.x = nx; else s.x += (Math.random() - 0.5) * 6;
+    if (freeBox(s.x, ny, s.w, s.h) && ny > minY && ny < S.LH * TS - 2 * TS) s.y = ny; else s.y += (Math.random() - 0.5) * 6;
+    if (overlap(p, s)) { s.caught = true; toast("¡Atrapaste tu sombra! La salida está abierta"); burst(s.x + 7, s.y + 10, "#100e1a", 16); }
+  }
+  if (has("maze")) {
+    if (!S.beast && S.floorT > 3 && S.banner <= 0) { S.beast = { x: S.vertical ? p.x : Math.max(TS, p.x - 12 * TS), y: S.vertical ? (S.camY || 0) + CH + 40 : p.y - 20, w: 30, h: 34, stun: 0 }; toast("Algo te persigue: corre hacia la salida"); }
+    if (S.beast) {
+      const b = S.beast; b.stun -= dtW;
+      if (b.stun <= 0) { const dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy) || 1, sp = 150 + S.floor * 2.5; b.x += dx / d * sp * dtW; b.y += dy / d * sp * dtW; }
+      if (p.inv <= 0 && overlap(p, b)) { hurt(Math.sign(p.x - b.x) || 1); b.stun = 1.2; }
+    }
+  }
+  for (const o of S.orbs) if (!o.taken && overlap(p, o)) { o.taken = true; S.huntT = 8; toast("¡A cazar! 8 s"); burst(o.x + 7, o.y + 7, "#5fd1c4", 14); }
+  if (S.portals.length) {
+    p.portCd = (p.portCd || 0) - dt;
+    for (const q of S.portals) {
+      const to = S.portals[q.to];
+      if (p.portCd <= 0 && overlap(p, q)) { p.x = to.x + 2; p.y = to.y + to.h - p.h - 1; p.portCd = 1; burst(p.x + 8, p.y + 10, "#b9a7ff", 14); break; }
+      for (const e of S.enemies) if (!e.dead && !e.boss && (e.portCd || 0) <= 0 && overlap(e, q)) { e.x = to.x; e.y = to.y + to.h - e.h - 1; e.portCd = 1.5; }
+    }
+    for (const e of S.enemies) e.portCd = (e.portCd || 0) - dt;
+  }
+  if (has("portals") && S.vertical) {
+    if (p.x < TS + 2 && input.left && freeBox((S.LW - 1) * TS - p.w - 2, p.y, p.w, p.h)) { p.x = (S.LW - 1) * TS - p.w - 2; burst(p.x + 8, p.y + 10, "#b9a7ff", 10); }
+    else if (p.x + p.w > (S.LW - 1) * TS - 2 && input.right && freeBox(TS + 2, p.y, p.w, p.h)) { p.x = TS + 2; burst(p.x + 8, p.y + 10, "#b9a7ff", 10); }
+  }
+}
+function blinkTarget(p) {
+  let ax, ay;
+  if (S.blinkAim) { ax = S.blinkAim.x; ay = S.blinkAim.y; }
+  else if (drag && has("blink")) { ax = drag.x - drag.sx; ay = drag.y - drag.sy; }
+  else { ax = ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * (has("mirror") ? -1 : 1); ay = (input.down ? 1 : 0) - (input.up ? 1 : 0); if (!ax && !ay) { ax = 0; ay = -S.gdir; } }
+  const m = Math.hypot(ax, ay) || 1, dist = 3 * TS;
+  const x = p.x + ax / m * dist, y = p.y + ay / m * dist;
+  let ok = x > TS * 0.5 && x + p.w < S.LW * TS - TS * 0.5 && y > 0 && y + p.h < S.LH * TS && freeBox(x, y, p.w, p.h);
+  if (ok) for (const s of S.spikes) if (spikeOn(s) && overlap({ x, y, w: p.w, h: p.h }, spikeBox(s))) ok = false;
+  if (ok) for (const e of S.enemies) if (!e.dead && !e.critter && overlap({ x, y, w: p.w, h: p.h }, e)) ok = false;
+  return { x, y, ok };
+}
+function doBlink(p) {
+  if ((p.blinkCd || 0) > 0 || p.blinkUsed) return;
+  const t = blinkTarget(p); S.blinkAim = null;
+  if (!t.ok) { puffC(p.x + p.w / 2, p.y + p.h / 2, "#e0566b", 5); p.blinkCd = 0.25; return; }
+  burst(p.x + p.w / 2, p.y + p.h / 2, "#b9a7ff", 10);
+  p.x = t.x; p.y = t.y; p.vy = Math.min(p.vy * S.gdir, 0) * S.gdir * 0.3; p.blinkCd = 0.6; if (!p.ground) p.blinkUsed = true;
+  burst(p.x + p.w / 2, p.y + p.h / 2, "#b9a7ff", 10); noise(p.x, p.y);
+}
+function drawRulesWorld(p) {
+  for (const q of S.portals) {
+    ctx.strokeStyle = q.id ? "#f2c14e" : "#b9a7ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(q.x + q.w / 2, q.y + q.h / 2, q.w / 2, q.h / 2, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.25 + 0.15 * Math.sin(S.t * 5); ctx.fillStyle = ctx.strokeStyle; ctx.fill(); ctx.globalAlpha = 1;
+  }
+  for (const o of S.orbs) if (!o.taken) { ctx.fillStyle = "#5fd1c4"; ctx.beginPath(); ctx.arc(o.x + 7, o.y + 7 + Math.sin(S.t * 4) * 2, 7, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#ece8f5"; ctx.fillRect(o.x + 4, o.y + 4, 3, 3); }
+  for (const [, c] of S.crumbs || []) if (c.st === "shake") { ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(c.tx * TS + Math.sin(S.t * 70) * 2, c.ty * TS, TS, TS); ctx.fillStyle = "#8a6a4a"; ctx.fillRect(c.tx * TS + 6, c.ty * TS + 3, 2, 10); ctx.fillRect(c.tx * TS + 14, c.ty * TS + 8, 2, 12); }
+  for (const d of S.debris || []) {
+    if (d.warn > 0) { ctx.fillStyle = `rgba(242,193,78,${0.3 + 0.3 * Math.sin(S.t * 20)})`; ctx.fillRect(d.x + 4, d.y, TS - 8, 4); continue; }
+    ctx.fillStyle = "#6b5a4a"; ctx.fillRect(d.x, d.y, TS, TS); ctx.fillStyle = "#8a7a6a"; ctx.fillRect(d.x, d.y, TS, 3);
+  }
+  for (const s of S.tail || []) if (s.on) { ctx.globalAlpha = S.t - s.born > 1 ? 0.75 : 0.35; ctx.fillStyle = "#2a2540"; ctx.fillRect(s.x, s.y, s.w, s.h); ctx.fillStyle = "#e0566b"; ctx.fillRect(s.x + s.w / 2 - 3, s.y + 4, 2, 2); ctx.fillRect(s.x + s.w / 2 + 2, s.y + 4, 2, 2); ctx.globalAlpha = 1; }
+  if (S.shadowE && !S.shadowE.caught) { const s = S.shadowE; ctx.globalAlpha = 0.8; ctx.fillStyle = "#06050c"; ctx.fillRect(s.x, s.y, s.w, s.h); ctx.fillStyle = "#ece8f5"; ctx.fillRect(s.x + 3, s.y + 5, 2, 2); ctx.fillRect(s.x + 9, s.y + 5, 2, 2); ctx.globalAlpha = 1; }
+  if (S.beast) { const b = S.beast; ctx.fillStyle = "#3a1f2a"; ctx.fillRect(b.x, b.y + 6, b.w, b.h - 6); ctx.fillStyle = "#c9a36a"; ctx.fillRect(b.x - 4, b.y, 6, 10); ctx.fillRect(b.x + b.w - 2, b.y, 6, 10); ctx.fillStyle = "#e0566b"; ctx.fillRect(b.x + 7, b.y + 14, 4, 4); ctx.fillRect(b.x + 19, b.y + 14, 4, 4); }
+  if (has("blink") && S.mode === "play") {
+    const t = blinkTarget(p);
+    ctx.globalAlpha = 0.55; ctx.fillStyle = (p.blinkCd || 0) > 0 || p.blinkUsed ? "#5d5a78" : t.ok ? "#5fd1c4" : "#e0566b";
+    ctx.fillRect(t.x, t.y, p.w, p.h); ctx.globalAlpha = 1;
+    ctx.strokeStyle = ctx.fillStyle; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(p.x + p.w / 2, p.y + p.h / 2); ctx.lineTo(t.x + p.w / 2, t.y + p.h / 2); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (has("charge") && (p.charge || 0) > 0) { ctx.fillStyle = "#231f37"; ctx.fillRect(p.x - 4, p.y - 10, p.w + 8, 4); ctx.fillStyle = "#f2c14e"; ctx.fillRect(p.x - 4, p.y - 10, (p.w + 8) * Math.min(1, p.charge / 0.7), 4); }
+  if (S.huntT > 0) for (const e of S.enemies) if (!e.dead && !e.boss) { ctx.strokeStyle = "#5fd1c4"; ctx.lineWidth = 1; ctx.strokeRect(e.x - 2, e.y - 2, e.w + 4, e.h + 4); }
+}
+function drawRulesScreen(p, cx, cy) {
+  if (S.sweep) {
+    ctx.fillStyle = "rgba(255,90,120,.85)";
+    for (let r = Math.floor(cy / TS); r <= Math.floor((cy + CH) / TS); r++) {
+      let stop = S.sweep.x; for (let tx = Math.max(0, Math.floor(cx / TS)); tx * TS < S.sweep.x; tx++) if (S.grid[r] && isSolidTile(S.grid[r][tx])) { stop = -1; break; }
+      if (stop > 0) ctx.fillRect(stop - cx - 4, r * TS - cy, 6, TS);
+    }
+  } else if (has("sweep") && S.sweepT < 1.5 && Math.floor(S.t * 8) % 2) { ctx.fillStyle = "rgba(255,90,120,.5)"; ctx.fillRect(0, 0, 6, CH); }
+  if (S.siren > 0) { ctx.fillStyle = "rgba(255,138,216,.10)"; ctx.fillRect(0, 0, CW, CH); }
+  if (has("rhythm") && S.mode === "play") {
+    const ph = (S.floorT % 0.6) / 0.6, on = onBeat();
+    ctx.strokeStyle = on ? "#f2c14e" : "rgba(242,193,78,.25)"; ctx.lineWidth = on ? 4 : 2;
+    ctx.beginPath(); ctx.arc(CW / 2, CH - 30, 10 + (1 - ph) * 12, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (S.blackout) { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CW, CH); }
+}
 function mkEnemy(type, x, y) {
   const d = diff();
   const base = { type, x, y, vx: 0, vy: 0, ground: false, dir: Math.random() < .5 ? -1 : 1, stun: 0, flash: 0, jt: rnd(1, 2.5), dust: 0, dead: false, alert: 0, reveal: 0, inv: 0, home: y, ph: Math.random() * 6, spd: d };
@@ -907,7 +1161,7 @@ function updateMovers(dt, p) {
     const riders = m.solid ? [p, ...S.enemies].filter(e => !e.dead && standingOn(e, m)) : [];
     const onP = riders.includes(p);
     if (m.kind === "move") {
-      const k = Math.sin(S.t * Math.PI * 2 / m.per + m.ph) * 0.5 + 0.5;
+      const k = Math.sin(S.wt * Math.PI * 2 / m.per + m.ph) * 0.5 + 0.5;
       m.x = m.bx + k * m.ax; m.y = m.by + (1 - k) * m.ay;
     } else if (m.kind === "crumble" || m.kind === "flip") {
       m.t -= dt;
@@ -915,9 +1169,12 @@ function updateMovers(dt, p) {
       else if (m.st === "shake" && m.t <= 0) { m.st = "gone"; m.solid = false; m.t = m.kind === "flip" ? 1.6 : 3.5; if (m.kind === "crumble") burst(m.x + m.w / 2, m.y + m.h / 2, "#8a6a4a", 10); }
       else if (m.st === "gone" && m.t <= 0 && !overlap(p, m)) { m.st = "ok"; m.solid = true; }
     } else if (m.kind === "blink") {
-      const c = (S.t + m.ph) % m.per; const on = c < m.per * 0.6;
+      const c = (S.wt + m.ph) % m.per; const on = c < m.per * 0.6;
       if (on && !m.solid && overlap(p, m)) {} else m.solid = on;
       m.warn = on && c > m.per * 0.6 - 0.5;
+    } else if (m.kind === "sw") {
+      const want = m.col === S.swc;
+      if (want && !m.solid && overlap(p, m)) {} else m.solid = want;
     } else if (m.kind === "fake") {
       if (overlap(p, { x: m.x, y: m.y - 4, w: m.w, h: m.h + 8 })) m.revealed = true;
     }
@@ -927,7 +1184,7 @@ function updateMovers(dt, p) {
 }
 
 /* ---------- update ---------- */
-const G = 1500, MAXF = 720;
+const G = 1500, MAXF = 720, RUN = 205;
 function update(dt) {
   S.t += dt;
   for (const t of S.toasts) t.t -= dt;
@@ -935,26 +1192,33 @@ function update(dt) {
   if (S.mode !== "play") return;
   S.banner = Math.max(0, S.banner - dt);
 
-  if (has("grav")) { S.gt -= dt; if (S.gt <= 0) { S.gdir *= -1; S.gt = gravPeriod(); } }
+  const p0 = S.player;
+  S.ws = 1;
+  if (has("pause") && !(Math.abs(p0.vx) > 25 || !p0.ground)) S.ws = 0;
+  if (has("right") && !(S.vertical ? p0.vy * S.gdir < -25 : p0.vx > 25)) S.ws = 0;
+  const dtW = dt * S.ws; S.wt = (S.wt || 0) + dtW;
+  if (has("grav")) { S.gt -= dtW; if (S.gt <= 0) { S.gdir *= -1; S.gt = gravPeriod(); } }
   else { S.gdir = 1; S.gt = gravPeriod(); }
   S.inRoom = (S.rooms || []).some(r => overlap(S.player, r));
   if (S.inRoom && !S.wasInRoom) toast("Sala oculta: el tiempo se detiene");
   S.wasInRoom = S.inRoom;
-  if (has("tide") && !S.inRoom) S.tide = Math.min(CH - 4 * TS, S.tide + (5 + S.floor * 0.3) * dt);
-  if (has("timer") && !S.inRoom) { S.timeLeft -= dt; if (S.timeLeft <= 0) { S.timeLeft = 0; S.hp = 0; toast("El piso colapsó"); die(); return; } }
+  if (has("tide") && !S.inRoom) S.tide = Math.min(CH - 4 * TS, S.tide + (5 + S.floor * 0.3) * dtW);
+  if (has("timer") && !S.inRoom) { S.timeLeft -= dtW; if (S.timeLeft <= 0) { S.timeLeft = 0; S.hp = 0; toast("El piso colapsó"); die(); return; } }
 
   const p = S.player;
-  updateMovers(dt, p);
+  updateMovers(dtW, p);
   const pc = p.y + p.h / 2, water = inWater(pc);
   let dirIn = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   if (has("mirror")) dirIn = -dirIn;
   if (has("frozen")) dirIn = 0;
   if (has("inertia")) { if (dirIn) p.lock = dirIn; dirIn = p.lock; }
-  let sp = 255 * S.char.speed;
+  let sp = RUN * S.char.speed;
   if (has("gold")) sp *= Math.max(0.5, 1 - S.carry * (rel("bolsa") ? 0.015 : 0.03));
   if (water) sp *= 0.6;
-  const target = dirIn * sp + (has("wind") ? S.wind * 85 : 0);
-  const sw = has("shrink") ? 10 : 16, sh = has("shrink") ? 13 : 22;
+  if (has("charge") && (p.charge || 0) > 0) sp *= 0.35;
+  const target = dirIn * sp + (has("wind") ? S.wind * 85 : 0) + (S.sirenPull || 0) * 120;
+  const gk = has("glutton") ? S.grow || 1 : 1;
+  const sw = Math.round((has("shrink") ? 10 : 16) * gk), sh = Math.round((has("shrink") ? 13 : 22) * gk);
   if (p.w !== sw) { if (S.gdir > 0) p.y += p.h - sh; p.x += (p.w - sw) / 2; p.w = sw; p.h = sh; }
   const accel = p.ground ? (has("ice") ? (rel("crampones") ? 7 : 1.6) : 18) : (has("ice") ? 1.4 : 9);
   p.launchT -= dt;
@@ -968,29 +1232,59 @@ function update(dt) {
     p.vy = (input.jump || input.up ? -140 : input.down ? 160 : 50) * S.gdir;
     p.buf = 0;
   } else {
-    p.vy += G * S.gdir * (water ? 0.35 : 1) * dt;
-    const mf = water ? 170 : MAXF;
+    p.vy += G * S.gdir * (water ? 0.35 : 1) * (has("moon") ? 0.45 : 1) * dt;
+    const mf = water ? 170 : has("moon") ? MAXF * 0.6 : MAXF;
     p.vy = clamp(p.vy, -MAXF, mf); if (S.gdir < 0) p.vy = clamp(p.vy, -mf, MAXF);
     p.coyote = p.ground ? 0.1 : p.coyote - dt;
     p.buf = pressed.jump ? 0.12 : p.buf - dt;
-    const canJump = !has("nojump") && !has("frozen");
+    const beatOK = !has("rhythm") || onBeat();
+    if (p.buf > 0 && has("rhythm") && !beatOK && !has("nojump") && !has("frozen")) { p.buf = 0; missBeat(p); }
+    const canJump = !has("nojump") && !has("frozen") && !has("blink") && !has("charge") && beatOK;
     // wall contact: slide down slowly and allow a wall jump
     const wallR = solid(p.x + p.w + 2, p.y + 3) || solid(p.x + p.w + 2, p.y + p.h - 3);
     const wallL = solid(p.x - 2, p.y + 3) || solid(p.x - 2, p.y + p.h - 3);
     if (!p.ground && (wallR || wallL)) { p.wallDir = wallR ? 1 : -1; p.wallT = 0.12; } else p.wallT = (p.wallT || 0) - dt;
     const pushing = (p.wallDir === 1 && input.right) || (p.wallDir === -1 && input.left);
+    // sticky walls and ceilings: hold on until you jump (or press down)
+    p.stuck = false;
+    if (has("sticky") && !p.ground && !input.down && (p.relT || 0) <= 0) {
+      const ceil = S.gdir > 0 ? solid(p.x + 2, p.y - 2) || solid(p.x + p.w - 2, p.y - 2) : solid(p.x + 2, p.y + p.h + 2) || solid(p.x + p.w - 2, p.y + p.h + 2);
+      if (wallR || wallL) { p.vy = 0; p.stuck = true; }
+      else if (ceil) { p.vy = -30 * S.gdir; p.stuck = true; if (p.buf > 0) { p.relT = 0.3; p.vy = 60 * S.gdir; p.buf = 0; } }
+    }
+    p.relT = (p.relT || 0) - dt;
+    if (has("charge") && !has("frozen")) {
+      if ((p.ground || p.coyote > 0) && input.jump) p.charge = Math.min(0.7, (p.charge || 0) + dt);
+      else if ((p.charge || 0) > 0 && !input.jump) {
+        if (p.ground || p.coyote > 0) { p.vy = -(260 + p.charge / 0.7 * 520) * (has("moon") ? 0.75 : 1) * S.gdir; p.launchT = 0.05; p.coyote = 0; puff(p.x + p.w / 2, p.y + p.h, 5); noise(p.x, p.y); }
+        p.charge = 0;
+      } else if (!p.ground && p.coyote <= 0) p.charge = 0;
+    }
+    if (has("wax") && input.jump && !p.ground && !has("frozen")) {
+      p.vy = Math.max(-260, p.vy * S.gdir - 2600 * dt) * S.gdir;
+      if (Math.random() < dt * 20) S.parts.push({ x: p.x + p.w / 2, y: p.y + p.h, vx: rnd(-20, 20), vy: 60 * S.gdir, life: 0.4, c: "#f2c14e", s: 2 });
+    }
+    if (has("wax")) {
+      const near = S.gdir > 0 ? [1, 2, 3].some(k => solid(p.x + p.w / 2, p.y - k * TS + 4)) || (S.vertical && p.y < (S.camY || 0) + 40) : [1, 2, 3].some(k => solid(p.x + p.w / 2, p.y + p.h + k * TS - 4));
+      p.burn = near && !p.ground ? (p.burn || 0) + dt : Math.max(0, (p.burn || 0) - dt);
+      if (p.burn > 0.9) { p.burn = 0; hurt(0); burst(p.x + p.w / 2, p.y, "#ff7a3a", 12); toast("¡Las alas se derriten!"); }
+    }
     if (!p.ground && (wallR || wallL) && pushing && p.vy * S.gdir > 110) { p.vy = 110 * S.gdir; if (Math.random() < dt * 20) puff(p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 1); }
     if (p.buf > 0 && canJump && (p.coyote > 0 || water)) {
-      p.vy = (water ? -330 : -560) * (has("shrink") ? 0.8 : 1) * S.gdir; p.buf = 0; p.coyote = 0;
+      p.vy = (water ? -330 : -560) * (has("shrink") ? 0.8 : 1) * (has("moon") ? 0.75 : 1) * S.gdir; p.buf = 0; p.coyote = 0;
       puff(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h : p.y, 4); noise(p.x, p.y);
-    } else if (p.buf > 0 && canJump && p.wallT > 0 && !p.ground && (p.wjCd || 0) <= 0) {
+    } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && ((p.wjCd || 0) <= 0 || p.stuck)) {
       p.vy = -540 * (has("shrink") ? 0.85 : 1) * S.gdir; p.vx = -p.wallDir * 300; p.face = -p.wallDir;
       p.launchT = 0.18; p.buf = 0; p.wallT = 0; p.wjCd = 0.7;
       if (has("inertia")) p.lock = -p.wallDir;
       puff(p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 5); noise(p.x, p.y);
     }
-    if (!input.jump && p.vy * S.gdir < -200 && p.launchT <= 0) p.vy = -200 * S.gdir;
+    if (!input.jump && p.vy * S.gdir < -200 && p.launchT <= 0 && !has("charge")) p.vy = -200 * S.gdir;
+    if (has("blink") && !has("frozen") && p.buf > 0) { p.buf = 0; if (beatOK) doBlink(p); else missBeat(p); }
   }
+  if (p.ground || p.climb) p.blinkUsed = false;
+  p.blinkCd = (p.blinkCd || 0) - dt;
+  if (has("noback") && !S.vertical && S.banner <= 0) { p.backT = p.face < 0 ? (p.backT || 0) + dt : 0; if (p.backT > 0.35) { p.backT = -0.6; hurt(1); toast("No mires atrás"); } }
   const under = p.ground ? tileAt(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h + 2 : p.y - 2) : 0;
   const conv = under === 4 ? 280 : under === 5 ? -280 : 0;
   p.vx += conv;
@@ -1023,7 +1317,7 @@ function update(dt) {
     if (S.ghost && p.inv <= 0 && overlap(p, { x: S.ghost.x + 2, y: S.ghost.y + 2, w: S.ghost.w - 4, h: S.ghost.h - 4 })) hurt(Math.sign(p.x - S.ghost.x) || 1);
   } else { S.trail = []; S.ghost = null; }
   if (has("swap")) {
-    S.swapT -= dt;
+    S.swapT -= dtW;
     const live = S.enemies.filter(e => !e.dead && !e.boss && Math.abs(e.x - p.x) < CW * 0.6);
     if (S.swapT < 1 && (!S.swapTarget || S.swapTarget.dead) && live.length) S.swapTarget = live[Math.floor(Math.random() * live.length)];
     if (S.swapT <= 0) {
@@ -1033,12 +1327,18 @@ function update(dt) {
     }
   }
   if (has("wind")) {
-    S.windT -= dt;
+    S.windT -= dtW;
     if (S.windT <= 0) { S.wind = Math.random() < 0.6 ? -S.wind : S.wind; S.windT = 6; }
     if (Math.random() < dt * 40) S.parts.push({ x: S.camX + rnd(0, CW), y: (S.camY || 0) + rnd(0, CH), vx: S.wind * rnd(380, 520), vy: 0, life: 0.45, c: "rgba(236,232,245,.35)", s: 2 });
   }
-  if (pressed.attack && p.cd <= 0) {
+  updateRules(dt, dtW, p);
+  let atkOK = pressed.attack && p.cd <= 0;
+  if (atkOK && S.siren > 0) atkOK = false;
+  if (atkOK && has("rhythm") && !onBeat()) { atkOK = false; missBeat(p); p.cd = 0.12; }
+  if (atkOK && has("ammo") && S.ammo <= 0) { atkOK = false; puffC(p.x + p.w / 2, p.y + 4, "#9a94b8", 3); if (!S.ammoTip) { S.ammoTip = true; toast("Sin munición: toca el suelo para recargar"); } }
+  if (atkOK) {
     p.cd = 0.3; p.atk = 0.16; noise(p.x, p.y);
+    if (has("ammo")) S.ammo--;
     const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
     let ang;
     if (aimAt) { ang = Math.atan2(aimAt.y - pcy, aimAt.x - pcx); aimAt = null; }
@@ -1049,6 +1349,13 @@ function update(dt) {
     }
     p.aim = ang;
     if (Math.cos(ang) > 0.25) p.face = 1; else if (Math.cos(ang) < -0.25) p.face = -1;
+    if (has("recoil")) { p.vx = -Math.cos(ang) * 340; p.vy = -Math.sin(ang) * 300; p.launchT = 0.18; }
+    if (has("switch")) { S.swc = 1 - S.swc; }
+    if (has("bean") && Math.sin(ang) * S.gdir > 0.5 && (p.ground || p.climb)) {
+      const tx = Math.floor((p.x + p.w / 2) / TS); let ty = Math.floor((p.y + p.h / 2) / TS), n = 0;
+      while (n < 6 && S.grid[ty] && S.grid[ty][tx] === 0 || (S.grid[ty] && S.grid[ty][tx] === 3 && n < 6)) { S.grid[ty][tx] = 3; ty -= S.gdir; n++; }
+      if (n) { puffC(tx * TS + 12, p.y + p.h, "#7ac74f", 10); }
+    }
     for (const e of S.enemies) {
       if (e.dead) continue;
       const ex = e.x + e.w / 2 - pcx, ey = e.y + e.h / 2 - pcy, d = Math.hypot(ex, ey);
@@ -1081,7 +1388,7 @@ function update(dt) {
   for (const d of S.drops) {
     if (d.st === "hang" && S.gdir > 0 && Math.abs(p.x + p.w / 2 - (d.x + 6)) < 34 && p.y > d.y) { d.st = "fall"; d.vy = 0; }
     if (d.st === "fall") {
-      d.vy += G * dt; d.y += d.vy * dt;
+      d.vy += G * dtW; d.y += d.vy * dtW;
       if (p.inv <= 0 && overlap(p, d)) hurt(Math.sign(p.x - d.x) || 1);
       for (const e of S.enemies) if (!e.dead && overlap(e, d)) damage(e, e.boss ? 3 : 99, "spike");
       if (solid(d.x + 6, d.y + d.h)) { d.st = "gone"; burst(d.x + 6, d.y + d.h, "#c9cde0", 10); }
@@ -1091,7 +1398,9 @@ function update(dt) {
   const billar = has("ice") && has("noatk");
   for (const e of S.enemies) {
     if (e.dead) continue;
-    const dtE = has("slow") ? dt * 0.5 : dt;
+    let dtE = (has("slow") ? dt * 0.5 : dt) * S.ws;
+    if (has("statues") && !e.boss) dtE *= !S.blackout && Math.sign(e.x + e.w / 2 - (p.x + p.w / 2)) === p.face ? 0 : 1.5;
+    if (S.huntT > 0 && !e.boss && e.stun <= 0) { const fx = e.x + Math.sign(e.x - p.x) * 70 * dtE; if (!solid(fx + (e.x > p.x ? e.w : 0), e.y + e.h / 2)) e.x = fx; }
     e.flash -= dt; e.stun -= dtE; e.alert -= dt; e.reveal -= dt; e.inv -= dt;
     if (has("magnet") && e.stun <= 0 && !e.boss) { const mx = p.x - e.x, my = p.y - e.y; if (Math.hypot(mx, my) < 6 * TS) { e.x += Math.sign(mx) * 26 * dtE; if (e.type === "bat") e.y += Math.sign(my) * 26 * dtE; } }
     updateEnemy(e, dtE, p);
@@ -1100,7 +1409,12 @@ function update(dt) {
     if (billar && e.stun > 0 && Math.abs(e.vx) > 200) {
       for (const o of S.enemies) if (o !== e && !o.dead && overlap(e, o)) { damage(o, o.boss ? 3 : 99, "spike"); damage(e, 99, "spike"); toast("Billar"); break; }
     }
-    if (!e.dead && !e.critter && p.inv <= 0 && e.stun <= 0 && overlap(p, e)) { e.flash = 0.5; hurt(Math.sign(p.x - e.x) || 1); }
+    if (!e.dead && !e.critter && overlap(p, e)) {
+      if (e.decoy) { e.dead = true; puff(e.x + e.w / 2, e.y + e.h / 2, 8); continue; }
+      if (has("glutton") && !e.boss && e.w * e.h < p.w * p.h * 1.05) { kill(e, "eat"); S.grow = Math.min(1.5, (S.grow || 1) + 0.05); continue; }
+      if (S.huntT > 0 && !e.boss) continue;
+      if (p.inv <= 0 && e.stun <= 0) { e.flash = 0.5; hurt(Math.sign(p.x - e.x) || 1); }
+    }
   }
   S.enemies = S.enemies.filter(e => !e.dead);
   if (S.spawnQ.length) { S.enemies.push(...S.spawnQ); S.spawnQ = []; }
@@ -1110,6 +1424,7 @@ function update(dt) {
     if (c.taken) continue;
     if (c.vy !== undefined) { c.vy += 900 * S.gdir * dt; c.y += c.vy * dt; c.x += (c.vx || 0) * dt; c.vx *= 0.97; if (solid(c.x + 5, c.y + c.h) && c.vy > 0) { c.vy = 0; c.vx = 0; c.y = Math.floor((c.y + c.h) / TS) * TS - c.h; } if (solid(c.x + 5, c.y) && c.vy < 0) { c.vy = 0; c.vx = 0; c.y = Math.floor(c.y / TS + 1) * TS; } }
     if (has("magnet")) { const mx = p.x + p.w / 2 - c.x, my = p.y + p.h / 2 - c.y, d = Math.hypot(mx, my); if (d < 6 * TS && d > 1) { c.x += mx / d * 280 * dt; c.y += my / d * 280 * dt; c.vy = undefined; } }
+    if (c.grace > 0) { c.grace -= dt; continue; }
     if (overlap({ x: p.x - 10, y: p.y - 10, w: p.w + 20, h: p.h + 20 }, c)) { c.taken = true; if (has("gold")) S.carry += c.v; else addGold(c.v); puffC(c.x + 5, c.y + 6, "#f2c14e", 4); }
   }
   S.coinsL = S.coinsL.filter(c => !c.taken);
@@ -1117,20 +1432,20 @@ function update(dt) {
     if (it.taken || !overlap({ x: p.x - 8, y: p.y - 8, w: p.w + 16, h: p.h + 16 }, it)) continue;
     it.taken = true;
     if (it.kind === "heart") { if (S.hp < S.maxhp) { S.hp++; toast("+1 corazón"); } else { S.maxhp++; S.hp++; toast("Corazón máximo +1"); } burst(it.x + 7, it.y + 7, "#e0566b", 14); }
-    else { const pool = RELICS.filter(r => !rel(r.id)); if (pool.length) { const r = pool[Math.floor(Math.random() * pool.length)]; gainRelic(r.id); toast("Reliquia oculta: " + r.name); } else { addGold(15); toast("+15 de oro"); } burst(it.x + 7, it.y + 7, "#5fd1c4", 14); }
+    else { const pool = RELICS.filter(r => !rel(r.id)); if (pool.length) { const r = pool[Math.floor(Math.random() * pool.length)]; gainRelic(r.id); toast("Reliquia oculta: " + r.name); } else { addGold(8); toast("+8 de oro"); } burst(it.x + 7, it.y + 7, "#5fd1c4", 14); }
   }
   if (S.chest && !S.chest.open && overlap(p, S.chest)) {
     S.chest.open = true;
     const pool = RELICS.filter(r => !rel(r.id));
     if (pool.length) { const r = pool[Math.floor(Math.random() * pool.length)]; gainRelic(r.id); toast("Reliquia: " + r.name); }
-    else { addGold(10); toast("Cofre: +10 de oro"); }
+    else { addGold(6); toast("Cofre: +6 de oro"); }
     burst(S.chest.x + 10, S.chest.y, "#f2c14e", 16);
   }
 
   for (const sh of S.shots) {
-    sh.life -= dt;
-    if (sh.g) sh.vy += 700 * S.gdir * dt;
-    sh.x += sh.vx * dt; sh.y += sh.vy * dt;
+    sh.life -= dtW;
+    if (sh.g) sh.vy += 700 * S.gdir * dtW;
+    sh.x += sh.vx * dtW; sh.y += sh.vy * dtW;
     const hitWall = solid(sh.x, sh.y);
     if (sh.kind === "bomb" && (hitWall || overlap(p, { x: sh.x - 6, y: sh.y - 6, w: 12, h: 12 }))) {
       sh.life = 0; burst(sh.x, sh.y, "#ff9a3a", 18);
@@ -1152,14 +1467,15 @@ function update(dt) {
 
   if (S.vertical) {
     if (S.rising) {
-      if (S.banner <= 0 && !S.inRoom) S.camY = Math.max(0, S.camY - S.rise * dt);
+      if (S.banner <= 0 && !S.inRoom) S.camY = Math.max(0, S.camY - S.rise * dtW);
       if (!S.inRoom && p.y > S.camY + CH + 6) { toast("Te alcanzó el fondo"); S.hp = 0; die(); return; }
       if (p.y + p.h < S.camY - 6) { toast("Te adelantaste demasiado"); S.hp = 0; die(); return; }
     } else S.camY = clamp(p.y + p.h / 2 - CH / 2, 0, S.LH * TS - CH);
+    if (S.shadowE && !S.shadowE.caught && p.y < S.exitY + 8) { p.y = S.exitY + 8; p.vy = Math.max(0, p.vy); if (!S.shTip) { S.shTip = true; toast("Atrapa tu sombra para abrir la salida"); } }
     if (p.y < S.exitY) { finishFloor(); return; }
     updateHud(); return;
   }
-  const bossAlive = S.enemies.some(e => e.boss && !e.dead);
+  const bossAlive = S.enemies.some(e => e.boss && !e.dead) || (S.shadowE && !S.shadowE.caught);
   if (bossAlive && p.x + p.w > S.exitX - 2) { p.x = S.exitX - 2 - p.w; p.vx = Math.min(0, p.vx); }
   if (!bossAlive && p.x + p.w > S.exitX + 4) { finishFloor(); return; }
   S.camX = clamp(p.x + p.w / 2 - CW / 2, 0, S.LW * TS - CW);
@@ -1170,9 +1486,17 @@ function shoot(x, y, tx, ty, speed, kind) {
   const a = Math.atan2(ty - y, tx - x);
   S.shots.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, kind, life: 4 });
 }
+function sees(ax, ay, bx, by) {
+  const L = Math.hypot(bx - ax, by - ay), n = Math.ceil(L / 12);
+  for (let i = 1; i < n; i++) if (solid(ax + (bx - ax) * i / n, ay + (by - ay) * i / n)) return false;
+  return true;
+}
 function updateEnemy(e, dt, p) {
   const d = e.spd, dx = (p.x + p.w / 2) - (e.x + e.w / 2), dy = (p.y + p.h / 2) - (e.y + e.h / 2);
-  const aggro = (has("noise") ? 3 : 6) * TS, dist = Math.hypot(dx, dy);
+  const aggro = (has("noise") ? 4 : 10) * TS, dist = Math.hypot(dx, dy);
+  // enemies look for the player: line of sight within range keeps them hunting for a few seconds
+  e.lookT = (e.lookT || 0) - dt;
+  if (e.lookT <= 0 && !e.critter && !e.decoy) { e.lookT = 0.25; if (dist < (has("noise") ? 6 : 12) * TS && sees(e.x + e.w / 2, e.y + e.h / 2, p.x + p.w / 2, p.y + p.h / 2)) e.alert = Math.max(e.alert, 3); }
   if (e.type === "rat") {
     const flee = dist < 4 * TS;
     if (e.stun <= 0) { if (flee) e.dir = -Math.sign(dx) || 1; else if (Math.random() < dt * 0.6) e.dir = -e.dir; e.vx = e.dir * (flee ? 150 : 30); }
@@ -1180,7 +1504,7 @@ function updateEnemy(e, dt, p) {
   }
   if (e.type === "wisp") {
     if (e.stun <= 0) {
-      const chase = dist < 9 * TS || e.alert > 0;
+      const chase = dist < 12 * TS || e.alert > 0;
       const tvx = chase ? dx / (dist || 1) * 48 * d : Math.sin(S.t + e.ph) * 20, tvy = chase ? dy / (dist || 1) * 48 * d : Math.cos(S.t * 1.3 + e.ph) * 20;
       e.vx += (tvx - e.vx) * Math.min(1, dt * 1.2); e.vy += (tvy - e.vy) * Math.min(1, dt * 1.2);
     } else { e.vx *= Math.pow(0.1, dt); e.vy *= Math.pow(0.1, dt); }
@@ -1208,14 +1532,21 @@ function updateEnemy(e, dt, p) {
   if (e.type === "shooter") {
     e.vx = 0; e.vy += G * S.gdir * dt; e.vy = clamp(e.vy, -MAXF, MAXF); move(e, dt);
     e.face = Math.sign(dx) || 1; e.cd -= dt;
-    if (e.tele > 0) { e.tele -= dt; e.flash = 0.2; if (e.tele <= 0) { shoot(e.x + e.w / 2, e.y + 8, p.x + p.w / 2, p.y + p.h / 2, 250 * Math.min(1.3, d), "arrow"); e.cd = rnd(2.2, 3.2) / d; } }
-    else if (e.cd <= 0 && dist < 11 * TS && e.stun <= 0) e.tele = 0.55;
+    if (e.tele > 0) {
+      e.tele -= dt; e.flash = 0.2;
+      if (e.tele <= 0) {
+        // aim where the player will be when the arrow arrives
+        const sp = 360 * Math.min(1.3, d), ox = e.x + e.w / 2, oy = e.y + 8, t = Math.hypot(p.x + p.w / 2 - ox, p.y + p.h / 2 - oy) / sp;
+        shoot(ox, oy, p.x + p.w / 2 + p.vx * t * 0.8, p.y + p.h / 2 + (p.ground ? 0 : p.vy * t * 0.4), sp, "arrow"); e.cd = rnd(1.0, 1.5) / d;
+      }
+    }
+    else if (e.cd <= 0 && dist < 15 * TS && e.stun <= 0 && e.alert > 0) e.tele = 0.4;
     return;
   }
   if (e.type === "charger") {
     e.ai -= dt;
     if (e.stun <= 0) {
-      if (e.st === "walk") { const sameLevel = Math.abs(dy) < TS * 1.2 && Math.abs(dx) < 8 * TS; e.vx = e.dir * 30 * d; if (sameLevel) { e.st = "tele"; e.ai = 0.6; e.dir = Math.sign(dx) || 1; } }
+      if (e.st === "walk") { const sameLevel = Math.abs(dy) < TS * 1.5 && Math.abs(dx) < 11 * TS && e.alert > 0; e.vx = e.dir * 30 * d; if (sameLevel) { e.st = "tele"; e.ai = 0.6; e.dir = Math.sign(dx) || 1; } }
       else if (e.st === "tele") { e.vx = 0; e.flash = 0.25; if (e.ai <= 0) { e.st = "charge"; e.ai = 1.1; } }
       else if (e.st === "charge") { e.vx = e.dir * 300 * d; if (Math.random() < dt * 20) puff(e.x + e.w / 2, S.gdir > 0 ? e.y + e.h : e.y, 1); if (e.ai <= 0) { e.st = "walk"; } }
       else if (e.st === "dazed") { e.vx = 0; if (e.ai <= 0) e.st = "walk"; }
@@ -1226,12 +1557,12 @@ function updateEnemy(e, dt, p) {
     return;
   }
   if (e.type === "knight") {
-    if (e.stun <= 0) { const near2 = Math.abs(dx) < 7 * TS && Math.abs(dy) < 2 * TS; e.face = Math.sign(dx) || e.face; e.vx = near2 ? e.face * 48 * d : 0; } else e.vx *= Math.pow(0.05, dt);
+    if (e.stun <= 0) { const near2 = (Math.abs(dx) < 10 * TS && Math.abs(dy) < 3 * TS) || e.alert > 0; e.face = Math.sign(dx) || e.face; e.vx = near2 ? e.face * 58 * d : 0; } else e.vx *= Math.pow(0.05, dt);
     e.vy += G * S.gdir * dt; e.vy = clamp(e.vy, -MAXF, MAXF); move(e, dt);
     return;
   }
   if (e.type === "bat") {
-    const dist = Math.hypot(dx, dy), chase = dist < (has("noise") ? 4 : 8) * TS || e.alert > 0;
+    const dist = Math.hypot(dx, dy), chase = dist < (has("noise") ? 5 : 11) * TS || e.alert > 0;
     if (e.stun <= 0) {
       let tvx, tvy;
       if (chase) { tvx = dx / (dist || 1) * 70 * d; tvy = dy / (dist || 1) * 70 * d + Math.sin(S.t * 6 + e.ph) * 30; }
@@ -1242,7 +1573,7 @@ function updateEnemy(e, dt, p) {
     if (has("invis") && Math.random() < dt * 3) puffC(e.x + e.w / 2, e.y + e.h, "#6a6490", 1);
     return;
   }
-  const near = (Math.abs(dx) < aggro && Math.abs(dy) < TS * 2) || e.alert > 0;
+  const near = (Math.abs(dx) < aggro && Math.abs(dy) < TS * 3) || e.alert > 0;
   if (e.stun <= 0) {
     if (e.boss) {
       e.ai -= dt;
@@ -1252,24 +1583,28 @@ function updateEnemy(e, dt, p) {
     } else if (e.type === "hopper") {
       if (e.ground) {
         e.vx = 0; e.jt -= dt;
-        if (e.jt <= 0) { e.jt = rnd(1.8, 3) / d; const dirx = near ? Math.sign(dx) || 1 : (Math.random() < .5 ? -1 : 1); if (!has("nojump")) { e.vy = -400 * S.gdir; e.vx = dirx * 85 * d; } else e.vx = dirx * 45; }
+        if (e.jt <= 0) { e.jt = (near ? rnd(0.7, 1.2) : rnd(1.8, 3)) / d; const dirx = near ? Math.sign(dx) || 1 : (Math.random() < .5 ? -1 : 1); if (!has("nojump")) { e.vy = -400 * S.gdir; e.vx = dirx * 85 * d; } else e.vx = dirx * 45; }
       }
     } else {
-      if (near) e.dir = Math.sign(dx) || e.dir;
-      e.vx = e.dir * (near ? 62 : 38) * d;
+      if (near && Math.abs(dx) > 6) e.dir = Math.sign(dx) || e.dir;
+      e.vx = e.dir * (near ? 82 : 38) * d;
       const footY = S.gdir > 0 ? e.y + e.h + 4 : e.y - 4, aheadX = e.dir > 0 ? e.x + e.w + 2 : e.x - 2;
-      if (e.ground && !solid(aheadX, footY) && !near) e.dir *= -1;
+      if (e.ground && !solid(aheadX, footY) && (!near || dy * S.gdir < -TS)) e.dir *= -1;
+      // hop up steps and toward a player standing above
+      if (near && e.ground && !has("nojump") && ((e.hitWall && Math.abs(dx) > TS) || (dy * S.gdir < -2 * TS && Math.abs(dx) < 3 * TS))) { e.vy = -470 * S.gdir; e.ground = false; }
     }
   } else e.vx *= Math.pow(has("ice") ? 0.5 : 0.05, dt);
   const w = inWater(e.y + e.h / 2);
   e.vy += G * S.gdir * (w ? 0.35 : 1) * dt; e.vy = clamp(e.vy, -MAXF, MAXF);
   move(e, dt);
-  if (e.hitWall && !e.boss && e.type === "walker") e.dir *= -1;
+  if (e.hitWall && !e.boss && e.type === "walker" && !(near && !has("nojump"))) e.dir *= -1;
   if (has("invis") && e.ground && Math.abs(e.vx) > 20) { e.dust -= dt; if (e.dust <= 0) { e.dust = 0.22; puff(e.x + e.w / 2, S.gdir > 0 ? e.y + e.h : e.y, 2); } }
 }
 
 function hitEnemy(e, ang) {
-  if (e.type === "knight" && !has("noatk") && e.stun <= 0) {
+  if (e.decoy) { e.dead = true; puff(e.x + e.w / 2, e.y + e.h / 2, 10); return; }
+  if ((e.type === "knight" || (has("shields") && !e.boss && !e.critter)) && !has("noatk") && e.stun <= 0) {
+    if (e.type !== "knight") e.face = Math.sign(e.vx) || e.dir || 1;
     const p = S.player, fromFront = Math.sign(p.x + p.w / 2 - (e.x + e.w / 2)) === e.face, fromAbove = Math.sin(ang) * S.gdir > 0.55;
     if (fromFront && !fromAbove) {
       burst(e.x + e.w / 2 + e.face * 12, e.y + 10, "#c9cde0", 8);
@@ -1285,7 +1620,10 @@ function hitEnemy(e, ang) {
     e.vx = c * k; e.vy = sn * k + lift; e.stun = 0.75;
     if (rel("pacifista")) damage(e, 1, "hit");
   } else {
-    damage(e, has("onehit") ? (e.boss ? 4 : 99) : 1, "hit");
+    let dmg = has("onehit") ? (e.boss ? 4 : 99) : 1;
+    if (has("midnight")) { if (S.floorT < 30) dmg *= 2; else { S.halfHit = !S.halfHit; if (S.halfHit) dmg = 0; } }
+    if (has("hunter") && S.huntT <= 0) dmg = 0;
+    if (dmg > 0) damage(e, dmg, "hit");
     if (!e.dead) { const k = (e.boss ? 150 : 340) * S.char.push; e.vx = c * k; e.vy = sn * k + lift * 0.6; e.stun = e.boss ? 0.2 : 0.5; }
   }
 }
@@ -1304,7 +1642,10 @@ function kill(e, src) {
       c.vx = sgn * 160; c.vy = -220 * S.gdir; c.stun = 0.5; c.flash = 0.4; S.spawnQ.push(c);
     }
   }
-  const v = e.boss ? 25 : src === "spike" ? 3 : 2;
+  if (e.decoy) return;
+  if (has("vamp") && src !== "spike" && S.hp < S.maxhp) { S.hp++; burst(S.player.x + 8, S.player.y + 8, "#e0566b", 6); }
+  if (has("tail") && !e.boss && !e.critter && S.tail.length < 6) S.tail.push({ w: Math.min(e.w, 18), h: Math.min(e.h, 18), born: S.t, x: e.x, y: e.y });
+  const v = e.boss ? 12 : src === "spike" ? 2 : 1;
   for (let i = 0; i < Math.min(v, 8); i++) S.coinsL.push({ x: e.x + e.w / 2, y: e.y, w: 10, h: 12, v: Math.ceil(v / Math.min(v, 8)), vx: rnd(-120, 120), vy: rnd(-300, -150) * S.gdir });
   if (has("timer")) S.timeLeft += (has("onehit") ? 5 : 3);
   burst(e.x + e.w / 2, e.y + e.h / 2, src === "spike" ? "#f2c14e" : "#e0566b", e.boss ? 40 : 14);
@@ -1314,6 +1655,13 @@ function hurt(dir, drown) {
   const p = S.player;
   if (p.inv > 0 && !drown) return;
   if (rel("escudo") && !S.shieldUsed) { S.shieldUsed = true; p.inv = 1; toast("Escudo de bronce"); burst(p.x + 8, p.y + 11, "#c9a36a", 10); return; }
+  if (has("rings") && !drown) {
+    let n = Math.min(8, S.coins + S.carry);
+    if (n <= 0) { toast("Sin oro que soltar"); S.hp = 0; die(); return; }
+    const fromCarry = Math.min(S.carry, n); S.carry -= fromCarry; S.coins -= n - fromCarry;
+    for (let i = 0; i < n; i++) S.coinsL.push({ x: p.x + 4, y: p.y, w: 10, h: 12, v: 1, vx: rnd(-200, 200), vy: rnd(-380, -200) * S.gdir, grace: 0.8 });
+    p.inv = 1.1; p.vx = dir * 260; p.vy = -300 * S.gdir; p.launchT = 0.15; return;
+  }
   if (has("onehit") && !S.shieldOneHit) { S.shieldOneHit = true; p.inv = 1; toast("Escudo del piso gastado"); burst(p.x + 8, p.y + 11, "#5fd1c4", 10); return; }
   S.hp = has("onehit") ? 0 : S.hp - 1; p.inv = 1.1;
   if (!drown) { p.vx = dir * 260; p.vy = -300 * S.gdir; p.launchT = 0.15; }
@@ -1338,7 +1686,7 @@ function burst(x, y, c, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx
 function finishFloor() {
   const was = S.floor;
   if (S.carry) { addGold(S.carry); S.carry = 0; }
-  addGold(5);
+  addGold(3);
   // meta: surviving rules unlocks new ones
   for (const id of S.rules) {
     META.survive[id] = (META.survive[id] || 0) + 1;
@@ -1367,6 +1715,7 @@ function applyRule(id) {
 function startFloor() {
   // rebuild the rare floor the repair pass could not connect
   for (let tries = 0; tries < 4; tries++) { buildFloor(); analyzeFloor(); if (S.graph.ok) break; }
+  initRuleState();
   S.mode = "play"; ov.hidden = true;
   for (const c of activeCombos()) if (!META.combos.includes(c.name)) { META.combos.push(c.name); saveMeta(); toast("Combinación descubierta: " + c.name); }
   lastHud = ""; updateHud(); buildLab();
@@ -1464,20 +1813,21 @@ function showDead() {
 const $ = id => document.getElementById(id);
 let lastHud = "";
 function updateHud(force) {
-  const key = [S.floor, S.hp, S.maxhp, S.coins, S.carry, S.rules.join(), S.relics.join()].join("|");
+  const key = [S.floor, S.hp, S.maxhp, S.coins, S.carry, S.rules.join(), S.relics.join(), S.liarHide].join("|");
   if (key === lastHud && !force) return; lastHud = key;
   $("hFloor").textContent = S.floor;
+  document.body.classList.toggle("broken", has("broken"));
   $("hHearts").textContent = "♥".repeat(Math.max(0, S.hp)) + "♡".repeat(Math.max(0, S.maxhp - Math.max(0, S.hp)));
   $("hCoins").textContent = S.coins;
   $("hCarry").textContent = S.carry ? " +" + S.carry : "";
   $("hCap").textContent = S.rules.length + "/" + cap(S.floor);
-  $("hRules").innerHTML = (S.rules.map(id => `<span class="chip"><span class="ic">${RULE[id].icon}</span>${RULE[id].name}</span>`).join("") || '<span class="chip">Sin reglas</span>')
+  $("hRules").innerHTML = (S.rules.map(id => id === S.liarHide ? `<span class="chip"><span class="ic">?</span>???</span>` : `<span class="chip"><span class="ic">${RULE[id].icon}</span>${RULE[id].name}</span>`).join("") || '<span class="chip">Sin reglas</span>')
     + activeCombos().map(c => `<span class="chip combo">${c.name}</span>`).join("")
     + S.relics.map(id => `<span class="chip relic">${RELIC[id].name}</span>`).join("");
   document.querySelectorAll("#labrow button[data-id]").forEach(b => b.setAttribute("aria-pressed", has(b.dataset.id)));
   const frozen = has("frozen");
   $("tLeft").classList.toggle("off", frozen); $("tRight").classList.toggle("off", frozen);
-  $("tJump").textContent = has("nojump") || frozen ? "Subir" : "Saltar";
+  $("tJump").textContent = has("blink") ? "Parpadeo" : has("nojump") || frozen ? "Subir" : "Saltar";
   $("tAttack").textContent = has("noatk") ? "Empujar" : "Atacar";
 }
 function buildLab() {
@@ -1507,6 +1857,10 @@ const biome = () => BIOMES[Math.floor((S.floor - 1) / 5) % BIOMES.length];
 // ===================================================================
 // One More Floor · SPRITES PATCH (from the art bible thread)
 // Art bible: https://claude.ai/artifact/D5uFa8X9msQuPsHMxLZxGu
+//
+// v2 (walk cycles): replace the whole previous block, from the "SPRITES PATCH"
+// header down to the end of sprDrawPlayer(), with this file. The two hooks
+// in draw() stay exactly the same.
 //
 // HOW TO INTEGRATE (3 steps, drawing only, no game logic touched):
 //
@@ -1926,6 +2280,35 @@ const SPR_CHAR = {
   vela: { o: SPR_O, f: "#ff8a4a", F: "#ffe08a", l: "#ffd0a0", w: "#f3ead8", W: "#c9bca0", e: SPR_O, d: "#7a3f32" },
   ancla:{ o: SPR_O, C: "#c08a3a", g: "#2a3e5a", w: "#bfe6ff", e: "#5fd1c4", t: "#3e6a8a", T: "#2a4a66" },
 };
+
+// ---------- walk / jump / fall frames (v2) ----------
+// Legs are templated: L = leg colour, D = back leg (darker), F = foot.
+// Each player sprite swaps only its bottom rows, so the body stays the hand-drawn one.
+const SPR_LEGS = {
+  stand: ["...oLLLLLLLLo...", "...oLLLooLLLo...", "...oLLLo.oLLo...", "...oLLo..oLLo...", "...oLLo..oLLo...", "..oFFFo..oFFFo..", "..oooo....oooo.."],
+  strideA: ["...oLLLLLLLLo...", "...oDDDooLLLo...", "..oDDDo..oLLLo..", ".oDDDo....oLLLo.", ".oDDo......oLLo.", ".oFFo......oFFFo", ".ooo.......oooo."],
+  strideB: ["...oLLLLLLLLo...", "...oLLLooDDDo...", "..oLLLo..oDDDo..", ".oLLLo....oDDDo.", ".oLLo......oDDo.", ".oFFo......oFFFo", ".ooo.......oooo."],
+  pass:   ["...oLLLLLLLLo...", "...oLLLLLLLLo...", "....oLLLLLLo....", "....oLLo.oDDo...", "....oLLo.oFFo...", "...oFFFo..ooo...", "...oooo........."],
+  jump:   ["...oLLLLLLLLo...", "...oLLLLLLLLo...", "..oLLLo.oDDDo...", "..oFFFo.oFFFo...", "..ooooo.ooooo...", "................", "................"],
+  fall:   ["...oLLLLLLLLo...", "...oLLLooLLLo...", "..oLLo....oDDo..", ".oLLo......oDDo.", ".oLLo......oDDo.", ".oFFo......oFFo.", ".ooo........ooo."],
+};
+// per character: which palette keys are leg / foot, and how many bottom rows are legs
+const SPR_LEGMAP = { kai: { L: "p", F: "b", n: 7 }, nyx: { L: "d", F: "d", n: 4 }, rolo: { L: "d", F: "b", n: 6 } };
+function sprDarken(hex, k = 0.68) { const n = parseInt(hex.slice(1), 16); const f = v => Math.round(v * k).toString(16).padStart(2, "0"); return "#" + f(n >> 16) + f((n >> 8) & 255) + f(n & 255); }
+for (const id in SPR_LEGMAP) {
+  const m = SPR_LEGMAP[id], base = SPR[id], w = base[0].length;
+  SPR_CHAR[id].D = sprDarken(SPR_CHAR[id][m.L]);
+  for (const pose in SPR_LEGS) {
+    const legs = SPR_LEGS[pose].slice(-m.n).map(r => r.replace(/L/g, m.L).replace(/F/g, m.F).padEnd(w, "."));
+    SPR[id + "_" + pose] = base.slice(0, base.length - m.n).concat(legs);
+  }
+}
+const SPR_WALK = ["strideA", "pass", "strideB", "pass"];
+// enemies: second step frame for ground walkers, stretched frame for the hopper in the air
+SPR.walker_b = SPR.walker.slice(0, 10).concat(["...oAAoooooAAo..", "....oAo...oAo...", "....oAo...oAo...", "....ooo...ooo..."]);
+SPR.knight_b = SPR.knight.slice(0, 12).concat(["...oAAAoooAAAo..", "....oAAo.oAAo...", "...oaaao.oaaao..", "...ooooo.ooooo.."]);
+SPR.charger_b = SPR.charger.slice(0, 9).concat(["...oAAo.oAAo..oAAo..", "...oAAo..oAAo.oAAo..", "...oooo..oooo.oooo.."].map(r => r.padEnd(SPR.charger[0].length, ".").slice(0, SPR.charger[0].length)));
+SPR.hopper_air = [".....oooooo.....", "....oaaaaaao....", "...oaawoaaaao...", "...oaeooaaaaao..", "..oaaaaaaaaaaao.", "..occccccaaaaao.", "..oAaaaaaaaaaAo.", "...oAAAAAAAAAo..", "..oAo......oAo..", ".oAo........oAo."];
 const sprCache = new Map();
 function sprCanvas(name, palKey, pal, white) {
   const key = name + "|" + palKey + "|" + (white ? 1 : 0);
@@ -1955,8 +2338,8 @@ function sprDrawEnemy(e, p, white, bobY) {
   let name, sc = 1, fl = false, mid = false, w = white;
   const toP = Math.sign(p.x - e.x) || 1;
   switch (e.type) {
-    case "walker": name = "walker"; fl = (e.dir || toP) < 0; break;
-    case "hopper": name = "hopper"; fl = toP > 0; break; // drawn facing left
+    case "walker": name = Math.abs(e.vx || 0) > 4 && Math.floor(S.t * 6 + (e.ph || 0)) % 2 ? "walker_b" : "walker"; fl = (e.dir || toP) < 0; break;
+    case "hopper": name = e.ground === false ? "hopper_air" : "hopper"; fl = toP > 0; break; // drawn facing left
     case "bat": name = "bat" + SPR_FLAP[Math.floor(S.t * 12 + (e.ph || 0) * 3) % 4]; mid = true; break;
     case "bomber": name = "bmb" + SPR_FLAP[Math.floor(S.t * 9 + (e.ph || 0) * 3) % 4]; fl = (e.dir || 1) < 0; mid = true; break;
     case "shooter": {
@@ -1964,10 +2347,10 @@ function sprDrawEnemy(e, p, white, bobY) {
       if (e._sprRel > 0) e._sprRel -= 1 / 60;
       name = e.tele > 0 ? "arc1" : e._sprRel > 0 ? "arc2" : "arc0"; fl = (e.face || toP) < 0; w = white && !(e.tele > 0); break;
     }
-    case "charger": name = "charger"; fl = (e.dir || 1) < 0; w = white || (e.st === "tele" && Math.floor(S.t * 14) % 2 === 1); break;
+    case "charger": name = Math.abs(e.vx || 0) > 4 && Math.floor(S.t * (e.st === "charge" ? 16 : 6)) % 2 ? "charger_b" : "charger"; fl = (e.dir || 1) < 0; w = white || (e.st === "tele" && Math.floor(S.t * 14) % 2 === 1); break;
     case "spider": name = "spider"; mid = true; break;
     case "wisp": name = "wisp"; mid = true; break;
-    case "knight": name = "knight"; fl = (e.face || toP) < 0; break;
+    case "knight": name = Math.abs(e.vx || 0) > 4 && Math.floor(S.t * 5 + (e.ph || 0)) % 2 ? "knight_b" : "knight"; fl = (e.face || toP) < 0; break;
     default:
       if (!e.boss) return false;
       name = SPR_BOSS[zi]; sc = 2; fl = toP < 0;
@@ -1999,11 +2382,18 @@ function sprDrawEnemy(e, p, white, bobY) {
 
 function sprDrawPlayer(p, flipped) {
   const id = SPR[S.char.id] && SPR_CHAR[S.char.id] ? S.char.id : "kai";
-  const cv = sprCanvas(id, "c:" + id, SPR_CHAR[id], false);
   const sc = p.w / 16; // 1 normally, 0.625 with Diminuto
-  const run = p.ground && Math.abs(p.vx) > 30 ? Math.floor(S.t * 12) % 2 : 0;
-  const by = flipped ? p.y - run : p.y + p.h + run * 0;
-  sprBlit(cv, p.x + p.w / 2, flipped ? p.y : p.y + p.h - run, sc, p.face < 0, flipped);
+  let pose = "stand", bob = 0;
+  const up = (p.vy || 0) * (S.gdir || 1) < 0;
+  if (!p.ground) pose = up ? "jump" : "fall";
+  else if (Math.abs(p.vx || 0) > 30) {
+    p._sprWalk = ((p._sprWalk || 0) + Math.abs(p.vx) / 60 / 22) % 4; // about one step every 22 px
+    pose = SPR_WALK[Math.floor(p._sprWalk)]; bob = pose === "pass" ? 1 : 0;
+  } else bob = Math.floor(S.t * 1.6) % 2; // breathing
+  const name = SPR[id + "_" + pose] ? id + "_" + pose : id;
+  const cv = sprCanvas(name, "c:" + id, SPR_CHAR[id], false);
+  // bob moves the whole sprite 1 px away from the floor
+  sprBlit(cv, p.x + p.w / 2, flipped ? p.y + bob * sc : p.y + p.h - bob * sc, sc, p.face < 0, flipped);
 }
 
 function draw() {
@@ -2030,7 +2420,7 @@ function draw() {
     ctx.fillRect(m.x, m.y, m.s, m.s);
   }
 
-  ctx.save(); ctx.translate(-cx, -cy);
+  ctx.save(); ctx.translate(-cx + (S.shake > 0 ? rnd(-4, 4) * S.shake : 0), -cy + (S.shake > 0 ? rnd(-3, 3) * S.shake : 0));
   for (const d of S.decor || []) {
     if (d.x < cx - 40 || d.x > cx + CW + 40) continue;
     if (d.kind === "pillar") { ctx.fillStyle = "rgba(255,255,255,.035)"; ctx.fillRect(d.x, d.top, 22, d.bot - d.top); ctx.fillStyle = "rgba(255,255,255,.05)"; ctx.fillRect(d.x - 4, d.top, 30, 8); ctx.fillRect(d.x - 4, d.bot - 8, 30, 8); }
@@ -2113,6 +2503,10 @@ function draw() {
         ctx.fillStyle = B.stone; ctx.fillRect(m.x, m.y + jx, m.w, m.h); ctx.fillStyle = B.edge; ctx.fillRect(m.x, m.y + jx, m.w, 2);
         ctx.fillStyle = "#9a94b8"; ctx.fillRect(m.x + m.w / 2 - 2, m.y + m.h / 2 - 2 + jx, 4, 4);
       }
+    } else if (m.kind === "sw") {
+      const col = m.col ? "#4a7ae0" : "#e0566b";
+      if (m.solid) { ctx.fillStyle = col; ctx.fillRect(m.x, m.y, m.w, m.h); ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(m.x, m.y, m.w, 2); }
+      else { ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.setLineDash([3, 3]); ctx.strokeRect(m.x + .5, m.y + .5, m.w - 1, m.h - 1); ctx.setLineDash([]); ctx.globalAlpha = 1; }
     } else if (m.kind === "plain" || m.kind === "fake") {
       ctx.globalAlpha = m.kind === "fake" && m.revealed ? 0.3 : 1;
       ctx.fillStyle = B.stone; ctx.fillRect(m.x, m.y, m.w, m.h); ctx.fillStyle = B.seam; ctx.fillRect(m.x, m.y + m.h - 3, m.w, 3);
@@ -2278,8 +2672,10 @@ function draw() {
   for (const q of S.parts) { ctx.globalAlpha = Math.max(0, Math.min(1, q.life * 2)); ctx.fillStyle = q.c; ctx.fillRect(q.x, q.y, q.s, q.s); }
   ctx.globalAlpha = 1;
   for (const r of S.rings) { ctx.strokeStyle = `rgba(242,193,78,${1 - r.r / r.max})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); }
+  drawRulesWorld(p);
   if (showGraph) drawGraph();
   ctx.restore();
+  drawRulesScreen(p, cx, cy);
 
   if (has("tide")) {
     const top = S.gdir > 0 ? CH - S.tide : 0;
@@ -2302,7 +2698,16 @@ function draw() {
   // canvas HUD
   ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace";
   let hy = 18;
-  if (has("timer")) { ctx.fillStyle = S.timeLeft < 10 ? "#e0566b" : "#ece8f5"; ctx.fillText("TIEMPO " + Math.ceil(S.timeLeft), 34, hy); hy += 16; }
+  if (has("timer") && !has("broken")) { ctx.fillStyle = S.timeLeft < 10 ? "#e0566b" : "#ece8f5"; ctx.fillText("TIEMPO " + Math.ceil(S.timeLeft), 34, hy); hy += 16; }
+  if (S.ws === 0 && (has("pause") || has("right"))) { ctx.fillStyle = "#b9a7ff"; ctx.fillText("TIEMPO DETENIDO", 34, hy); hy += 16; }
+  if (has("ammo")) { ctx.fillStyle = S.ammo ? "#ece8f5" : "#e0566b"; ctx.fillText("MUNICIÓN " + "|".repeat(S.ammo), 34, hy); hy += 16; }
+  if (S.huntT > 0) { ctx.fillStyle = "#5fd1c4"; ctx.fillText("CAZA " + Math.ceil(S.huntT) + "s", 34, hy); hy += 16; }
+  if (has("midnight")) { ctx.fillStyle = S.floorT < 30 ? "#f2c14e" : "#5d5a78"; ctx.fillText(S.floorT < 30 ? "MEDIANOCHE EN " + Math.ceil(30 - S.floorT) + "s · DAÑO x2" : "PASADA LA MEDIANOCHE · DAÑO ½", 34, hy); hy += 16; }
+  if (S.siren > 0) { ctx.fillStyle = "#ff8ad8"; ctx.fillText(input.attack ? "OÍDOS TAPADOS" : "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS", 34, hy); hy += 16; }
+  if (has("quake") && S.quakeT < 2) { ctx.fillStyle = "#c9a36a"; ctx.fillText("TERREMOTO EN " + Math.ceil(S.quakeT), 34, hy); hy += 16; }
+  if (has("sweep") && !S.sweep && S.sweepT < 3) { ctx.fillStyle = "#ff5a78"; ctx.fillText("BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE TRAS UNA PARED", 34, hy); hy += 16; }
+  if (has("wax") && (p.burn || 0) > 0.05) { ctx.fillStyle = "#ff7a3a"; ctx.fillText("CERA", 34, hy); ctx.fillRect(80, hy - 9, 70 * Math.min(1, p.burn / 0.9), 8); hy += 16; }
+  if (S.shadowE && !S.shadowE.caught) { ctx.fillStyle = "#9a94b8"; ctx.fillText("ATRAPA TU SOMBRA", 34, hy); hy += 16; }
   if (has("grav") && S.mode === "play") {
     const warn = S.gt < gravWarn();
     ctx.fillStyle = warn ? "#f2c14e" : "#9a94b8"; ctx.fillText("GRAVEDAD " + Math.ceil(S.gt) + "s", 34, hy); hy += 16;
@@ -2341,7 +2746,7 @@ function draw() {
     ctx.textAlign = "center"; ctx.fillStyle = "#f2c14e"; ctx.font = "30px Silkscreen, monospace";
     ctx.fillText("PISO " + S.floor + (isBoss(S.floor) ? " · JEFE" : "") + " · " + biome().name.toUpperCase(), CW / 2, CH / 2 - 10);
     ctx.fillStyle = "#ece8f5"; ctx.font = "16px 'Chakra Petch', sans-serif";
-    ctx.fillText(S.rules.map(id => RULE[id].name).join("  +  ") || "Sin reglas", CW / 2, CH / 2 + 20);
+    ctx.fillText(S.rules.map(id => id === S.liarHide ? "???" : RULE[id].name).join("  +  ") || "Sin reglas", CW / 2, CH / 2 + 20);
     const cs = activeCombos(); if (cs.length) { ctx.fillStyle = "#5fd1c4"; ctx.fillText(cs.map(c => c.name).join(" · "), CW / 2, CH / 2 + 42); }
     ctx.globalAlpha = 1;
   }
@@ -2369,7 +2774,7 @@ function dragVec() {
 function toWorld(e) { const r = cv.getBoundingClientRect(), k = CW / r.width; return { x: (e.clientX - r.left) * k + S.camX, y: (e.clientY - r.top) * k + (S.camY || 0) }; }
 cv.addEventListener("pointerdown", e => {
   if (!S || S.mode !== "play") return;
-  if (!has("frozen")) { aimAt = toWorld(e); pressed.attack = true; e.preventDefault(); return; }
+  if (!has("frozen") && !(has("blink") && e.pointerType === "touch")) { aimAt = toWorld(e); pressed.attack = true; e.preventDefault(); return; }
   drag = { sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, id: e.pointerId };
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   e.preventDefault();
@@ -2377,8 +2782,13 @@ cv.addEventListener("pointerdown", e => {
 cv.addEventListener("pointermove", e => { if (drag && e.pointerId === drag.id) { drag.x = e.clientX; drag.y = e.clientY; } });
 const endDrag = e => {
   if (!drag || e.pointerId !== drag.id) return;
-  const v = dragVec(), p = S.player; drag = null;
+  const v = dragVec(), p = S.player, drag0 = drag; drag = null;
   if (S.mode !== "play") return;
+  if (has("blink") && !has("frozen")) {
+    const ax = e.clientX - (drag0 ? drag0.sx : e.clientX), ay = e.clientY - (drag0 ? drag0.sy : e.clientY);
+    if (Math.hypot(ax, ay) < 20) { aimAt = toWorld(e); pressed.attack = true; return; }
+    S.blinkAim = { x: ax, y: ay }; doBlink(p); return;
+  }
   if (!v) { aimAt = toWorld(e); pressed.attack = true; return; }
   const can = p.ground || p.climb || (rel("muelle") && !p.airLaunch);
   if (!can) { toast("Solo puedes lanzarte desde el suelo"); return; }
