@@ -1,0 +1,11 @@
+{
+  "appId": "com.kevincsv.onemorefloor",
+  "appName": "One More Floor",
+  "webDir": "www",
+  "backgroundColor": "#100e1a",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#100e1a",
+    "scrollEnabled": false
+  }
+}
