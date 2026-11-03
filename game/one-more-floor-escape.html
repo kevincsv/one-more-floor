@@ -569,6 +569,16 @@ canvas.pxi { vertical-align: middle; display: inline-block; }
 .achgrp .mlabel { margin-top: 14px; } .achgrp > .pxbar { display: flex; justify-content: center; margin: 4px auto 8px; }
 .eh .trks { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 3px; } .eh .trks img { width: 20px; height: 20px; image-rendering: pixelated; filter: drop-shadow(1px 1px 0 rgba(0,0,0,.7)); }
 img.trki { width: 1.5em; height: 1.5em; image-rendering: pixelated; vertical-align: middle; } img.trki.lk { filter: grayscale(1) brightness(.7); } .gi img.trki, .ai img.trki { width: 26px; height: 26px; } .card .ic img.trki { width: 40px; height: 40px; }
+/* v90 (user): messages wait behind the pause button */
+.pausebtn .pbadge { position: absolute; right: 2px; top: 2px; min-width: 12px; height: 12px; padding: 0 2px; background: #e0566b; color: #ece8f5; font: 9px/12px Silkscreen, monospace; text-align: center; box-shadow: 0 0 0 2px #0a0812; }
+.pausebtn .pbadge[hidden] { display: none; }
+.plog { margin: 14px auto 0; width: min(92%, 380px); background: #1b1829; border: 3px solid #3e3960; box-shadow: 0 0 0 3px #0a0812; padding: 8px 10px; text-align: left; font-family: Silkscreen, monospace; }
+.plog h2 { margin: 0 0 6px; font: 400 12px Silkscreen, monospace; color: #f2c14e; letter-spacing: 1px; }
+.plog ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 34vh; overflow-y: auto; }
+.plog li { font-size: 10px; line-height: 1.35; color: #ece8f5; display: flex; gap: 6px; }
+.plog li b { flex: none; width: 14px; font-weight: 400; text-align: center; }
+.plog li.new { color: #f2c14e; }
+.plog p { margin: 0; font-size: 10px; color: #9a94b8; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -873,7 +883,7 @@ const UNLOCKS = {
   hot: { es: "Termina un piso sin quedarte quieto más de 1 s · En Escape: 60 s sin pararte", en: "Clear a floor never standing still over 1 s · Escape: 60 s without stopping", goal: 1, prog: () => Math.max(AF("f_hot"), AC("escMove") / 60) },
   pause: { es: "Termina un piso habiendo pasado 30 s quieto", en: "Clear a floor after standing still for 30 s", goal: 1, m: "H", star: true, prog: () => AF("f_pause") },
   charge: { es: "Termina un piso saltando 5 veces o menos", en: "Clear a floor jumping 5 times or fewer", goal: 1, m: "H", prog: () => AF("f_jump5") },
-  ammo: { es: "Termina un piso atacando 5 veces o menos · En Escape: 50 m con 5 ataques o menos", en: "Clear a floor attacking 5 times or fewer · Escape: 50 m with 5 attacks or fewer", goal: 1, prog: () => Math.max(AF("f_atk5"), AC("escAmmo") / 50) },
+  ammo: { es: "Termina un piso atacando 5 veces o menos", en: "Clear a floor attacking 5 times or fewer", goal: 1, m: "H", prog: () => Math.max(AF("f_atk5"), AC("escAmmo") / 50) },
   rings: { es: "Termina 3 pisos con solo 1 corazón · En Escape: 100 m con 1 corazón", en: "Clear 3 floors on 1 heart · Escape: 100 m on 1 heart", goal: 1, prog: () => Math.max(AC("h1Streak") / 3, AC("esc1hp") / 100) },
   moon: { es: "Pasa 3 s seguidos en el aire", en: "Stay in the air for 3 s straight", goal: 1, prog: () => AC("airBest") / 3 },
   blackout: { es: "Aguanta 5:30 en Escape o llega al piso 41", en: "Survive 5:30 in Escape or reach floor 41", goal: 1, prog: () => Math.max(AC("escT") / 330, (META.best || 0) / 41) },
@@ -1635,8 +1645,8 @@ const ESC_ROWS = 20000, ESC_SEG = 8; // 20000 rows = about 2 hours of climbing a
 let ESC_BIOME_T = [60, 135, 225, 330]; // seconds at which biomes 2..5 start (60, 75, 90, 105 s per biome)
 const ESC_MOD_EVERY = 15, ESC_MOD_LAST = 60; // v59 (user): a new modifier every 15 s; at the cap the oldest leaves, so the set changes every 15 s
 // only modifiers that make the climb harder: helpers like Luna, Rebote, Cámara lenta or Magnetismo made it too easy
-const ESC_MOD_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", "mirror", "echo", "blackout", "crumbs", "quake", "sweep", "shields", "recoil", "ammo"];
-const ESC_START_POOL = ["ice", "dark", "wind", "noise", "hot", "shields", "recoil", "ammo", "decoy", "midnight", "shrink"]; // v59: no Espejo or 3-skull rules on the first card // the first card of a climb
+const ESC_MOD_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", "mirror", "echo", "blackout", "crumbs", "quake", "sweep", "shields", "recoil"]; // v90 (user): Munición removed from Escape (ground reload made it do nothing)
+const ESC_START_POOL = ["ice", "dark", "wind", "noise", "hot", "shields", "recoil", "decoy", "midnight", "shrink"]; // v59: no Espejo or 3-skull rules on the first card // the first card of a climb
 // v59 warm-up (the user found flyers too hard early): 0 at the start of a climb, 1 after 2 minutes
 const escWarm = () => clamp(((S.t - (S.escT0 || 0)) || 0) / 120, 0, 1);
 const ESC_RUBY_BONUS = 2; // v75: rubies (extra lives) can raise max health by 2 at most in Escape
@@ -2214,9 +2224,9 @@ function escTakeLevel(o) {
   S.escT0 += S.t - (S.pauseAt || S.t); S.mode = "play"; ov.hidden = true; ov.innerHTML = "";
   S.player.inv = Math.max(S.player.inv, 1); lastHud = ""; updateHud(true);
 }
-function escAddMod(id, el) { if (S.horde) return;
+function escAddMod(id, el) { if (S.horde) return; if (S.easy && id === "mirror") return; // v90 (user): no Mirror in Easy
   if (has(id)) return; omfSfx("mod");
-  S.rules.push(id); S.escMods.push({ id, until: id === "mirror" ? Math.min(escModLife(el), el + 30) : id === "echo" ? Math.min(escModLife(el), el + 20) : escModLife(el) }); // v65 (user): Eco lasts 20 s // Mirror lasts 30 s at most
+  S.rules.push(id); S.escMods.push({ id, until: id === "mirror" ? (S.hard ? escModLife(el) : Math.min(escModLife(el), el + 15)) : id === "echo" ? Math.min(escModLife(el), el + 20) : escModLife(el) }); // v65 (user): Eco lasts 20 s // Mirror lasts 30 s at most
   trkClock(id, el); toast("+ " + RULE[id].icon + " " + RULE[id].name); /* v70: short toast */ lastHud = ""; updateHud(true);
 }
 /* ---------- level analysis ----------
@@ -2846,8 +2856,8 @@ const isSolidTile = t => t === 1 || t >= 4;
    tower's side walls) and thin platforms, and lands on them from above, so they don't have to walk round them.
    Thick blocks, walls, the ground, springs, conveyors, cracked walls and pistons stay fully solid. Enemies don't change. */
 var OW = 0; // 1 while the hero's sideways and upward checks run
-function owOn(e) { return ESCAPE && !S.hard && e === S.player && S.gdir > 0 && !(S.arena && S.arena.state !== "done") && !e.climb; }
-function owTile(tx, ty) { if (!OW_LEDGES && !S.easy) return false; // v84 (user): easy mode lets you jump up through every platform
+function owOn(e) { return ESCAPE && !S.hard && e === S.player && S.gdir > 0 && !(S.arena && S.arena.state !== "done" && !S.easy) && !e.climb; } // v90 (user): Easy also jumps up through the boss arena ledges
+function owTile(tx, ty) { if (!OW_LEDGES && !S.easy) return false; if (S.arena && S.arena.state !== "done" && (ty === S.arena.C || ty === S.arena.F)) return false; // the arena stays closed until the boss falls // v84 (user): easy mode lets you jump up through every platform
   const g = S.grid; return ty > 0 && ty < S.LH - 1 && tx > 0 && tx < S.LW - 1 && g[ty][tx] === 1 && !solidCode(g[ty - 1][tx]) && !solidCode(g[ty + 1][tx]); }
 // v80 (user picked from the blocks page): stone ledges (thin or not) and the light platform are solid again;
 // only the moving platform and the ghost steps let you jump up through them.
@@ -4605,7 +4615,7 @@ const RUN_NAMES = { story: "Historia", endless: "Infinito", daily: "Desafío dia
 const fmtTime = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
 function localRuns() { try { return JSON.parse(localStorage.getItem("omf-runs") || "[]"); } catch (_) { return []; } }
 function escDifKind() { return META.easy ? "escape-easy" : META.hard ? "escape-hard" : "escape"; }
-const ESC_DIF_INFO = { e: "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.",
+const ESC_DIF_INFO = { e: "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores, sin Espejo y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.",
   n: "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.",
   h: "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte." };
 function escDifHTML() { const d = META.easy ? "e" : META.hard ? "h" : "n";
@@ -6765,7 +6775,7 @@ function draw() {
     if (S.arena && S.arena.state === "fight") { ctx.fillStyle = "#f2c14e"; ctx.fillText("JEFE · TIEMPO DETENIDO", 34, hy); hy += 16; }
     if (S.secret) { ctx.fillStyle = "#f2c14e"; ctx.fillText(T("SALA SECRETA · TIEMPO DETENIDO"), 34, hy); hy += 16;
       if (S.secret.kind === "trial" && S.secret.objs[0].st === 0) { ctx.fillStyle = "#e0566b"; ctx.fillText(T("LA GEMA SE ROMPE EN") + " " + Math.ceil(S.secret.timer), 34, hy); hy += 16; } }
-    const nx = S.escNextMod - el; if (nx < 5.2 && nx > 0 && !(S.arena && S.arena.state === "fight") && !S.secret) drawNextMod(nx); else S.nmBox = null; }
+    const nx = S.escNextMod - el; if (nx < 5.2 && nx > 0 && !(S.arena && S.arena.state === "fight") && !S.secret) { drawNextMod(nx, hy - 13); hy += 28; } else S.nmBox = null; }
   else if (has("timer") && !has("broken")) { ctx.fillStyle = S.timeLeft < 10 ? "#e0566b" : "#ece8f5"; ctx.fillText("TIEMPO " + Math.ceil(S.timeLeft), 34, hy); hy += 16; }
   if (S.ws === 0 && (has("pause") || has("right"))) { ctx.fillStyle = "#b9a7ff"; ctx.fillText("TIEMPO DETENIDO", 34, hy); hy += 16; }
   if (has("ammo")) { ctx.fillStyle = S.ammo ? "#ece8f5" : "#e0566b"; ctx.fillText("MUNICIÓN " + "|".repeat(S.ammo), 34, hy); hy += 16; }
@@ -6809,7 +6819,7 @@ function draw() {
   ctx.fillStyle = "#5fd1c4"; ctx.fillRect(CW - 214, 10, 180 * clamp(prog, 0, 1), 4);
 
   let banBox = null; // area the start/arena banner covers this frame, so toasts go around it
-  if (S.mode === "play" && S.banner > 0 && (S.bannerSmall || ESCAPE)) { // v73 (user: "messages cover the whole screen"): Escape always uses the slim strip
+  if (ESCAPE && S.mode === "play") { /* v90 (user): no biome strip while playing; only what is coming shows */ } else if (S.mode === "play" && S.banner > 0 && (S.bannerSmall || ESCAPE)) { // v73 (user: "messages cover the whole screen"): Escape always uses the slim strip
     // leaving a secret room: a slim strip at the top, so the hero stays visible during the 1.5 s pause
     ctx.globalAlpha = Math.min(1, S.banner); ctx.textAlign = "center"; ctx.font = "12px Silkscreen, monospace";
     const t = T("ESCAPE") + " · " + biome().name.toUpperCase(), w = Math.min(CW - 16, ctx.measureText(t).width + 28), y0 = ESCAPE ? 84 : 40;
@@ -8473,7 +8483,7 @@ const BP_ATK = {
             ctx.globalAlpha = 1; } }); }
       b.anim = b.t < W ? "warn" : "attack"; if (b.t >= W && bpOnce(b, "go")) bpSfx("zap"); return b.t > W + 0.5; } },
     { id: "clausula", z: ["all"], ph: 1, run(e, b) { b.anim = "warn"; b.book = true;
-      if (b.t > 0.8 && bpOnce(b, "read")) { const pool = ["mirror", "ice", "nojump", "slow"].filter(id => RULE[id] && !has(id)); const id = pool[Math.floor(Math.random() * pool.length)];
+      if (b.t > 0.8 && bpOnce(b, "read")) { const pool = ["mirror", "ice", "nojump", "slow"].filter(id => RULE[id] && !has(id) && !(S.easy && id === "mirror")); const id = pool[Math.floor(Math.random() * pool.length)];
         if (id) { S.rules.push(id); S.bpRule = { id, until: S.t + 6, had: false }; (S.bpRules = S.bpRules || []).push(S.bpRule); S.bpClauseCard = { text: (typeof STORY_FINE !== "undefined" && STORY_FINE[id]) || RULE[id].desc, name: RULE[id].name, t: 2.6 }; bpSfx("stun"); lastHud = ""; } }
       if (b.t > 1.2) { b.book = false; return true; } return false; } },
     { id: "folios", z: ["floor"], ph: 2, run(e, b) { const W = b.W + 0.2, R = S.bpRoom;
@@ -10495,7 +10505,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v89";
+var OMF_VER = "Escape v90";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11199,7 +11209,40 @@ Object.assign(EN_TEXT, {
 window.__trk = { give: id => trkGive(id), drop: (src, x, y) => trkDrop(src, x, y), TRK, meta: () => META, unlock: () => { for (const id in TRK) if (!META.goods.includes(id)) META.goods.push(id); } };
 if (!OMF_SFX.boom) OMF_SFX.boom = [[110, 40, 0.28, "noise", 0, 0.8], [70, 35, 0.3, "sawtooth", 0, 0.5]];
 
-Object.assign(EN_TEXT, { "HARDCORE": "HARDCORE", "Escape · Hardcore": "Escape · Hardcore", "Diario · Hardcore": "Daily · Hardcore", "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.": "+1 heart, the camera rises slower, at most 2 modifiers and you can jump up through every platform. Separate records, off the rankings.", "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.": "The usual climb: moving and light platforms, roots, pistons and ghost steps can be jumped through from below.", "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte.": "No platform can be jumped through from below and the camera rises 15% faster. Separate records." });
+Object.assign(EN_TEXT, { "HARDCORE": "HARDCORE", "Escape · Hardcore": "Escape · Hardcore", "Diario · Hardcore": "Daily · Hardcore", "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores, sin Espejo y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.": "+1 heart, the camera rises slower, at most 2 modifiers, no Mirror and you can jump up through every platform. Separate records, off the rankings.", "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.": "The usual climb: moving and light platforms, roots, pistons and ghost steps can be jumped through from below.", "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte.": "No platform can be jumped through from below and the camera rises 15% faster. Separate records." });
+// ===== v90 (user: "las pastillas están bien, pero solo para lo que viene; el resto puede ir al botón de pausa")
+// Escape, while playing: the next modifier is a small pill on the left edge; toasts, achievements and story lines
+// go into a log behind the pause button (red counter), listed in the pause menu. Achievement banners wait for the death screen.
+var msgHeld = [];
+function msgPlaying() { return ESCAPE && S && S.escape && S.mode === "play"; }
+function msgBadge() { const pb = document.getElementById("pauseBtn"); if (!pb) return; let b = pb.querySelector(".pbadge"); if (!b) { b = document.createElement("span"); b.className = "pbadge"; pb.appendChild(b); }
+  const n = S && S.msgNew || 0; b.hidden = !n; b.textContent = n > 9 ? "9+" : String(n); }
+function msgLog(icon, text, col) { if (!S) return; const L = S.msgLog = S.msgLog || []; if (L.length && L[0].text === text) return;
+  L.unshift({ icon, text, col: col || "", t: Math.max(0, S.t - (S.escT0 || 0)) }); if (L.length > 15) L.length = 15; S.msgNew = (S.msgNew || 0) + 1; msgBadge(); }
+var toast0 = toast; toast = function (text) { if (msgPlaying() && !/se acaba en|ends in/.test(T(text))) { msgLog("!", T(text)); return; } return toast0(text); };
+var achBanner0 = achBanner; achBanner = function (icon, name, u, good) {
+  if (msgPlaying()) { const ic = String(icon).startsWith("<img") ? "★" : icon; msgLog(ic, (LANG === "en" ? "Achievement: " : "Logro: ") + name, "#f2c14e"); msgHeld.push([icon, name, u, good]); return; }
+  return achBanner0(icon, name, u, good); };
+var storySay0 = storySay; storySay = function (who, text, col, t, delay) { if (msgPlaying()) { msgLog("“", T(who) + ": " + T(text), col); return; } return storySay0(who, text, col, t, delay); };
+var msgDead0 = showDead; showDead = function () { const r = msgDead0.apply(this, arguments); const h = msgHeld.splice(0); for (const a of h) achBanner0(a[0], a[1], a[2], a[3]); return r; };
+var escPause0 = escPause; escPause = function () { const was = S && S.mode; escPause0(); if (!S || S.mode !== "menu" || was !== "play") return;
+  const L = S.msgLog || [], nNew = S.msgNew || 0, m = ov.querySelector(".menu"); S.msgNew = 0; msgBadge(); if (!m) return;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const box = document.createElement("div"); box.className = "plog";
+  box.innerHTML = `<h2>${T("AVISOS")}</h2>` + (L.length ? `<ul>${L.map((e, i) => `<li class="${i < nNew ? "new" : ""}"><b style="${e.col ? "color:" + e.col : ""}">${esc(e.icon)}</b><span>${esc(e.text)}</span></li>`).join("")}</ul>` : `<p>${T("Sin avisos en esta partida")}</p>`);
+  m.appendChild(box); };
+var newRun90 = newRun; newRun = function () { msgHeld.length = 0; const r = newRun90.apply(this, arguments); if (S) { S.msgLog = []; S.msgNew = 0; } msgBadge(); return r; };
+drawNextMod = function (nx, y0) { // a pill flush with the left edge: icon, name, "in N", skulls
+  const id = S.escNextId, r = id && RULE[id]; if (!r) { S.nmBox = null; return; } ctx.save(); ctx.textAlign = "left";
+  const hard = id === "mirror" || r.cost >= 3, n = clamp(Math.round(r.cost || 1), 1, 3), blink = nx < 1.5 && Math.floor(S.t * 8) % 2, col = hard || blink ? "#e0566b" : "#f2c14e";
+  ctx.font = "10px Silkscreen, monospace"; const label = r.icon + " " + T(r.name).toUpperCase() + " " + T("EN") + " " + Math.ceil(nx);
+  const lw = ctx.measureText(label).width, h = 18, w = Math.round(6 + lw + 6 + n * 9 + 6), x = 0, y = Math.round(Math.max(44, y0 || 60));
+  ctx.fillStyle = "#0a0812"; ctx.fillRect(x, y - 2, w + 4, h + 4); ctx.fillStyle = col; ctx.fillRect(x, y, w + 2, h); ctx.fillStyle = "rgba(16,14,26,.95)"; ctx.fillRect(x, y + 2, w, h - 4);
+  S.nmBox = [y - 2, y + h + 2]; ctx.fillStyle = col; ctx.fillText(label, x + 6, y + 13);
+  for (let i2 = 0; i2 < n; i2++) drawSkullPx(Math.round(x + 6 + lw + 6 + i2 * 9), y + 5, 1, true);
+  ctx.restore(); ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace"; };
+Object.assign(EN_TEXT, { "AVISOS": "MESSAGES", "Sin avisos en esta partida": "No messages this run", "EN": "IN" });
+
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
