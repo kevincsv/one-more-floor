@@ -563,6 +563,8 @@ canvas.pxi { vertical-align: middle; display: inline-block; }
 .fullpg .fulllist li { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; font-size: 13px; }
 .fullpg .fullok { display: flex; justify-content: center; align-items: center; gap: 8px; color: #9be07a; }
 
+.gt b .gsub { display: block; font-size: 8px; color: #9a94c0; font-weight: normal; margin-top: 2px; }
+.achgrp .mlabel { margin-top: 14px; } .achgrp > .pxbar { display: flex; justify-content: center; margin: 4px auto 8px; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -917,7 +919,7 @@ let achDirty = false;
 const achOn = () => !!(S && !S.test && !S.lab);
 function achS() { if (!S.ach) S.ach = { rooms: 0, kt: [], fk: [], atkM: [], hurtAt: -99, lastHp: S.hp, f0: S.t, jumps: 0, atks: 0, still: 0, stillMax: 0, stillTot: 0, move: 0, air: 0, fhurt: 0, early: 0, m1: null, lad: 0, nd: 0, h1: 0 }; return S.ach; }
 function achAdd(k, n = 1) { if (!achOn() || !(n > 0)) return; META.cnt[k] = (META.cnt[k] || 0) + n; achDirty = true; }
-function achMax(k, v) { if (!achOn() || !(v > (META.cnt[k] || 0))) return; META.cnt[k] = v; achDirty = true; }
+function achMax(k, v) { if (!achOn()) return; if (S) { const R = S.runCnt || (S.runCnt = {}); if (v > (R[k] || 0)) R[k] = v; } if (!(v > (META.cnt[k] || 0))) return; META.cnt[k] = v; achDirty = true; }
 const achMark = k => achMax(k, 1);
 function achFloor() { if (!S) return; const A = achS(); Object.assign(A, { f0: S.t, jumps: 0, atks: 0, stillMax: 0, stillTot: 0, still: 0, fhurt: 0, lastHp: S.hp }); if (!S.escape) A.fk = []; }
 function achTick(dt, p) {
@@ -983,7 +985,7 @@ function unlockCheck() {
 }
 // the closest feat for the death screen ("Casi: Hielo (80%)"), only ones this mode can do; secret ones only once started
 function achClosest() {
-  const mode = S && S.escape ? "E" : "H"; let best = null;
+  const mode = ESCAPE || (S && S.escape) ? "E" : "H"; let best = null;
   const look = (tab, done, name) => { for (const id in tab) { const u = tab[id]; if (done(id) || (u.m && u.m !== mode)) continue; const v = achProg(u); if (v >= 1 || v <= 0) continue; if (!best || v > best.v) best = { v, name: name(id), u }; } };
   look(UNLOCKS, id => !RULE[id] || META.unlocked.includes(id), id => RULE[id].icon + " " + RULE[id].name);
   look(GOOD_UNLOCKS, id => META.goods.includes(id), id => goodIcon(id) + " " + goodName(id));
@@ -1697,7 +1699,7 @@ const ESC_ROOM_NAME = { treasure: "Tesoro", fountain: "Fuente", altar: "Altar de
 function escReserveRooms(g, LW) { for (let y = 14; y <= 46; y++) for (let x = 0; x < LW; x++) g[y][x] = 1; }
 function escPlaceCrack(startRow, R) {
   const g = S.grid, eg = S.eg, LW = S.LW;
-  if (eg.nextCrack == null) eg.nextCrack = startRow - 18 - Math.floor(R() * 10);
+  if (eg.nextCrack == null) eg.nextCrack = startRow - 25 - Math.floor(R() * 15);
   if (eg.row > eg.nextCrack) return;
   for (let y = startRow - 1; y > eg.row + 2; y--) for (const side of R() < 0.5 ? [0, LW - 1] : [LW - 1, 0]) {
     const inn = side ? LW - 2 : 1;
@@ -1705,7 +1707,7 @@ function escPlaceCrack(startRow, R) {
     if (!solidCode(g[y][inn]) || g[y - 1][inn] !== 0 || g[y - 2][inn] !== 0 || g[y - 1][side] !== 1 || g[y - 2][side] !== 1) continue;
     if (S.spikes.some(sp => sp.tx === inn && sp.ty === y - 1)) continue;
     { const nx = side ? inn - 1 : inn + 1; if ([y - 4, y - 3, y - 2, y - 1, y].some(yy => g[yy] && (g[yy][nx] === 3 || g[yy][inn] === 3))) continue; }
-    g[y - 1][side] = 7; g[y - 2][side] = 7; eg.nextCrack = y - 35 - Math.floor(R() * 15);
+    g[y - 1][side] = 7; g[y - 2][side] = 7; eg.nextCrack = y - 55 - Math.floor(R() * 20); // v84 (user): rarer secret rooms (was every 35-50 rows)
     (S.cracks = S.cracks || []).push({ side, inn, y0: y - 2, y1: y - 1 }); return;
   }
 }
@@ -2011,7 +2013,7 @@ function genEscSegment() {
       if (kind === "stair" && R() < 0.2 + tier * 0.03) S.enemies.push(mkUrchin(x0, len, nr, R));
       if (kind !== "move") {
         if (R() < 0.12) S.coinsL.push({ x: (x0 + Math.floor(len / 2)) * TS + 7, y: (nr - 1) * TS + 6, w: 10, h: 12, v: R() < 0.05 ? 5 : R() < 0.25 ? 2 + Math.floor(R() * 3) : 1 });
-        else if (R() < 0.015) S.items.push({ kind: R() < 0.2 ? "ruby" : "potion", x: (x0 + Math.floor(len / 2)) * TS + 5, y: (nr - 1) * TS + 8, w: 14, h: 14 }); // a rare heart: the only healing in Escape
+        else if (R() < 0.01) S.items.push({ kind: R() < 0.2 ? "ruby" : "potion", x: (x0 + Math.floor(len / 2)) * TS + 5, y: (nr - 1) * TS + 8, w: 14, h: 14 }); // a rare heart: the only healing in Escape
       }
       if (R() < (has("dark") ? 0.5 : 0.3)) S.torches.push({ x: rri(R, 1, LW - 2) * TS + 12, y: (nr - 1) * TS + 12 });
       if (nj && kind !== "ladder") { for (let y = nr; y <= row - 1; y++) if (g[y][c] === 0 || (y === nr && g[y][c] === 1)) g[y][c] = 3; }
@@ -2832,11 +2834,12 @@ const isSolidTile = t => t === 1 || t >= 4;
    Thick blocks, walls, the ground, springs, conveyors, cracked walls and pistons stay fully solid. Enemies don't change. */
 var OW = 0; // 1 while the hero's sideways and upward checks run
 function owOn(e) { return ESCAPE && e === S.player && S.gdir > 0 && !(S.arena && S.arena.state !== "done") && !e.climb; }
-function owTile(tx, ty) { if (!OW_LEDGES) return false; const g = S.grid; return ty > 0 && ty < S.LH - 1 && tx > 0 && tx < S.LW - 1 && g[ty][tx] === 1 && !solidCode(g[ty - 1][tx]) && !solidCode(g[ty + 1][tx]); }
+function owTile(tx, ty) { if (!OW_LEDGES && !S.easy) return false; // v84 (user): easy mode lets you jump up through every platform
+  const g = S.grid; return ty > 0 && ty < S.LH - 1 && tx > 0 && tx < S.LW - 1 && g[ty][tx] === 1 && !solidCode(g[ty - 1][tx]) && !solidCode(g[ty + 1][tx]); }
 // v80 (user picked from the blocks page): stone ledges (thin or not) and the light platform are solid again;
 // only the moving platform and the ghost steps let you jump up through them.
 var OW_LEDGES = false;
-function owMover(m) { return m.kind === "move" || m.kind === "gstep"; }
+function owMover(m) { return m.kind === "move" || m.kind === "gstep" || (S.easy && !m.side); }
 function owHit(h) { return h.kind ? owMover(h) : h.w === TS && h.h === TS && owTile(Math.round(h.x / TS), Math.round(h.y / TS)); }
 function hitAt(px, py) {
   const tx = Math.floor(px / TS), ty = Math.floor(py / TS);
@@ -4426,15 +4429,34 @@ const CODEX_CATS = [["rules", 0, "MODIFICADORES", "Reglas malas que entran duran
 function showCodex(cat) {
   if (!ESCAPE || cat) return codexPage(cat);
   ov.hidden = false; ov.classList.remove("dead");
-  const n = { rules: [META.unlocked.length, RULES.length], goods: [Object.keys(GOOD_UNLOCKS).filter(id => META.goods.includes(id)).length, Object.keys(GOOD_UNLOCKS).length], combos: [META.combos.length, COMBOS.length], heroes: [CHARS.filter(c => META.chars.includes(c.id)).length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock && META.skins.includes(id)).length, CHARS.length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).length], logros: [achList().filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length, achList().length + PGS_FEATS.length] };
+  const n = { rules: [META.unlocked.length, RULES.length], goods: ESCAPE ? [ESC_PERKS.filter(escPerkOk).length, ESC_PERKS.length] : [Object.keys(GOOD_UNLOCKS).filter(id => META.goods.includes(id)).length, Object.keys(GOOD_UNLOCKS).length], combos: [COMBOS.filter(c => META.combos.includes(c.key || c.name)).length, COMBOS.length], heroes: [CHARS.filter(c => META.chars.includes(c.id)).length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock && META.skins.includes(id)).length, CHARS.length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).length], logros: [achList().filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length, achList().length + PGS_FEATS.length] };
   ov.innerHTML = `<div class="menu"><h2>📖 ${T("CÓDICE")}</h2><div class="cxcats">${CODEX_CATS.map(([k, , t, d]) => `<button class="mode cxb" data-cx="${k}"><span class="mi">${CODEX_IC[k]}</span><span class="mt">${T(t)}</span><span class="ms">${T(d)}</span><span class="mv"><small>${n[k][0]}/${n[k][1]}</small><span class="pbar"><u style="width:${Math.round(n[k][0] / Math.max(1, n[k][1]) * 100)}%"></u></span></span></button>`).join("")}</div>
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
   ov.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => showCodex(b.dataset.cx));
   document.getElementById("backBtn").onclick = showTitle; ov.scrollTop = 0;
 }
+// v84 (user): Escape's OBJETOS page lists every level-up bonus (with how to unlock the locked ones) and every pickup
+// you find on the climb, with what it does and how often it shows up; the counter outside uses the same list
+const ESC_PICKUPS = [["🧪", "Poción", "Cura 1 corazón. Con la vida llena da +5 de oro.", "Rara: 1 de cada 140 plataformas"],
+  ["♦", "Rubí", "Corazón extra: +1 de vida máxima (hasta +2, +3 en Fácil). Si ya estás al tope, cura o da oro.", "Muy rara: 1 de cada 570 plataformas · siempre 1 al vencer a un jefe"],
+  ["●", "Monedas", "Cobre 1 · Plata 2 a 4 · Oro 5. Las gastas en el Mercader y en los altares.", "Comunes: 1 de cada 8 plataformas, más en cofres y salas"],
+  ["✦", "Orbe de XP", "Experiencia para subir de nivel y elegir mejora.", "Lo suelta cada enemigo"],
+  ["▣", "Cofre", "Un puñado de monedas. Cuidado: puede ser un Mímico (si lo vences, suelta el doble).", "En las salas secretas de Tesoro"]];
+function escPerkOk(k) { return !GOOD_UNLOCKS[k.id] || META.goods.includes(k.id); }
+function codexGoods() {
+  const P = ESC_PERKS, nOk = P.filter(escPerkOk).length;
+  ov.innerHTML = `<h2>${T("OBJETOS")}</h2>
+    <h3>${T("MEJORAS")} ${nOk}/${P.length} · ${T("las eliges al subir de nivel")}</h3>
+    <div class="codex">${P.map(k => escPerkOk(k) ? `<div><b>${k.icon} ${T(k.name)}${k.max > 1 && k.max < 99 ? ` <small>x${k.max}</small>` : ""}</b>${T(k.desc)}</div>` : achRow(k.icon, T(k.name), GOOD_UNLOCKS[k.id], false).replace("???", T(k.name))).join("")}</div>
+    <h3>${T("EN LA TORRE")} · ${T("lo que recoges al subir")}</h3>
+    <div class="codex">${ESC_PICKUPS.map(([ic, n, d, r]) => `<div><b>${ic} ${T(n)}</b>${T(d)}<span class="prog">${T(r)}</span></div>`).join("")}</div>
+    <button class="go" id="backBtn">${T("Volver")}</button>`;
+  document.getElementById("backBtn").onclick = () => showCodex(); ov.scrollTop = 0;
+}
 function codexPage(cat) {
   ov.hidden = false; ov.classList.remove("dead");
   if (cat === "logros") return codexAch();
+  if (cat === "goods" && ESCAPE) return codexGoods();
   if (cat === "heroes") {
     const row = (name, ok, L, sub) => ok ? `<div><b>✓ ${name}</b>${sub || T("Desbloqueado")}</div>` : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${name}</b>${L.t}${L.n ? `<span class="prog">${L.v}/${L.n}${L.u}</span>${pxBar(L.v / L.n)}` : ""}</div>`;
     ov.innerHTML = `<h2>${T("PERSONAJES")}</h2><div class="codex">${CHARS.map(c => row(c.name, META.chars.includes(c.id), lockInfo("char", c.id), T(c.desc))).join("")}</div>
@@ -4455,7 +4477,7 @@ function codexPage(cat) {
 `}
 
     ${(() => { const CL = codexCombos(); return `<h3>${T("COMBINACIONES")} ${CL.filter(c => META.combos.includes(c.key || c.name)).length}/${CL.length}</h3>`; })()}
-    <div class="codex">${codexCombos().map(c => { const ok = META.combos.includes(c.key || c.name); return `<div class="${ok ? "" : "lk"}"><b>${ok ? c.name : "???"}</b>${ok ? RULE[c.a].name + " + " + RULE[c.b].name + ". " + c.desc : T("Sin descubrir")}</div>`; }).join("")}</div>
+    <div class="codex">${codexCombos().map(c => { const ok = META.combos.includes(c.key || c.name), here = !ESCAPE || escComboOk(c); return `<div class="${ok ? "" : "lk"}"><b>${ok ? c.name : "???"}</b>${ok ? RULE[c.a].name + " + " + RULE[c.b].name + ". " + c.desc : here ? T("Sin descubrir") + (ESCAPE ? ` · ${RULE[c.a].icon} + ${RULE[c.b].icon}` : "") : T("Todavía no sale en Escape")}</div>`; }).join("")}</div>
     <button class="go" id="backBtn">Volver</button>`;
   document.getElementById("backBtn").onclick = showTitle;
   if (cat) { // keep only that category's heading + list; back goes to the category buttons
@@ -9349,10 +9371,15 @@ const escBestAll = () => Math.max(bestOf("escape"), S && S.escape && !S.test ? S
 const CHAR_ESC = { nyx: { t: "Llega a 150 m en una partida de Escape", v: () => escBestAll(), n: 150, u: " m" } };
 const SKIN_PROG = { velo_cuervo: [() => escBestAll(), 300, " m"], kai_explorador: [() => META.cnt.rooms || 0, 3], kai_escudero: [() => META.cnt.bosses || 0, 1], kai_caballero: [() => META.cnt.bosses || 0, 3],
   kai_minero: [() => META.cnt.coins || 0, 500], kai_enano: [() => META.cnt.buys || 0, 5], nyx_sombra: [() => escBestAll(), 600, " m"] };
+var SKIN_RUN = ["velo_cuervo", "velo_brasa", "kai_campeon", "kai_bruto", "kai_golem", "nyx_bruja", "nyx_sombra", "nyx_estelar"];
+Object.assign(SKIN_PROG, { velo_musgo: [() => AC("k_velo"), 50], kai_lenador: [() => AC("k_kai"), 50], nyx_luciernaga: [() => AC("k_nyx"), 50], velo_escarcha: [() => AC("escMTot"), 1000, " m"],
+  velo_brasa: [() => AC("escT"), 225, " s"], kai_campeon: [() => escBestAll(), 800, " m"], kai_bruto: [() => AC("comboBest"), 20], nyx_abisal: [() => AC("fountain"), 1] });
 function lockInfo(kind, id) {
   if (kind === "char") { const c = CHAR_ESC[id]; if (ESCAPE && c) return { t: T(c.t), v: Math.min(c.n, c.v()), n: c.n, u: c.u || "" }; const ch = CHARS.find(x => x.id === id); return { t: T((ch && ch.unlock) || "") }; }
   const k = HERO_SKINS[id], p = SKIN_PROG[id]; if (!k) return { t: "" };
-  return p ? { t: T(k.unlock), v: Math.min(p[1], p[0]()), n: p[1], u: p[2] || "" } : { t: T(k.unlock) + " " + T("(en una partida)") };
+  // v84 (user): one-run goals say "(en una partida)", running totals say "(en total)", never both
+  const run = SKIN_RUN.includes(id), txt = T(k.unlock) + (run ? " " + T("(en una partida)") : /total/i.test(T(k.unlock)) ? "" : " " + T("(en total)"));
+  return p ? { t: txt, v: Math.min(p[1], Math.floor(p[0]())), n: p[1], u: p[2] || "" } : { t: txt };
 }
 function lockHTML(name, L) { return `<span class="lkline">${pxi("lock", "#f2c14e", 1)}<b>${name}</b></span><span class="lktxt">${L.t}${L.n ? ` · ${L.v}/${L.n}${L.u}` : ""}</span>${L.n ? pxBar(L.v / L.n) : ""}`; } // v73 (user): 8-bit lock + segmented bar
 function pxBar(f, n) { n = n || 10; const k = Math.max(0, Math.min(n, Math.floor((f || 0) * n + 1e-6))); return `<span class="pxbar" role="img" aria-label="${Math.round((f || 0) * 100)}%">${Array.from({ length: n }, (_, i) => `<i class="${i < k ? "on" : ""}"></i>`).join("")}</span>`; }
@@ -9447,15 +9474,20 @@ function itemLab() {
 const gTile = (t, delay) => `<button class="gt ${t.c}${t.lock ? " lock" : ""}" ${t.ik ? `data-ik="${t.ik}" data-id="${t.id}"` : ""} style="animation-delay:${delay || 0}s"><span class="gi">${t.ic}</span><span class="gk">${t.k}</span><b>${t.n}</b>${t.v != null ? `<span class="gbar"><u style="width:${Math.round(t.v * 100)}%"></u></span>` : ""}</button>`;
 function goodDesc(id) { const k = ESC_PERKS.find(q => q.id === id); return k ? T(k.desc) : (typeof RELIC !== "undefined" && RELIC[id] && RELIC[id].desc) || ""; }
 function achList() { // every feat this mode can do: [kind, id, icon, name, unlock-entry, done]
-  const mode = S && S.escape ? "E" : "H", out = [];
+  const mode = ESCAPE || (S && S.escape) ? "E" : "H", out = [];
   for (const id in UNLOCKS) { const u = UNLOCKS[id]; if (!RULE[id] || (u.m && u.m !== mode)) continue; out.push(["rule", id, RULE[id].icon, RULE[id].name, u, META.unlocked.includes(id)]); }
   for (const id in GOOD_UNLOCKS) { const u = GOOD_UNLOCKS[id]; if (u.m && u.m !== mode) continue; out.push(["good", id, goodIcon(id), goodName(id), u, META.goods.includes(id)]); }
   return out;
 }
+// v84 (user): one-run feats show what THIS run did (50/60 s), not the all-time best; the rest say "en total"
+var RUN_KEYS = ["airBest", "goldBest", "comboBest", "escM", "escT", "escNoHit", "escMove", "escAmmo", "esc1hp", "killWin", "earlyBest", "finBest", "runRooms"];
+function achRunKind(u) { const f = String(u.prog); return RUN_KEYS.some(k => f.includes('"' + k + '"')) && !/escMTot|"floors"|"kills"|"coins"|"k_/.test(f) ? "run" : /AC\(/.test(f) || /\.length/.test(f) ? "tot" : ""; }
+function achRunProg(u) { const save = META.cnt, R = (S && S.runCnt) || {}, view = {}; for (const k of RUN_KEYS) view[k] = R[k] || 0; META.cnt = view; try { return achProg(u); } finally { META.cnt = save; } }
 function runAlmost() {
-  const near = achList().filter(a => !a[5]).map(a => ({ a, v: achProg(a[4]) })).filter(x => x.v > 0 && x.v < 1).sort((x, y) => y.v - x.v).slice(0, 3);
+  const near = achList().filter(a => !a[5]).map(a => { const kind = achRunKind(a[4]); return { a, kind, v: kind === "run" ? achRunProg(a[4]) : achProg(a[4]) }; }).filter(x => x.v > 0 && x.v < 1).sort((x, y) => y.v - x.v).slice(0, 3);
   if (!near.length) return "";
-  return `<div class="mlabel">${T("CASI")}</div><div class="gains">${near.map(({ a, v }, i) => gTile({ ic: a[2], k: Math.floor(v * 100) + "%", n: a[3], c: "", lock: true, ik: a[0], id: a[1], v }, 0.4 + i * 0.12)).join("")}</div>`;
+  const sub = k => k === "run" ? (LANG === "en" ? "this run" : "esta partida") : k === "tot" ? (LANG === "en" ? "in total" : "en total") : "";
+  return `<div class="mlabel">${T("CASI")}</div><div class="gains">${near.map(({ a, v, kind }, i) => gTile({ ic: a[2], k: Math.floor(v * 100) + "%", n: a[3] + (sub(kind) ? `<small class="gsub">${sub(kind)}</small>` : ""), c: "", lock: true, ik: a[0], id: a[1], v }, 0.4 + i * 0.12)).join("")}</div>`;
 }
 function runModTiles() {
   if (!S.rules.length) return "";
@@ -9480,7 +9512,14 @@ function codexAch() {
   const L = achList(), done = L.filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length;
   const tiles = [...PGS_FEATS.map(f => { const v = Math.min(1, f[3]()); return { ic: "🏆", k: v >= 1 ? T("LOGRO") : Math.floor(v * 100) + "%", n: T(f[1]), c: v >= 1 ? "rec" : "", lock: v < 1, ik: "feat", id: f[0], v: v < 1 ? v : null }; }),
     ...L.map(a => { const v = achProg(a[4]); return { ic: a[2], k: a[5] ? (a[0] === "rule" ? T("MODIFICADOR") : T("MEJORA")) : Math.floor(v * 100) + "%", n: a[3], c: a[5] ? (a[0] === "rule" ? "bad" : "good") : "", lock: !a[5], ik: a[0], id: a[1], v: a[5] ? null : v }; })];
-  ov.innerHTML = `<div class="menu"><h2>🏆 ${T("LOGROS")}</h2><p class="tagline">${done}/${L.length + PGS_FEATS.length}</p><div class="gains">${tiles.sort((a, b) => (a.lock ? 1 : 0) - (b.lock ? 1 : 0) || (b.v || 0) - (a.v || 0)).map(t => gTile(t)).join("")}</div>
+  // v84 (user): grouped by theme, each group with its own counter; inside, done first, then the closest ones
+  const grp = t => { if (t.ik === "feat") return 0; const u = (t.ik === "rule" ? UNLOCKS : GOOD_UNLOCKS)[t.id], f = u ? String(u.prog) : "";
+    return /"b_|bossFast|boss1hp/.test(f) ? 1 : /kills|"k_|pogo|comboBest|killWin|finBest|earlyBest|mimics/.test(f) ? 2 : /escM|escT|escNoHit|escMove|esc1hp|escAmmo|airBest|"e_|floors|ndStreak|h1Streak/.test(f) ? 3 : /runRooms|"gem"|cursed|fountain|cracks|treasure|ladder/.test(f) ? 4 : /spent|goldBest|coins/.test(f) ? 5 : 6; };
+  const GN = ["HITOS DE ESCAPE", "JEFES", "COMBATE", "ALTURA Y SUPERVIVENCIA", "EXPLORACIÓN", "ORO", "OTROS"];
+  const ord = (a, b) => (a.lock ? 1 : 0) - (b.lock ? 1 : 0) || (b.v || 0) - (a.v || 0);
+  const secs = GN.map((g, i) => { const ts = tiles.filter(t => grp(t) === i).sort(ord); if (!ts.length) return ""; const d = ts.filter(t => !t.lock).length;
+    return `<div class="mlabel">${T(g)} · ${d}/${ts.length}</div>${pxBar(d / ts.length, 12)}<div class="gains">${ts.map(t => gTile(t)).join("")}</div>`; }).join("");
+  ov.innerHTML = `<div class="menu achgrp"><h2>🏆 ${T("LOGROS")}</h2><p class="tagline">${done}/${L.length + PGS_FEATS.length}</p>${pxBar(done / Math.max(1, L.length + PGS_FEATS.length), 16)}${secs}
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
   document.getElementById("backBtn").onclick = () => showCodex(); ov.scrollTop = 0;
 }
@@ -9567,7 +9606,9 @@ function drawEchoHero(g) {
   sprBlit(echoTint(cv), g.x + g.w / 2, g.y + g.h, g.w / 16, (g.face || 1) < 0, false); ctx.restore(); SQX = SQY = 1; return true;
 }
 // v67: the Codex only lists combos that can actually happen in this mode (Escape: both rules in its rotation)
-function codexCombos() { if (!ESCAPE) return COMBOS; const P = new Set(ESC_MOD_POOL.concat(ESC_START_POOL, ESC_BIOME_MOD.filter(Boolean), ESC_BASE)); return COMBOS.filter(c => P.has(c.a) && P.has(c.b)); }
+function escComboOk(c) { const P = new Set(ESC_MOD_POOL.concat(ESC_START_POOL, ESC_BIOME_MOD.filter(Boolean), ESC_BASE)); return P.has(c.a) && P.has(c.b); }
+// v84 (user): the Codex lists all 25 combos; in Escape the ones you can find come first
+function codexCombos() { return ESCAPE ? COMBOS.filter(escComboOk).concat(COMBOS.filter(c => !escComboOk(c))) : COMBOS; }
 // ===================================================================
 // HERO SKINS v3 · add-on (original art). Paste AFTER the HEROES v2 block.
 // 8 new looks, same 16x26 frames and 6 animations as HEROES v2 (idle 4, run 6,
@@ -10416,7 +10457,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v83";
+var OMF_VER = "Escape v85";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10837,6 +10878,13 @@ showSettings = function () {
 window.__v77 = { showFull, fullOwned, retos, retoGen, retoRows, retoEv, shareCard, runCardData, applyBlob, saveBlob, exportCode, importCode, mergeObj, errList };
 if (S && S.mode === "title" && ov && ov.querySelector(".etitle")) showTitle();
 
+Object.assign(EN_TEXT, { "MEJORAS": "BONUSES", "las eliges al subir de nivel": "you pick them on level up", "EN LA TORRE": "IN THE TOWER", "lo que recoges al subir": "what you pick up while climbing", "Monedas": "Coins", "Gema": "Gem", "Cofre": "Chest", "Todavía no sale en Escape": "Not in Escape yet",
+  "Cura 1 corazón. Con la vida llena da +5 de oro.": "Heals 1 heart. At full health it gives +5 gold.", "Rara: 1 de cada 140 plataformas": "Rare: 1 in 140 platforms",
+  "Corazón extra: +1 de vida máxima (hasta +2, +3 en Fácil). Si ya estás al tope, cura o da oro.": "Extra heart: +1 max health (up to +2, +3 on Easy). At the cap it heals or gives gold.", "Muy rara: 1 de cada 570 plataformas · siempre 1 al vencer a un jefe": "Very rare: 1 in 570 platforms · always 1 when you beat a boss",
+  "Cobre 1 · Plata 2 a 4 · Oro 5. Las gastas en el Mercader y en los altares.": "Copper 1 · Silver 2 to 4 · Gold 5. Spend them at the Merchant and altars.", "Comunes: 1 de cada 8 plataformas, más en cofres y salas": "Common: 1 in 8 platforms, more in chests and rooms",
+  "10 de oro de golpe.": "10 gold at once.", "En el Reto de la gema y en cofres": "In the Gem Trial and in chests", "Experiencia para subir de nivel y elegir mejora.": "Experience to level up and pick a bonus.", "Lo suelta cada enemigo": "Every enemy drops one",
+  "Un puñado de monedas. Cuidado: puede ser un Mímico (si lo vences, suelta el doble).": "A handful of coins. Careful: it may be a Mimic (beat it for double).", "En las salas secretas de Tesoro": "In Treasure secret rooms", "Corazón extra": "Extra heart" });
+Object.assign(EN_TEXT, { "ASPECTOS": "SKINS", "ASPECTO": "SKIN", "Aspecto de": "Skin for", "Aspecto desbloqueado:": "Skin unlocked:", "Héroes y aspectos, y cómo conseguirlos": "Heroes and skins, and how to get them", "(en total)": "(in total)", "HITOS DE ESCAPE": "ESCAPE MILESTONES", "JEFES": "BOSSES", "COMBATE": "COMBAT", "ALTURA Y SUPERVIVENCIA": "HEIGHT & SURVIVAL", "EXPLORACIÓN": "EXPLORATION", "ORO": "GOLD", "OTROS": "OTHER" });
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
