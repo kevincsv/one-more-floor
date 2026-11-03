@@ -1944,10 +1944,10 @@ function escapeTick(p, dt) {
     // at the cap the oldest one leaves early, so something always changes every 30 s
     while (pool.length && S.escMods.length >= escMaxMods() && S.escMods.length) { const o = S.escMods.slice().sort((a, b) => a.until - b.until)[0]; S.escMods = S.escMods.filter(x => x !== o); S.rules = S.rules.filter(r => r !== o.id); toast(T("Se acaba: ") + RULE[o.id].name); }
     const pre = S.escNextId; S.escNextId = null;
-    if (pool.length) escAddMod(pre && pool.includes(pre) ? pre : pool[Math.floor(S.rng() * pool.length)], el);
+    if (pool.length) escAddMod(pre && pool.includes(pre) ? pre : escPickMod(pool), el);
   }
   // QA batch 7: the next modifier is picked 3 s early so the countdown can name it, and the Mirror warns before it ends
-  if (!S.escNextId && S.escNextMod - el < 3.2) { const pool = ESC_MOD_POOL.filter(id => RULE[id] && !has(id) && escModOk(id) && (escD() >= 2 && !S.easy || RULE[id].cost < 3 && id !== "mirror")); if (pool.length) S.escNextId = pool[Math.floor(S.rng() * pool.length)]; }
+  if (!S.escNextId && S.escNextMod - el < 5.4) { const pool = ESC_MOD_POOL.filter(id => RULE[id] && !has(id) && escModOk(id) && (escD() >= 2 && !S.easy || RULE[id].cost < 3 && id !== "mirror")); if (pool.length) S.escNextId = escPickMod(pool); }
   for (const m of S.escMods) if (m.id === "mirror" && !m.warned && m.until - el < 3) { m.warned = true; toast(T("El Espejo se acaba en 3 s")); }
   return false;
 }
@@ -2037,7 +2037,7 @@ function escTakeLevel(o) {
 }
 function escAddMod(id, el) {
   if (has(id)) return; omfSfx("mod");
-  S.rules.push(id); S.escMods.push({ id, until: id === "mirror" ? Math.min(escModLife(el), el + 30) : escModLife(el) }); // Mirror lasts 30 s at most
+  S.rules.push(id); S.escMods.push({ id, until: id === "mirror" ? Math.min(escModLife(el), el + 30) : id === "echo" ? Math.min(escModLife(el), el + 20) : escModLife(el) }); // v65 (user): Eco lasts 20 s // Mirror lasts 30 s at most
   toast(T("Nuevo modificador: ") + RULE[id].name + " · " + T(SKULL_WORD[skullN(RULE[id].cost) - 1])); lastHud = ""; updateHud(true);
 }
 /* ---------- level analysis ----------
@@ -2702,7 +2702,8 @@ const overlapFair = (p, e) => { const kx = Math.min(4, e.w * 0.18); return overl
 const MOB_HB = { walker: [16, 20, "b"], hopper: [22, 14, "b"], bat: [22, 12, "c", 0, -1], shooter: [20, 18, "b"], charger: [26, 16, "b"], spider: [22, 14, "c", 0, -1],
   wisp: [16, 16, "c", 0, -1.5], knight: [22, 24, "b", -1], bomber: [22, 16, "c"], mimic: [28, 22, "b"], ghost: [16, 16, "c"], urchin: [18, 18, "c"] };
 // v59: flyers dodge around, so your slash catches them a few px outside their hurt box (contact stays exact)
-const FLY_PAD = { bat: 6, wisp: 6, ghost: 5, bomber: 5 };
+const FLY_PAD = { bat: 8, wisp: 8, ghost: 6, bomber: 7 };
+const FLY_REACH = 12; // v63 (user: flyers still hard to hit): the slash reaches 12 px further and a bit wider against flyers
 function hurtBox(e) {
   const H = !e.boss && !e.bp && MOB_HB[e.mimic ? "mimic" : e.type]; if (!H) return e;
   const dir = (e.mimic ? e.face : e.dir) || 1, cx = e.x + e.w / 2 + (H[3] || 0) * dir + (H[4] || 0);
@@ -2958,7 +2959,7 @@ function update(dt) {
     if (p.still > 2) { p.still = 0.6; hurt(0); burst(p.x + p.w / 2, p.y + p.h, "#ff7a3a", 10); }
   } else p.still = 0;
   if (has("echo")) {
-    S.trail.push({ t: S.t, x: p.x, y: p.y, w: p.w, h: p.h });
+    S.trail.push({ t: S.t, x: p.x, y: p.y, w: p.w, h: p.h, face: p.face, vx: p.vx, vy: p.vy, ground: p.ground });
     while (S.trail.length > 1 && S.trail[1].t <= S.t - 3) S.trail.shift();
     S.ghost = S.trail[0] && S.trail[0].t <= S.t - 2.95 ? S.trail[0] : null;
     if (S.ghost && p.inv <= 0 && overlap(p, { x: S.ghost.x + 2, y: S.ghost.y + 2, w: S.ghost.w - 4, h: S.ghost.h - 4 })) hurt(Math.sign(p.x - S.ghost.x) || 1);
@@ -3486,10 +3487,10 @@ function swingAt(pcx, pcy, ang) {
   for (const e of S.enemies) {
     if (e.dead) continue;
     // FEEL v2: reach matches the drawn slash (40 px, finisher 46) measured to the nearest point of the enemy's box
-    const fin = S.swing && S.swing.fin, R = (fin ? 40 : 34) * wpn().reach + 4; // = the drawn slash + 4 px (was ~2x the art)
-    const B0 = hurtBox(e), FP = FLY_PAD[e.type] && !e.boss ? FLY_PAD[e.type] : 0, B = FP ? { x: B0.x - FP, y: B0.y - FP, w: B0.w + 2 * FP, h: B0.h + 2 * FP } : B0, nx = clamp(pcx, B.x, B.x + B.w), ny = clamp(pcy, B.y, B.y + B.h), dn = Math.hypot(nx - pcx, ny - pcy);
+    const FP = FLY_PAD[e.type] && !e.boss ? FLY_PAD[e.type] : 0, fin = S.swing && S.swing.fin, R = (fin ? 40 : 34) * wpn().reach + 7 + (FP ? FLY_REACH : 0); // drawn slash + 7 px (v63: +3 for everyone), flyers +12 more
+    const B0 = hurtBox(e), B = FP ? { x: B0.x - FP, y: B0.y - FP, w: B0.w + 2 * FP, h: B0.h + 2 * FP } : B0, nx = clamp(pcx, B.x, B.x + B.w), ny = clamp(pcy, B.y, B.y + B.h), dn = Math.hypot(nx - pcx, ny - pcy);
     if (dn > R) continue;
-    const inArc = (x, y) => { let da = Math.atan2(y - pcy, x - pcx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da)); return Math.abs(da) < (fin ? 1.35 : 1.05); };
+    const inArc = (x, y) => { let da = Math.atan2(y - pcy, x - pcx) - ang; da = Math.atan2(Math.sin(da), Math.cos(da)); return Math.abs(da) < (fin ? 1.35 : 1.05) + (FP ? 0.3 : 0); };
     if (!(dn < 10 || inArc(nx, ny) || inArc(B.x + B.w / 2, B.y + B.h / 2))) continue;
     // no hitting through walls: the line to the nearest point of the enemy must be clear
     const tx = clamp(pcx, B.x + 2, B.x + B.w - 2), ty = clamp(pcy, B.y + 2, B.y + B.h - 2), L = Math.hypot(tx - pcx, ty - pcy), n = Math.ceil(L / 6);
@@ -3562,8 +3563,8 @@ function atkAssist(pcx, pcy, ang) {
   for (const e of S.enemies) {
     if (e.dead || e.critter || (has("invis") && !(e.reveal > 0))) continue;
     const ex = e.x + e.w / 2 - pcx, ey = e.y + e.h / 2 - pcy;
-    if (Math.hypot(ex, ey) > 50 + e.w / 2) continue;
-    let da = Math.atan2(ey, ex) - ang; da = Math.abs(Math.atan2(Math.sin(da), Math.cos(da)));
+    const fl = FLY_PAD[e.type] && !e.boss; if (Math.hypot(ex, ey) > 50 + e.w / 2 + (fl ? 16 : 0)) continue;
+    let da = Math.atan2(ey, ex) - ang; da = Math.abs(Math.atan2(Math.sin(da), Math.cos(da))); if (fl) da -= 0.3; // the aim snaps onto flyers more readily
     if (da < bd) { bd = da; best = Math.atan2(ey, ex); }
   }
   return best === null ? ang : best;
@@ -4478,7 +4479,7 @@ const EN_RULES = {
   inertia: ["Inertia", "You always run. You can turn, but never stop."],
   gold: ["Cursed gold", "Each coin you carry slows you down. It's banked at the exit."],
   frozen: ["Rooted", "You can't walk or jump. Drag and release to launch yourself like a slingshot."],
-  mirror: ["Mirror", "Left and right are swapped, aiming too."],
+  mirror: ["Mirror", ESCAPE ? "Left and right are swapped when moving. Attacks aim normally." : "Left and right are swapped, aiming too."],
   echo: ["Echo", "A ghost repeats your moves from 3 s ago and hurts on contact."],
   hot: ["Burning floor", "Stand still on the ground for more than 2 s and you burn."],
   shrink: ["Tiny", "You're small: easier to dodge, but you jump lower."],
@@ -4578,7 +4579,7 @@ const EN_TEXT = {
   "AIRE": "AIR", "ARRASTRA Y SUELTA PARA LANZARTE": "DRAG AND RELEASE TO LAUNCH", "ATRAPA TU SOMBRA": "CATCH YOUR SHADOW", "CALOR": "HEAT", "CERA": "WAX",
   "SALA OCULTA · TIEMPO DETENIDO": "HIDDEN ROOM · TIME STOPPED", "SALIDA": "EXIT", "CERRADA": "LOCKED", "SALTO DE PARED": "WALL JUMP", "TIEMPO DETENIDO": "TIME STOPPED",
   "ESCUDO GASTADO": "SHIELD USED", "ESCUDO LISTO": "SHIELD READY", "OÍDOS TAPADOS": "EARS COVERED", "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS": "SIRENS · HOLD ATTACK TO COVER YOUR EARS",
-  "PASADA LA MEDIANOCHE · DAÑO ½": "PAST MIDNIGHT · DAMAGE ½", "Sin reglas": "No rules", "PAUSA": "PAUSED", "Seguir": "Resume", "GIRA EL TELÉFONO": "TURN YOUR PHONE", "Escape se juega en vertical.": "Escape is played upright.", "Bolsa de oro": "Bag of gold", "Sin modificadores": "No modifiers", "MODIFICADORES": "MODIFIERS", "Ver cajas": "Show boxes", "Fácil": "Easy", "Media": "Medium", "Difícil": "Hard", "¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas": "Boss! Time and modifiers stop until you beat it", "Izquierda y derecha están invertidas al moverte. El ataque apunta normal.": "Left and right are swapped when moving. Attacks aim normally.", "BIOMAS": "BIOMES", "Bioma": "Biome", "NORMAL": "NORMAL", "FÁCIL": "EASY", "Dificultad": "Difficulty", "Escape · Fácil": "Escape · Easy", "Diario · Fácil": "Daily · Easy", "Mímico": "Mimic", "Fantasma: dos tajos lo matan": "Ghost: two slashes kill it", "El Espejo se acaba en 3 s": "Mirror ends in 3 s", "ESPEJO EN": "MIRROR IN", "EN": "IN", "NUEVO MODIFICADOR EN": "NEW MODIFIER IN", "SONIDO": "SOUND", "MÚSICA": "MUSIC", "CASI": "SO CLOSE", "ACTIVO": "ACTIVE", "LOGROS": "ACHIEVEMENTS", "LOGRO": "ACHIEVEMENT", "Todas las hazañas y cuánto te falta": "Every feat and how far you are", "Toca para cerrar": "Tap to close", "Aspecto de": "Look for", "100 metros": "100 metres", "250 metros": "250 metres", "Nivel 10": "Level 10", "Llega a 100 m en Escape.": "Reach 100 m in Escape.", "Llega a 250 m en Escape.": "Reach 250 m in Escape.", "Llega al nivel 10 en una partida de Escape.": "Reach level 10 in one Escape run.", "🧪 Sala de objetos": "🧪 Object room", "Corazón": "Heart", "Reliquia": "Relic", "Cobre ·1": "Copper ·1", "Plata ·2": "Silver ·2", "Oro ·5": "Gold ·5", "Gema ·10": "Gem ·10", "Pinchos": "Spikes", "Pinchos cíclicos": "Cycling spikes", "Trampa": "Trap", "Antorcha": "Torch", "Orbe de XP": "XP orb", "Reponer": "Refill", "Sala de objetos: tócalos para recogerlos": "Object room: touch them to pick them up", "Sube. No mires abajo.": "Climb. Don't look down.", "racha": "streak", "PERSONAJES": "HEROES", "ASPECTOS": "LOOKS", "Héroes y aspectos, y cómo conseguirlos": "Heroes and looks, and how to get them", "Llega a 150 m en una partida de Escape": "Reach 150 m in one Escape run", "Personaje desbloqueado: Nyx": "Hero unlocked: Nyx", "Desbloqueado": "Unlocked", "(en una partida)": "(in one run)", "Cómo se juega": "How to play", "Sube sin parar": "Keep climbing", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó.": "The tower builds itself upward forever and the camera only goes up. Fall below the screen and it's over.", "Golpea": "Attack", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño.": "Attack with HIT (3-hit combo). Jumping on an enemy also hurts it.", "Modificadores": "Modifiers", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una.": "Every 15 seconds a new rule joins and the oldest leaves. Each biome brings its own. The skulls tell how hard each one is.", "Sube de nivel": "Level up", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador.": "Enemies give experience. On level up you pick a bonus or remove a modifier.", "Salas secretas": "Secret rooms", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos.": "Hit cracked walls twice: inside, time stops and there are treasures, shops and pacts.", "Jefes": "Bosses", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo.": "In arenas the camera stops. Beat the boss to keep climbing.", "Hazañas": "Feats", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice.": "Complete challenges to unlock new modifiers and bonuses. See them in the Codex.", "IDIOMA": "LANGUAGE", "CÓDICE": "CODEX", "MODIFICADORES": "MODIFIERS", "MEJORAS": "BONUSES", "COMBINACIONES": "COMBOS", "Reglas malas que entran durante la subida": "Bad rules that join during the climb", "Modificadores buenos: los eliges al subir de nivel": "Good modifiers: you pick them when you level up", "Dos modificadores juntos dan un efecto nuevo": "Two modifiers together make a new effect", "TOCA PARA EMPEZAR": "TAP TO START", "PULSA PARA EMPEZAR": "PRESS TO START", "NUEVO RÉCORD": "NEW RECORD", "MODIFICADOR": "MODIFIER", "REGLA": "RULE", "MEJORA": "BONUS", "PERSONAJE": "HERO", "ASPECTO": "LOOK", "DESBLOQUEADO": "UNLOCKED", "y": "and", "más en el Códice": "more in the Codex", "AJUSTES": "SETTINGS", "Ajustes": "Settings", "APAGADO": "OFF", "CONTROLES": "CONTROLS", "Volver": "Back", "Sí": "On",
+  "PASADA LA MEDIANOCHE · DAÑO ½": "PAST MIDNIGHT · DAMAGE ½", "Sin reglas": "No rules", "PAUSA": "PAUSED", "Seguir": "Resume", "GIRA EL TELÉFONO": "TURN YOUR PHONE", "Escape se juega en vertical.": "Escape is played upright.", "Bolsa de oro": "Bag of gold", "Sin modificadores": "No modifiers", "MODIFICADORES": "MODIFIERS", "Ver cajas": "Show boxes", "Fácil": "Easy", "Media": "Medium", "Difícil": "Hard", "¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas": "Boss! Time and modifiers stop until you beat it", "Izquierda y derecha están invertidas al moverte. El ataque apunta normal.": "Left and right are swapped when moving. Attacks aim normally.", "BIOMAS": "BIOMES", "Bioma": "Biome", "NORMAL": "NORMAL", "FÁCIL": "EASY", "Dificultad": "Difficulty", "Escape · Fácil": "Escape · Easy", "Diario · Fácil": "Daily · Easy", "Mímico": "Mimic", "Fantasma: dos tajos lo matan": "Ghost: two slashes kill it", "El Espejo se acaba en 3 s": "Mirror ends in 3 s", "ESPEJO EN": "MIRROR IN", "EN": "IN", "NUEVO MODIFICADOR EN": "NEW MODIFIER IN", "PRÓXIMO MODIFICADOR EN": "NEXT MODIFIER IN", "SONIDO": "SOUND", "MÚSICA": "MUSIC", "CASI": "SO CLOSE", "ACTIVO": "ACTIVE", "LOGROS": "ACHIEVEMENTS", "LOGRO": "ACHIEVEMENT", "Todas las hazañas y cuánto te falta": "Every feat and how far you are", "Toca para cerrar": "Tap to close", "Aspecto de": "Look for", "100 metros": "100 metres", "250 metros": "250 metres", "Nivel 10": "Level 10", "Llega a 100 m en Escape.": "Reach 100 m in Escape.", "Llega a 250 m en Escape.": "Reach 250 m in Escape.", "Llega al nivel 10 en una partida de Escape.": "Reach level 10 in one Escape run.", "🧪 Sala de objetos": "🧪 Object room", "Corazón": "Heart", "Reliquia": "Relic", "Cobre ·1": "Copper ·1", "Plata ·2": "Silver ·2", "Oro ·5": "Gold ·5", "Gema ·10": "Gem ·10", "Pinchos": "Spikes", "Pinchos cíclicos": "Cycling spikes", "Trampa": "Trap", "Antorcha": "Torch", "Orbe de XP": "XP orb", "Reponer": "Refill", "Sala de objetos: tócalos para recogerlos": "Object room: touch them to pick them up", "Sube. No mires abajo.": "Climb. Don't look down.", "racha": "streak", "PERSONAJES": "HEROES", "ASPECTOS": "LOOKS", "Héroes y aspectos, y cómo conseguirlos": "Heroes and looks, and how to get them", "Llega a 150 m en una partida de Escape": "Reach 150 m in one Escape run", "Personaje desbloqueado: Nyx": "Hero unlocked: Nyx", "Desbloqueado": "Unlocked", "(en una partida)": "(in one run)", "Cómo se juega": "How to play", "Sube sin parar": "Keep climbing", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó.": "The tower builds itself upward forever and the camera only goes up. Fall below the screen and it's over.", "Golpea": "Attack", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño.": "Attack with HIT (3-hit combo). Jumping on an enemy also hurts it.", "Modificadores": "Modifiers", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una.": "Every 15 seconds a new rule joins and the oldest leaves. Each biome brings its own. The skulls tell how hard each one is.", "Sube de nivel": "Level up", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador.": "Enemies give experience. On level up you pick a bonus or remove a modifier.", "Salas secretas": "Secret rooms", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos.": "Hit cracked walls twice: inside, time stops and there are treasures, shops and pacts.", "Jefes": "Bosses", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo.": "In arenas the camera stops. Beat the boss to keep climbing.", "Hazañas": "Feats", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice.": "Complete challenges to unlock new modifiers and bonuses. See them in the Codex.", "IDIOMA": "LANGUAGE", "CÓDICE": "CODEX", "MODIFICADORES": "MODIFIERS", "MEJORAS": "BONUSES", "COMBINACIONES": "COMBOS", "Reglas malas que entran durante la subida": "Bad rules that join during the climb", "Modificadores buenos: los eliges al subir de nivel": "Good modifiers: you pick them when you level up", "Dos modificadores juntos dan un efecto nuevo": "Two modifiers together make a new effect", "TOCA PARA EMPEZAR": "TAP TO START", "PULSA PARA EMPEZAR": "PRESS TO START", "NUEVO RÉCORD": "NEW RECORD", "MODIFICADOR": "MODIFIER", "REGLA": "RULE", "MEJORA": "BONUS", "PERSONAJE": "HERO", "ASPECTO": "LOOK", "DESBLOQUEADO": "UNLOCKED", "y": "and", "más en el Códice": "more in the Codex", "AJUSTES": "SETTINGS", "Ajustes": "Settings", "APAGADO": "OFF", "CONTROLES": "CONTROLS", "Volver": "Back", "Sí": "On",
   "PISO": "FLOOR", "ORO": "GOLD", "REGLAS": "RULES", "LABORATORIO": "LAB", "Atacar": "Attack", "COMBO": "COMBO", "Combo roto": "Combo broken", "Saltar": "Jump", "Subir": "Climb", "Empujar": "Shove", "Parpadeo": "Blink",
   "Gira el teléfono para jugar en horizontal.": "Turn your phone sideways to play in landscape.",
   "Mover A/D · Saltar Espacio (también contra la pared) · Apuntar W/S o haz clic donde quieras golpear · Atacar J · Escaleras W/S · Honda: arrastra · Reiniciar R": "Move A/D · Jump Space (also off walls) · Aim W/S or click where you want to hit · Attack J · Ladders W/S · Slingshot: drag · Restart R",
@@ -6397,8 +6398,8 @@ function draw() {
   }
 
   if (S.ghost) {
-    const gh = S.ghost; ctx.globalAlpha = 0.45; ctx.fillStyle = "#b9a7ff"; ctx.fillRect(gh.x, gh.y, gh.w, gh.h);
-    ctx.globalAlpha = 1; ctx.strokeStyle = "#e8e0ff"; ctx.lineWidth = 1; ctx.strokeRect(gh.x + 0.5, gh.y + 0.5, gh.w - 1, gh.h - 1);
+    const gh = S.ghost; if (!drawEchoHero(gh)) { ctx.globalAlpha = 0.45; ctx.fillStyle = "#e0566b"; ctx.fillRect(gh.x, gh.y, gh.w, gh.h);
+    ctx.globalAlpha = 1; ctx.strokeStyle = "#ffb0b8"; ctx.lineWidth = 1; ctx.strokeRect(gh.x + 0.5, gh.y + 0.5, gh.w - 1, gh.h - 1); }
   }
   if (S.swapTarget && !S.swapTarget.dead && has("swap")) {
     const e = S.swapTarget; ctx.strokeStyle = "#b9a7ff"; ctx.lineWidth = 2; ctx.beginPath();
@@ -6486,7 +6487,7 @@ function draw() {
     if (S.arena && S.arena.state === "fight") { ctx.fillStyle = "#f2c14e"; ctx.fillText("JEFE · TIEMPO DETENIDO", 34, hy); hy += 16; }
     if (S.secret) { ctx.fillStyle = "#f2c14e"; ctx.fillText(T("SALA SECRETA · TIEMPO DETENIDO"), 34, hy); hy += 16;
       if (S.secret.kind === "trial" && S.secret.objs[0].st === 0) { ctx.fillStyle = "#e0566b"; ctx.fillText(T("LA GEMA SE ROMPE EN") + " " + Math.ceil(S.secret.timer), 34, hy); hy += 16; } }
-    const nx = S.escNextMod - el; if (nx < 3.2 && nx > 0) { ctx.fillStyle = "#f2c14e"; ctx.fillText(S.escNextId && RULE[S.escNextId] ? (S.escNextId === "mirror" ? T("ESPEJO EN") : RULE[S.escNextId].name.toUpperCase() + " " + T("EN")) + " " + Math.ceil(nx) : T("NUEVO MODIFICADOR EN") + " " + Math.ceil(nx), 34, hy); hy += 16; } }
+    const nx = S.escNextMod - el; if (nx < 5.2 && nx > 0 && !(S.arena && S.arena.state === "fight") && !S.secret) drawNextMod(nx); else S.nmBox = null; }
   else if (has("timer") && !has("broken")) { ctx.fillStyle = S.timeLeft < 10 ? "#e0566b" : "#ece8f5"; ctx.fillText("TIEMPO " + Math.ceil(S.timeLeft), 34, hy); hy += 16; }
   if (S.ws === 0 && (has("pause") || has("right"))) { ctx.fillStyle = "#b9a7ff"; ctx.fillText("TIEMPO DETENIDO", 34, hy); hy += 16; }
   if (has("ammo")) { ctx.fillStyle = S.ammo ? "#ece8f5" : "#e0566b"; ctx.fillText("MUNICIÓN " + "|".repeat(S.ammo), 34, hy); hy += 16; }
@@ -6564,6 +6565,7 @@ function draw() {
     for (const wd of String(t.text).split(" ")) { const tr = lines[lines.length - 1] + (lines[lines.length - 1] ? " " : "") + wd; if (ctx.measureText(tr).width > maxW - 24 && lines[lines.length - 1]) lines.push(wd); else lines[lines.length - 1] = tr; }
     const w = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + 24), h = 10 + lines.length * 18, x0 = Math.round(CW / 2 - w / 2);
     if (banBox && ty - 21 < banBox[1] + 4 && ty - 21 + h + 6 > banBox[0]) ty = banBox[1] + 8 + 21; // go below the banner, never over it
+    if (S.nmBox && ty - 21 < S.nmBox[1] + 4 && ty - 21 + h + 6 > S.nmBox[0]) ty = S.nmBox[1] + 8 + 21; // and below the next-modifier panel
     const y0 = ty - 18;
     if (ESCAPE) { ctx.fillStyle = "#0a0812"; ctx.fillRect(x0 - 3, y0 - 3, w + 6, h + 6); ctx.fillStyle = "#3e3960"; ctx.fillRect(x0 - 1, y0 - 1, w + 2, h + 2); }
     ctx.fillStyle = ESCAPE ? "#1b1829" : "rgba(27,24,41,.92)"; ctx.fillRect(x0, y0, w, h);
@@ -9223,7 +9225,7 @@ function runModTiles() {
 }
 function infoPop(ik, id) {
   let ic = "", name = "", what = "", how = "", v = null, done = true;
-  if (ik === "rule" && RULE[id]) { ic = RULE[id].icon; name = RULE[id].name + " " + skullsHTML(RULE[id].cost, true); what = RULE[id].desc; const u = UNLOCKS[id]; done = META.unlocked.includes(id); if (u && !done) { how = achTxt(u); v = achProg(u); } }
+  if (ik === "rule" && RULE[id]) { ic = RULE[id].icon; name = RULE[id].name + " " + skullsHTML(RULE[id].cost, true); what = RULE[id].desc; const u = UNLOCKS[id]; done = META.unlocked.includes(id) || (ESCAPE && escModOk(id)) || has(id) || !u; /* v63: base and active modifiers are never "locked" */ if (u && !done) { how = achTxt(u); v = achProg(u); } }
   else if (ik === "good") { ic = goodIcon(id); name = goodName(id); what = goodDesc(id); const u = GOOD_UNLOCKS[id]; done = !u || META.goods.includes(id); if (!done) { how = achTxt(u); v = achProg(u); } }
   else if (ik === "char") { const c = CHARS.find(x => x.id === id) || {}; ic = "★"; name = c.name; what = T(c.desc || ""); done = META.chars.includes(id); if (!done) { const L = lockInfo("char", id); how = L.t; if (L.n) v = L.v / L.n; } }
   else if (ik === "skin" && HERO_SKINS[id]) { ic = "✦"; name = T(HERO_SKINS[id].name); what = T("Aspecto de") + " " + ((CHARS.find(c => c.id === HERO_SKINS[id].ch) || {}).name || ""); done = META.skins.includes(id); if (!done) { const L = lockInfo("skin", id); how = L.t; if (L.n) v = L.v / L.n; } }
@@ -9282,6 +9284,37 @@ if (ESCAPE) { const _genEasy = genEscSegment; genEscSegment = function (...a) { 
   if (S.easy) { const R = S.rgGen || S.rng; S.enemies = S.enemies.slice(0, n0).concat(S.enemies.slice(n0).filter(e => e.boss || R() > 0.35)); } return r; }; }
 // Mirror: main game flips at once; Escape waits until you touch ground (S.mirLive, set in the movement step)
 function mirOn() { return ESCAPE ? !!S.mirLive : has("mirror"); }
+// v63 (user): hard modifiers (Espejo and every 3-skull rule) come up about a third as often as the others
+const escModW = id => id === "mirror" || (RULE[id] && RULE[id].cost >= 3) ? 0.3 : 1;
+function escPickMod(pool) { let t = 0; for (const id of pool) t += escModW(id); let r = S.rng() * t; for (const id of pool) { r -= escModW(id); if (r <= 0) return id; } return pool[pool.length - 1]; }
+// v63 (user): a clear warning of the next modifier, 5 s ahead: a panel under the HUD with icon, name, skulls and countdown
+const SKULL_PX = ["0111110", "1111111", "1001001", "1001001", "1110111", "0111110", "0101010"];
+function drawSkullPx(x, y, k, on) { ctx.fillStyle = on ? "#e0566b" : "#3e3960"; for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) if (SKULL_PX[r][c] === "1") ctx.fillRect(x + c * k, y + r * k, k, k); }
+function drawNextMod(nx) {
+  const id = S.escNextId, r = id && RULE[id]; ctx.save(); ctx.textAlign = "center";
+  const w = Math.min(CW - 24, 300), h = r ? 58 : 34, x = Math.round(CW / 2 - w / 2), y = Math.round(Math.max(escToastY, 60)), blink = nx < 1.5 && Math.floor(S.t * 8) % 2;
+  ctx.fillStyle = "rgba(10,8,18,.88)"; ctx.fillRect(x, y, w, h); S.nmBox = [y, y + h];
+  ctx.strokeStyle = blink ? "#e0566b" : "#f2c14e"; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+  ctx.font = "10px Silkscreen, monospace"; ctx.fillStyle = "#9a94b8"; ctx.fillText(T("PRÓXIMO MODIFICADOR EN") + " " + Math.ceil(nx), CW / 2, y + 15);
+  if (r) { const hard = id === "mirror" || r.cost >= 3; ctx.font = "16px Silkscreen, monospace"; ctx.fillStyle = hard ? "#e0566b" : "#f2c14e";
+    const label = r.icon + " " + T(r.name).toUpperCase(); ctx.fillText(label, CW / 2 - 22, y + 38);
+    const tw = ctx.measureText(label).width, sx = Math.round(CW / 2 - 22 + tw / 2 + 8), n = clamp(Math.round(r.cost || 1), 1, 3);
+    for (let i2 = 0; i2 < 3; i2++) drawSkullPx(sx + i2 * 16, y + 26, 2, i2 < n);
+    ctx.font = "9px Silkscreen, monospace"; ctx.fillStyle = "#9a94b8"; ctx.fillText(T(SKULL_WORD[n - 1]).toUpperCase(), CW / 2, y + 52); }
+  ctx.restore(); ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace";
+}
+// v65 (user): the Eco modifier's chaser is your own hero (current skin) in blood red, replaying where you were 3 s ago
+const echoTintCache = new Map();
+function echoTint(cv) { let t = echoTintCache.get(cv); if (t) return t; t = document.createElement("canvas"); t.width = cv.width; t.height = cv.height; const c = t.getContext("2d");
+  c.drawImage(cv, 0, 0); c.globalCompositeOperation = "source-atop"; c.fillStyle = "rgba(200,20,40,.78)"; c.fillRect(0, 0, t.width, t.height); echoTintCache.set(cv, t); return t; }
+function drawEchoHero(g) {
+  if (typeof heroFrame !== "function" || typeof sprBlit !== "function") return false;
+  const cid = S.char && S.char.id, id = heroSkinOf(cid === "rolo" ? "kai" : cid);
+  const cv = !g.ground ? heroFrame(id, (g.vy || 0) * (S.gdir || 1) < 0 ? "jump" : "fall", Math.floor(S.t * 8) % 2) : Math.abs(g.vx || 0) > 30 ? heroFrame(id, "run", Math.floor(S.t * 10) % 6) : heroFrame(id, "idle", Math.floor(S.t * 4) % 4);
+  if (!cv) return false;
+  ctx.save(); ctx.globalAlpha = 0.6 + 0.2 * Math.sin(S.t * 10); sprGlow(g.x + g.w / 2, g.y + g.h / 2, 18, [255, 40, 60], 0.18);
+  sprBlit(echoTint(cv), g.x + g.w / 2, g.y + g.h, g.w / 16, (g.face || 1) < 0, false); ctx.restore(); SQX = SQY = 1; return true;
+}
 // ===== pause (Escape): the II button, leaving the app (visibility/blur) and turning the phone sideways all pause the climb.
 // Time and the camera stop like in the level-up cards (S.pauseAt, then S.escT0 moves on by the paused time).
 function escPause() {
