@@ -18,7 +18,7 @@ env:
 jobs:
   testflight:
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: maxim-lobanov/setup-xcode@v1
@@ -83,15 +83,27 @@ jobs:
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} CODE_SIGN_STYLE=Automatic CODE_SIGNING_ALLOWED=NO \
             MARKETING_VERSION=${{ inputs.version }} CURRENT_PROJECT_VERSION=${{ github.run_number }} archive
       - name: Subir a TestFlight
-        timeout-minutes: 20
+        timeout-minutes: 35
         run: |
           P=build/ExportOptions.plist; PB=/usr/libexec/PlistBuddy
           $PB -c "Add :method string app-store-connect" $P
-          $PB -c "Add :destination string upload" $P
+          $PB -c "Add :destination string export" $P
           $PB -c "Add :teamID string ${{ secrets.APPLE_TEAM_ID }}" $P
           $PB -c "Add :signingStyle string automatic" $P
           $PB -c "Add :manageAppVersionAndBuildNumber bool false" $P
           xcodebuild -exportArchive -archivePath build/App.xcarchive -exportPath build \
             -exportOptionsPlist build/ExportOptions.plist $AUTH
+          ls -la build/*.ipa
+          # Subida con altool y reintentos (la subida directa de Apple a veces se queda colgada)
+          mkdir -p ~/.appstoreconnect/private_keys
+          cp ~/keys/AuthKey.p8 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          for i in 1 2 3; do
+            if xcrun altool --upload-app -f build/App.ipa -t ios \
+                 --apiKey ${{ secrets.ASC_KEY_ID }} --apiIssuer ${{ secrets.ASC_ISSUER_ID }}; then
+              echo "Subida OK"; exit 0
+            fi
+            echo "Intento $i falló; reintento en 60 s"; sleep 60
+          done
+          exit 1
       - if: always()
-        run: rm -f ~/keys/AuthKey.p8
+        run: rm -f ~/keys/AuthKey.p8 ~/.appstoreconnect/private_keys/*.p8
