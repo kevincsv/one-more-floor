@@ -611,6 +611,7 @@ body.esc .overlay .codex .lk b { color: #9a94b8; }
 .vign canvas.vart { display: block; width: min(100%, 480px); aspect-ratio: 16 / 9; margin: 10px auto 4px; image-rendering: pixelated; border: 3px solid var(--vc); box-shadow: 0 0 0 3px #0a0812; background: #0a0812; }
 .hurew .card.hupact { border-color: #ff5a6a; } .hurew .card.hupact .tag { color: #ff5a6a; } .hurew .card.hupact .hudown, .hurew .card.hupact .hudn { display: none; }
 .hurew .card.hupact.arm .hudown { display: block; font-size: 11px; color: #ff9aa4; margin-top: 4px; } .hurew .card.hupact.arm .hudn { display: inline-block; margin-top: 6px; padding: 6px 12px; background: #ff5a6a; color: #1b1829; font-family: var(--font-display); box-shadow: 0 0 0 2px #0a0812, 0 3px 0 2px #0a0812; }
+#fullMsg small.sterr { display: block; margin-top: 4px; font-size: 10px; color: #ff9aa4; word-break: break-word; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -10545,7 +10546,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v93";
+var OMF_VER = "Escape v94";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10937,7 +10938,7 @@ function storeCall(m, a) { try { const r = STOREP && STOREP[m](a || {}); return 
 function setFull(v) { if (PAY_TEST) META.fullTest = v; else META.full = v; saveMeta0(); }
 if (PAY_ON && !PAY_TEST && STOREP) {
   storeCall("owned").then(r => { const was = fullOwned(); setFull(!!(r && r.owned)); if (was !== fullOwned() && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); }).catch(() => {});
-  storeCall("products").then(r => { if (r && r.price) fullPrice = String(r.price); }).catch(() => {});
+  storeCall("products").then(r => { if (r && r.price) fullPrice = String(r.price); else if (r && r.error) errLog(String(r.error).slice(0, 200), "store:products"); }).catch(e => errLog(String(e && e.message || e).slice(0, 200), "store:products"));
   // purchases that finish outside the app (Ask to Buy approval, refunds)
   try { const l = STOREP.addListener("ownedChanged", r => { const was = fullOwned(); setFull(!!(r && r.owned)); if (was !== fullOwned()) { if (fullOwned()) toast(Lx("¡Escape completo desbloqueado!", "Full Escape unlocked!")); if (S && S.mode === "title" && !ov.hidden) { if (ov.querySelector(".fullpg")) showFull(); else if (ov.querySelector(".etitle")) showTitle(); } } }); if (l && l.catch) l.catch(() => {}); } catch (_) {}
 }
@@ -10958,19 +10959,19 @@ function showFull() {
     <div class="ctlsel"><button id="restBtn">${Lx("RESTAURAR COMPRA", "RESTORE PURCHASE")}</button><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov); ov.scrollTop = 0;
   const msg = ov.querySelector("#fullMsg"), done = () => { omfSfx("levelup"); toast(Lx("¡Escape completo desbloqueado!", "Full Escape unlocked!")); showFull(); };
-  const fail = t => { omfSfx("hurt"); msg.textContent = t; };
+  const fail = (t, e, w) => { omfSfx("hurt"); msg.textContent = t; const d = e == null ? "" : String(e && e.message || (e && e.error) || e).slice(0, 200); if (d) { const sm = document.createElement("small"); sm.className = "sterr"; sm.textContent = d; msg.appendChild(sm); errLog(d, "store:" + (w || "")); } }; // v94 (iOS thread): show and log the real store error
   const buy = ov.querySelector("#buyBtn");
   if (buy) buy.onclick = () => { msg.textContent = Lx("Abriendo la tienda…", "Opening the store…"); buy.disabled = true;
     if (PAY_TEST) { setFull(true); done(); return; }
     storeCall("buy", { id: FULL_ID }).then(r => { buy.disabled = false; if (r && r.owned) { setFull(true); done(); }
       else if (r && r.pending) msg.textContent = Lx("Compra pendiente de aprobación. Se desbloqueará sola cuando se apruebe.", "Purchase waiting for approval. It unlocks by itself once approved.");
       else if (r && r.cancelled) msg.textContent = Lx("Compra cancelada.", "Purchase cancelled.");
-      else fail(Lx("La tienda no está disponible ahora. Prueba más tarde.", "The store isn't available right now. Try later.")); })
-      .catch(() => { buy.disabled = false; fail(Lx("No se pudo conectar con la tienda. Prueba otra vez.", "Couldn't reach the store. Try again.")); }); };
+      else fail(Lx("La tienda no está disponible ahora. Prueba más tarde.", "The store isn't available right now. Try later."), r && r.error ? r.error : null, "buy"); })
+      .catch(e => { buy.disabled = false; fail(Lx("No se pudo conectar con la tienda. Prueba otra vez.", "Couldn't reach the store. Try again."), e || "?", "buy"); }); };
   ov.querySelector("#restBtn").onclick = () => { omfSfx("click"); msg.textContent = Lx("Buscando tu compra…", "Looking for your purchase…");
     if (PAY_TEST) { msg.textContent = fullOwned() ? Lx("Compra restaurada.", "Purchase restored.") : Lx("No hay compras en esta cuenta.", "No purchase on this account."); return; }
-    storeCall("restore").then(r => { if (r && r.owned) { setFull(true); done(); } else msg.textContent = Lx("No hay compras en esta cuenta.", "No purchase on this account."); })
-      .catch(() => fail(Lx("No se pudo conectar con la tienda. Prueba otra vez.", "Couldn't reach the store. Try again."))); };
+    storeCall("restore").then(r => { if (r && r.owned) { setFull(true); done(); } else if (r && r.error) fail(Lx("No se pudo restaurar.", "Couldn't restore."), r.error, "restore"); else msg.textContent = Lx("No hay compras en esta cuenta.", "No purchase on this account."); })
+      .catch(e => fail(Lx("No se pudo conectar con la tienda. Prueba otra vez.", "Couldn't reach the store. Try again."), e || "?", "restore")); };
   ov.querySelector("#backBtn").onclick = () => { omfSfx("click"); showTitle(); };
 }
 // Settings: the purchase lives next to the backup
