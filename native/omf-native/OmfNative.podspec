@@ -9,6 +9,6 @@ Pod::Spec.new do |s|
   s.source_files = 'ios/Sources/**/*.swift'
   s.ios.deployment_target = '15.0'
   s.dependency 'Capacitor'
-  s.frameworks = 'GameKit'
+  s.frameworks = 'GameKit', 'StoreKit'
   s.swift_version = '5.9'
 end

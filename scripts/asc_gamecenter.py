@@ -149,6 +149,46 @@ def game_center():
 
 step("Game Center", game_center)
 
+# ---------- Compra única "Escape completo" ----------
+IAP_ID = os.environ.get("IAP_PRODUCT_ID", "com.onemorefloor.escape.full")
+IAP_USD = os.environ.get("IAP_PRICE_USD", "3.99")
+def iap():
+    apps = call("GET", f"/v1/apps?filter[bundleId]={BUNDLE_ID}")["data"]
+    app_id = apps[0]["id"]
+    have = [i for i in all_pages(f"/v1/apps/{app_id}/inAppPurchasesV2?limit=200") if i["attributes"].get("productId") == IAP_ID]
+    if have:
+        iid = have[0]["id"]
+    else:
+        iid = call("POST", "/v2/inAppPurchases", {"data": {"type": "inAppPurchases", "attributes": {
+            "name": "Escape completo", "productId": IAP_ID, "inAppPurchaseType": "NON_CONSUMABLE", "familySharable": False,
+            "reviewNote": "Compra unica que desbloquea todo el contenido de Escape. Se prueba desde el titulo del juego."},
+            "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})["data"]["id"]
+        print("Creada compra", IAP_ID)
+    locs = {l["attributes"]["locale"] for l in all_pages(f"/v2/inAppPurchases/{iid}/inAppPurchaseLocalizations?limit=50")}
+    texts = {"en-US": ("Full Escape", "Unlocks all of Escape's content"),
+             "es-ES": ("Escape completo", "Desbloquea todo el contenido de Escape"),
+             "es-MX": ("Escape completo", "Desbloquea todo el contenido de Escape")}
+    for loc, (name, desc) in texts.items():
+        if loc not in locs:
+            call("POST", "/v1/inAppPurchaseLocalizations", {"data": {"type": "inAppPurchaseLocalizations",
+                 "attributes": {"locale": loc, "name": name, "description": desc},
+                 "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iid}}}}})
+    sched = call("GET", f"/v2/inAppPurchases/{iid}/iapPriceSchedule", ok_missing=True)
+    if sched and sched.get("data"):
+        print("La compra ya tiene precio"); return
+    pp = next((p for p in all_pages(f"/v2/inAppPurchases/{iid}/pricePoints?filter[territory]=USA&limit=200")
+               if p["attributes"].get("customerPrice") == IAP_USD), None)
+    if not pp:
+        raise RuntimeError(f"No encuentro el punto de precio {IAP_USD} USD")
+    call("POST", "/v1/inAppPurchasePriceSchedules", {"data": {"type": "inAppPurchasePriceSchedules", "relationships": {
+            "inAppPurchase": {"data": {"type": "inAppPurchases", "id": iid}},
+            "baseTerritory": {"data": {"type": "territories", "id": "USA"}},
+            "manualPrices": {"data": [{"type": "inAppPurchasePrices", "id": "${p1}"}]}}},
+        "included": [{"type": "inAppPurchasePrices", "id": "${p1}", "attributes": {"startDate": None},
+            "relationships": {"inAppPurchasePricePoint": {"data": {"type": "inAppPurchasePricePoints", "id": pp["id"]}}}}]})
+    print(f"Precio fijado: {IAP_USD} USD (el resto de países se calcula solo)")
+step("compra Escape completo", iap)
+
 if problems:
     print("Terminado con avisos:", ", ".join(problems))
     if "dispositivos" in problems:
