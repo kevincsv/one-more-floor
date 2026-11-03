@@ -5999,6 +5999,10 @@ sprcApplyEnemyPal();
 // SPR_TOWER = false turns it off.
 // ===================================================================
 let SPR_TOWER = true;
+// MOSS LEVEL: 1 = as before, 0.5 medio, 0.25 poco, 0 sin musgo. Every moss source checks it.
+const mossL = () => (typeof window !== "undefined" && window.OMF_MOSS != null) ? window.OMF_MOSS : 0.65; // v76 (user): 0.65, "un poco más que medio"
+const mossK = (a, b, c) => mossL() >= 1 || ((sprHash(a, b, c + 777) >>> 0) % 100) < mossL() * 100;
+const mossTh = () => mossL() >= 1 ? 9 : mossL() >= 0.5 ? 3 : mossL() >= 0.25 ? 2 : 1;
 const SPRT_MOSS = [ // hi, light, mid, dark
   ["#c2e878", "#7cba46", "#3f7a2e", "#1f4220"],
   ["#d4f888", "#86cc4e", "#438e36", "#1c4c24"],
@@ -6010,13 +6014,13 @@ const sprtPrev = { tile: sprDrawTile, slab: sprDrawSlab, backdrop: sprDrawBackdr
 function sprtOn() { return SPR_TOWER && (typeof sprChunkyOn !== "function" || sprChunkyOn()); }
 function sprtMossCap(px, py, w, zi, seed, A) { px = Math.round(px); py = Math.round(py); // a thick mossy cap with clumps, blades and overhang
   const M = SPRT_MOSS[zi], n = Math.round(w / A);
-  for (let i = 0; i < n; i++) { const h = sprHash(seed + i, 7, 31), th = 1 + (h % 3) + ((sprHash((seed + i) >> 2, 3, 9) % 3) ? 0 : 1), X = px + i * A;
+  for (let i = 0; i < n; i++) { const h = sprHash(seed + i, 7, 31), th = Math.min(mossTh(), 1 + (h % 3) + ((sprHash((seed + i) >> 2, 3, 9) % 3) ? 0 : 1)), X = px + i * A;
     if (h % 9 === 0) continue;                                           // a gap now and then
     ctx.fillStyle = M[3]; ctx.fillRect(X, py + (th - 1) * A, A, 2 * A);   // shadow under the moss
     ctx.fillStyle = M[2]; ctx.fillRect(X, py - A, A, th * A);
     ctx.fillStyle = M[1]; ctx.fillRect(X, py - A, A, Math.max(1, th - 1) * A);
     if (h % 4 === 0) { ctx.fillStyle = M[0]; ctx.fillRect(X, py - A, A, A); }
-    if (h % 7 === 1) { ctx.fillStyle = M[1]; ctx.fillRect(X, py - 2 * A, A, A); if (h % 3 === 0) { ctx.fillStyle = M[0]; ctx.fillRect(X, py - 3 * A, A, A); } } // blades
+    if (h % 7 === 1 && mossL() >= 0.5) { ctx.fillStyle = M[1]; ctx.fillRect(X, py - 2 * A, A, A); if (h % 3 === 0) { ctx.fillStyle = M[0]; ctx.fillRect(X, py - 3 * A, A, A); } } // blades
   }
 }
 sprDrawTile = function (g, x, y, px, py) {
@@ -6030,20 +6034,20 @@ sprDrawTile = function (g, x, y, px, py) {
     const k = h % 41;
     if (k === 0) { ctx.fillStyle = "#0a0612"; ctx.fillRect(px + 4 * A, py + 5 * A, 7 * A, 4 * A); ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(px + 4 * A, py + 9 * A, 7 * A, A); } // missing brick
     else if (k === 1 || k === 2) { ctx.fillStyle = "rgba(10,6,18,.45)"; for (let r = 0; r < 4; r++) ctx.fillRect(px + (r % 2 ? 2 : 6) * A, py + (2 + r * 4) * A, 8 * A, A); for (let r = 0; r < 4; r++) ctx.fillRect(px + (r % 2 ? 9 : 5) * A, py + (2 + r * 4) * A, A, 4 * A); } // small-brick patch
-    else if (k < 7) { for (let i = 0; i < 9; i++) { const hh = sprHash(x * 16 + i, y, 5); ctx.fillStyle = M[hh % 3 + 1]; ctx.fillRect(px + ((hh >> 3) % 13 + 1) * A, py + ((hh >> 7) % 13 + 1) * A, A * (1 + hh % 2), A); } } // moss tuft
+    else if (k < 7) { if (mossK(x, y, 5)) for (let i = 0; i < 9; i++) { const hh = sprHash(x * 16 + i, y, 5); ctx.fillStyle = M[hh % 3 + 1]; ctx.fillRect(px + ((hh >> 3) % 13 + 1) * A, py + ((hh >> 7) % 13 + 1) * A, A * (1 + hh % 2), A); } } // moss tuft
     else if (k === 8 && zi !== 2) { const gl = 0.5 + 0.3 * Math.sin(S.t * 1.5 + x); ctx.fillStyle = "#0a0612"; ctx.fillRect(px + 7 * A, py + 2 * A, 3 * A, 12 * A); ctx.fillStyle = `rgba(150,200,255,${gl})`; ctx.fillRect(px + 8 * A, py + 3 * A, A, 10 * A); } // arrow slit
     else if (k === 9 && zi === 2) { ctx.fillStyle = M[2]; ctx.fillRect(px + 6 * A, py, 2 * A, 16 * A); ctx.fillStyle = M[1]; ctx.fillRect(px + 6 * A, py, A, 10 * A); } // rust streak
   }
   // damp stain under a top that holds water
   if (!up && !inner && h % 5 === 0 && (lf || rt)) { ctx.fillStyle = "rgba(10,6,18,.25)"; ctx.fillRect(px + (lf ? 1 : 12) * A, py, 3 * A, 16 * A); }
   // moss cap on open tops (thicker than the old ivy)
-  if (up && h % 4 !== 3) sprtMossCap(px, py, TS, zi, x * 16 + y * 7, A);
+  if (up && h % 4 !== 3 && mossK(x, y, 1)) sprtMossCap(px, py, TS, zi, x * 16 + y * 7, A);
   // moss creeping down open sides from the top
-  const creep = (side) => { const n = 3 + h % 9, sx = side ? px + TS - 2 * A : px; for (let j = 0; j < n; j++) { const hh = sprHash(x, y * 16 + j, side + 4); ctx.fillStyle = M[j > n - 3 ? 2 : 1 + (hh % 2)]; ctx.fillRect(sx + (hh % 2) * A, py + j * A, (j < n - 2 ? 2 : 1) * A, A); } };
-  if (up && lf && h % 3 !== 0) creep(0); if (up && rt && h % 3 !== 1) creep(1);
+  const creep = (side) => { const n = Math.max(2, Math.round((3 + h % 9) * Math.min(1, mossL() + 0.2))), sx = side ? px + TS - 2 * A : px; for (let j = 0; j < n; j++) { const hh = sprHash(x, y * 16 + j, side + 4); ctx.fillStyle = M[j > n - 3 ? 2 : 1 + (hh % 2)]; ctx.fillRect(sx + (hh % 2) * A, py + j * A, (j < n - 2 ? 2 : 1) * A, A); } };
+  if (up && lf && h % 3 !== 0 && mossK(x, y, 2)) creep(0); if (up && rt && h % 3 !== 1 && mossK(x, y, 3)) creep(1);
   // under ledges: hanging strands, a drip, and a stone corbel where it meets a wall
   if (dn) {
-    for (let i = 1; i < 15; i += 3 + (h % 3)) { const hh = sprHash(x * 16 + i, y, 17); if (hh % 3) continue; const L = 2 + hh % 6; ctx.fillStyle = M[2]; ctx.fillRect(px + i * A, py + TS, A, L * A); ctx.fillStyle = M[1]; ctx.fillRect(px + i * A, py + TS + L * A, A, A); }
+    for (let i = 1; i < 15; i += 3 + (h % 3)) { const hh = sprHash(x * 16 + i, y, 17); if (hh % 3 || !mossK(x * 16 + i, y, 4)) continue; const L = 2 + hh % 6; ctx.fillStyle = M[2]; ctx.fillRect(px + i * A, py + TS, A, L * A); ctx.fillStyle = M[1]; ctx.fillRect(px + i * A, py + TS + L * A, A, A); }
     if (h % 6 === 0) { const ph = (S.t * 0.8 + (h % 10) / 10) % 1, dx = px + (3 + h % 10) * A; ctx.fillStyle = zi === 2 ? "rgba(40,30,20,.9)" : zi === 3 ? "rgba(127,246,255,.8)" : "rgba(160,200,255,.75)"; ctx.fillRect(dx, py + TS + ph * ph * 30 * A, A, (ph < 0.15 ? 1 : 2) * A); }
     const corb = (side) => { const C = typeof sprcRamps !== "undefined" ? (zi && typeof SPRC_MAT !== "undefined" ? SPRC_MAT[zi][0] : sprcRamps[0][0]) : ["#e2dde9", "#aea8bf", "#837d98", "#5f5975", "#403a55", "#120c1a"];
       for (let s = 0; s < 3; s++) { const w = (6 - s * 2) * A, X = side ? px + TS - w : px; ctx.fillStyle = C[5]; ctx.fillRect(X - (side ? A : 0), py + TS + s * 2 * A, w + A, 2 * A + A); ctx.fillStyle = s === 0 ? C[1] : C[2]; ctx.fillRect(X + (side ? 0 : 0), py + TS + s * 2 * A, w, 2 * A); ctx.fillStyle = C[3]; ctx.fillRect(X, py + TS + s * 2 * A + A, w, A); } };
@@ -6055,8 +6059,8 @@ sprDrawSlab = function (x, y, w, h) {
   sprtPrev.slab(x, y, w, h);
   if (!sprtOn()) return;
   const zi = sprZone(), A = TS / 16, M = SPRT_MOSS[zi], seed = Math.round(w / A) * 7 + Math.round(h / A) * 3; // seeded by size, not position: moving platforms keep the same moss instead of flickering
-  if (sprHash(seed, 1, 2) % 3 !== 0) sprtMossCap(x + 2 * A, y, Math.max(0, w - 4 * A) * (0.4 + (sprHash(seed, 2, 3) % 6) / 10), zi, seed, A);
-  for (let i = 3; i < w / A - 3; i += 4) { const hh = sprHash(seed + i, 5, 7); if (hh % 3) continue; const L = 2 + hh % 4; ctx.fillStyle = M[2]; ctx.fillRect(Math.round(x + i * A), Math.round(y + Math.max(h, 6 * A)), A, L * A); }
+  if (sprHash(seed, 1, 2) % 3 !== 0 && mossK(seed, 1, 6)) sprtMossCap(x + 2 * A, y, Math.max(0, w - 4 * A) * (0.4 + (sprHash(seed, 2, 3) % 6) / 10), zi, seed, A);
+  for (let i = 3; i < w / A - 3; i += 4) { const hh = sprHash(seed + i, 5, 7); if (hh % 3 || !mossK(seed + i, 5, 6)) continue; const L = 2 + hh % 4; ctx.fillStyle = M[2]; ctx.fillRect(Math.round(x + i * A), Math.round(y + Math.max(h, 6 * A)), A, L * A); }
 };
 sprDrawBackdrop = function (cx, cy) {
   sprtPrev.backdrop(cx, cy);
@@ -6074,7 +6078,7 @@ sprDrawBackdrop = function (cx, cy) {
     if (sprHash(j, 0, 41) % 3 === 0) { // beam across the tower
       ctx.fillStyle = "#0a0612"; ctx.fillRect(0, Y - A, CW, 7 * A); ctx.fillStyle = beam; ctx.fillRect(0, Y, CW, 5 * A); ctx.fillStyle = "rgba(255,255,255,.07)"; ctx.fillRect(0, Y, CW, A);
       for (let X = (-((cx || 0) * par) % (40 * A)); X < CW; X += 40 * A) { ctx.fillStyle = "#0a0612"; ctx.fillRect(Math.round(X), Y + 2 * A, 2 * A, 2 * A); }
-      for (let X = 0; X < CW; X += 3 * A) { const hh = sprHash(Math.round((X + (cx || 0) * par) / (3 * A)), j, 8); if (hh % 4) continue; const L = 2 + hh % 7; ctx.fillStyle = `rgba(${zi === 3 ? "98,208,238" : "70,120,60"},.45)`; ctx.fillRect(Math.round(X), Y + 5 * A, A, L * A); }
+      for (let X = 0; X < CW; X += 3 * A) { const hh = sprHash(Math.round((X + (cx || 0) * par) / (3 * A)), j, 8); if (hh % 4 || !mossK(Math.round(X), j, 12)) continue; const L = 2 + hh % 7; ctx.fillStyle = `rgba(${zi === 3 ? "98,208,238" : "70,120,60"},.45)`; ctx.fillRect(Math.round(X), Y + 5 * A, A, L * A); }
     }
     for (let i = wx0; i < wx0 + Math.ceil(CW / cell) + 3; i++) {
       if (sprHash(i, j, 43) % 3 !== 0) continue;
@@ -6085,7 +6089,7 @@ sprDrawBackdrop = function (cx, cy) {
       ctx.fillRect(X - Wd / 2 + 2 * A, Yw + A, Wd - 4 * A, 2 * A); ctx.fillRect(X - Wd / 2 + A, Yw + 2 * A, Wd - 2 * A, A); // arch
       ctx.fillStyle = "#06040c"; ctx.fillRect(X - A / 2, Yw + 2 * A, A, Hh - 2 * A); ctx.fillRect(X - Wd / 2, Yw + Hh * 0.55, Wd, A); // mullion
       ctx.fillStyle = `rgba(${win},.05)`; ctx.beginPath(); ctx.moveTo(X - Wd / 2, Yw + Hh); ctx.lineTo(X + Wd / 2, Yw + Hh); ctx.lineTo(X + Wd * 2.5, Yw + Hh + 60 * A); ctx.lineTo(X + Wd * 0.5, Yw + Hh + 60 * A); ctx.fill(); // light shaft
-      ctx.fillStyle = M[2]; for (let k = 0; k < 4; k++) if (sprHash(i, j, k) % 2) ctx.fillRect(X - Wd / 2 - A + k * 3 * A, Yw - 2 * A, 2 * A, (1 + sprHash(i, j, k + 9) % 3) * A); // moss on the sill
+      ctx.fillStyle = M[2]; for (let k = 0; k < 4; k++) if (sprHash(i, j, k) % 2 && mossK(i, j, 7 + k)) ctx.fillRect(X - Wd / 2 - A + k * 3 * A, Yw - 2 * A, 2 * A, (1 + sprHash(i, j, k + 9) % 3) * A); // moss on the sill
     }
   }
   // round tower: darker toward both sides
@@ -9564,7 +9568,7 @@ const SPRV_STRETCH = 12;                              // rows per stretch
 const sprvSeed = () => (S && (S.seed || S.dailySeed)) ? ((S.seed || S.dailySeed) | 0) % 997 : 0;
 function sprvStretch(y) { // { mat: 0 default | 1..3, mossy: bool }
   const k = Math.floor(y / SPRV_STRETCH), h = sprHash(k, sprvSeed(), 515), roll = h % 10;
-  return { k, mat: roll < 4 ? 0 : 1 + (h >>> 5) % 3, mossy: (h >>> 9) % 20 < 7 };
+  return { k, mat: roll < 4 ? 0 : 1 + (h >>> 5) % 3, mossy: (h >>> 9) % 20 < Math.floor(7 * mossL()) };
 }
 
 // ---------- 1. block materials ----------
@@ -9668,7 +9672,7 @@ function sprvPix(zi, mi, X, Y, v, h, r) {
     const dx = X % 16 - 8, dy = Y % 16 - 8; if (dx * dx + dy * dy < 7) return dx < 0 && dy < 0 ? 0 : 1; return h % 13 === 0 ? 3 : 2;
   }
   // overgrown (castle mi 2, depths mi 2): stone/boulder under a moss blanket
-  const M = SPRV_MOSS[zi], top = 5 + (sprHash(X >> 1, v, 8) % 4), blot = sprHash(X >> 2, Y >> 2, v + 99) % 5 === 0;
+  const M = SPRV_MOSS[zi], top = Math.round((5 + (sprHash(X >> 1, v, 8) % 4)) * mossL()), blot = mossL() >= 0.5 && sprHash(X >> 2, Y >> 2, v + 99) % 5 === 0;
   if (Y < top || blot) { const k = sprHash(X, Y, v + 3) % 7; return Y === top - 1 ? M[3] : k === 0 ? M[0] : k < 3 ? M[2] : M[1]; }
   const row = Y >> 3, bx = (X + (row & 1 ? 8 : 0)) % 16;
   if (Y % 8 === 7 || bx === 15) return 4; if (Y % 8 === 0) return 1; return h % 9 === 0 ? 3 : 2;
