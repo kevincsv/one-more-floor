@@ -10546,7 +10546,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v94";
+var OMF_VER = "Escape v95";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10629,14 +10629,14 @@ function cloudPull(done) {
 // right after launch: ask again a few times while iCloud downloads, then allow saving anyway
 function cloudBoot() { cloudPull(); for (const ms of [2500, 6000, 12000, 25000]) setTimeout(() => { if (!cloudReady) cloudPull(); }, ms); cloudReadyT = setTimeout(cloudSetReady, 40000); }
 if (CLOUD) {
-  try { const st = CLOUD.status(); if (st && st.then) st.then(r => { cloudAvail = !!(r && r.available); if (cloudAvail) cloudBoot(); }).catch(() => {}); } catch (_) {}
+  try { const st = CLOUD.status(); if (st && st.then) st.then(r => { cloudAvail = !!(r && r.available); cloudDbg.st = cloudAvail ? "ok" : "no: " + String((r && (r.error || r.reason)) || JSON.stringify(r)).slice(0, 80); if (cloudAvail) cloudBoot(); }).catch(e => { cloudDbg.st = "error: " + String(e && e.message || e).slice(0, 80); errLog(cloudDbg.st, "cloud:status"); }); else cloudDbg.st = "no promise"; } catch (e) { cloudDbg.st = "throw: " + String(e && e.message || e).slice(0, 80); errLog(cloudDbg.st, "cloud:status"); } // v95: say why iCloud never starts
   try { const r = CLOUD.addListener("changed", ev => { cloudEv.push(((ev && ev.reason) || "?") + " " + hhmm(Date.now())); if (cloudEv.length > 5) cloudEv.shift(); if (!cloudAvail) return; cloudPull(); if (ev && ev.reason === "initial") setTimeout(cloudSetReady, 1500); }); if (r && r.catch) r.catch(() => {}); } catch (_) {}
   addEventListener("pagehide", cloudPush); document.addEventListener("visibilitychange", () => { if (document.hidden) cloudPush(); });
 }
 function cloudDbgHTML() { const D = cloudDbg, d = x => x ? new Date(x).toLocaleString() : "—";
   const down = !D.down ? Lx("aún no ha leído", "not read yet") : D.downErr ? Lx("error", "error") + ": " + D.downErr : D.found ? Lx("encontró una copia del ", "found a copy from ") + d(D.at) : Lx("iCloud no tiene ninguna copia", "iCloud has no copy");
   const up = !D.up ? Lx("aún no ha subido (espera a leer primero)", "not uploaded yet (waits to read first)") : D.upOk === false ? Lx("error", "error") + ": " + D.upErr : D.upOk ? Lx("subida bien", "uploaded OK") + " · " + D.upKb + " KB" : Lx("subiendo…", "uploading…");
-  return `<p class="ctldesc cloudbg">${Lx("Bajada", "Download")} ${D.down ? hhmm(D.down) : ""}: ${down}<br>${Lx("Subida", "Upload")} ${D.up ? hhmm(D.up) : ""}: ${up}${cloudEv.length ? "<br>" + Lx("Avisos de iCloud", "iCloud events") + ": " + cloudEv.join(", ") : ""}</p>`; }
+  return `<p class="ctldesc cloudbg">iCloud: ${!CLOUD ? Lx("no hay plugin", "no plugin") : D.st || Lx("sin respuesta", "no answer")}<br>${Lx("Bajada", "Download")} ${D.down ? hhmm(D.down) : ""}: ${down}<br>${Lx("Subida", "Upload")} ${D.up ? hhmm(D.up) : ""}: ${up}${cloudEv.length ? "<br>" + Lx("Avisos de iCloud", "iCloud events") + ": " + cloudEv.join(", ") : ""}</p>`; }
 function b64(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
 function unb64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 async function exportCode() {
