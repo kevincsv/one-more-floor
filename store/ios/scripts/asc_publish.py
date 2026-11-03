@@ -18,6 +18,7 @@ BUNDLE_ID = "com.onemorefloor.escape"
 LOCALES = {"en-US": "en-US", "es-ES": "es-ES", "es-MX": "es-MX"}
 SHOT_TYPES = {"iphone": "APP_IPHONE_67", "ipad": "APP_IPAD_PRO_3GEN_129"}
 MEDIA_FROM = {"es-MX": "es-ES"}  # Mexico uses the Spain screenshots and previews
+IAP_ID = "com.onemorefloor.escape.full"  # non-consumable "Escape completo", created by the TestFlight workflow
 PREVIEW_TYPES = {"iphone": "IPHONE_67", "ipad": "IPAD_PRO_3GEN_129"}
 
 
@@ -231,6 +232,36 @@ def main():
     except RuntimeError as e:
         print("WARN review details:", e)
 
+    # in-app purchase "Escape completo": review screenshot (the paywall) and review note
+    iap = None
+    try:
+        iaps = a.get(f"/v1/apps/{aid}/inAppPurchasesV2", **{"filter[productId]": IAP_ID})["data"]
+        iap = iaps[0] if iaps else None
+        if not iap:
+            print("WARN in-app purchase", IAP_ID, "not found in App Store Connect")
+        else:
+            print("In-app purchase", IAP_ID, iap["attributes"].get("state"))
+            a.call("PATCH", f"/v2/inAppPurchases/{iap['id']}", {"data": {"type": "inAppPurchases", "id": iap["id"], "attributes": {
+                "reviewNote": "Non-consumable. Opens from the title screen (FULL ESCAPE) and from Settings. Unlocks Horde mode, the heroes Kai and Nyx and all wardrobe looks. RESTORE PURCHASE is on the same screen."}}})
+            shotf = os.path.join(ROOT, "iap", "review-screenshot.png")
+            cur = a.call("GET", f"/v2/inAppPurchases/{iap['id']}/appStoreReviewScreenshot")
+            if cur and cur.get("data"):
+                a.call("DELETE", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{cur['data']['id']}")
+            data = open(shotf, "rb").read()
+            obj = a.call("POST", "/v1/inAppPurchaseAppStoreReviewScreenshots", {"data": {"type": "inAppPurchaseAppStoreReviewScreenshots",
+                "attributes": {"fileName": "review-screenshot.png", "fileSize": len(data)},
+                "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iap["id"]}}}}})["data"]
+            for op in obj["attributes"]["uploadOperations"]:
+                h = {x["name"]: x["value"] for x in op.get("requestHeaders", [])}
+                r = requests.request(op["method"], op["url"], headers=h, data=data[op["offset"]: op["offset"] + op["length"]], timeout=300)
+                if r.status_code >= 300:
+                    raise RuntimeError(f"upload part failed {r.status_code} {r.text[:300]}")
+            a.call("PATCH", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{obj['id']}", {"data": {"type": "inAppPurchaseAppStoreReviewScreenshots",
+                "id": obj["id"], "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
+            print("In-app purchase review screenshot uploaded")
+    except RuntimeError as e:
+        print("WARN in-app purchase:", str(e)[:600])
+
     # newest valid build with this version
     builds = a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
                                     "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1})["data"]
@@ -244,6 +275,13 @@ def main():
     if o.submit:
         if not builds:
             sys.exit("Not submitting: no build attached")
+        if iap and iap["attributes"].get("state") in ("READY_TO_SUBMIT", "MISSING_METADATA", "DEVELOPER_ACTION_NEEDED", "REJECTED"):
+            try:
+                a.call("POST", "/v1/inAppPurchaseSubmissions", {"data": {"type": "inAppPurchaseSubmissions",
+                    "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iap["id"]}}}}})
+                print("In-app purchase added to the review")
+            except RuntimeError as e:
+                print("WARN in-app purchase submission (add it on the version page in App Store Connect):", str(e)[:400])
         sub = a.call("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"},
             "relationships": {"app": {"data": {"type": "apps", "id": aid}}}}})["data"]
         a.call("POST", "/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
