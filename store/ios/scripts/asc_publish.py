@@ -338,7 +338,7 @@ def main():
         print("WARN Game Center images:", str(e)[:400])
 
     # newest valid build with this version
-    builds = a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
+    builds = [] if o.build == "skip" else a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
                                     "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1,
                                     **({"filter[version]": o.build} if o.build else {})})["data"]
     if builds:
