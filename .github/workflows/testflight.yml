@@ -11,7 +11,7 @@ on:
       store:
         description: "Build de tienda (oculta el menú PRUEBAS)"
         type: boolean
-        default: true
+        default: false
 env:
   BUNDLE_ID: com.onemorefloor.escape
   APP_NAME: OMF Escape
