@@ -51,6 +51,16 @@ if (fontLink) {
   }
 }
 
+// Capacitor core (registerPlugin): el puente nativo de iOS no lo trae; sin esto los plugins
+// (EscapeStore, CloudSave, GameCenter) no responden. Va en línea antes del primer script del juego.
+if (!/capacitorExports/.test(html)) {
+  const core = (await readFile(path.join(root, "node_modules/@capacitor/core/dist/capacitor.js"), "utf8"))
+    .replace(/\n\/\/# sourceMappingURL=.*$/m, "");
+  const i = html.search(/<script[\s>]/i);
+  html = html.slice(0, i) + "<script>" + core + "</script>\n" + html.slice(i);
+  console.log("Capacitor core en línea (registerPlugin)");
+}
+
 // Build de tienda (OMF_STORE=1): el juego oculta el menú PRUEBAS, como en Android.
 if (process.env.OMF_STORE === "1" && !/window\.OMF_STORE\s*=\s*true/.test(html)) {
   html = html.replace("<script>", "<script>window.OMF_STORE = true;</script>\n<script>");
