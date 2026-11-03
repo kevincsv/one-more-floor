@@ -202,6 +202,19 @@ def iap():
             call("POST", "/v1/inAppPurchaseLocalizations", {"data": {"type": "inAppPurchaseLocalizations",
                  "attributes": {"locale": loc, "name": name, "description": desc},
                  "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iid}}}}})
+    info = call("GET", f"/v2/inAppPurchases/{iid}")["data"]["attributes"]
+    print("Estado de la compra:", info.get("state"))
+    avail = call("GET", f"/v2/inAppPurchases/{iid}/inAppPurchaseAvailability?include=availableTerritories&limit[availableTerritories]=50", ok_missing=True)
+    n_terr = len((avail or {}).get("data", {}).get("relationships", {}).get("availableTerritories", {}).get("data", []) or []) if avail and avail.get("data") else 0
+    if n_terr == 0:
+        terrs = [t["id"] for t in all_pages("/v1/territories?limit=200")]
+        call("POST", "/v1/inAppPurchaseAvailabilities", {"data": {"type": "inAppPurchaseAvailabilities",
+             "attributes": {"availableInNewTerritories": True},
+             "relationships": {"inAppPurchase": {"data": {"type": "inAppPurchases", "id": iid}},
+                               "availableTerritories": {"data": [{"type": "territories", "id": t} for t in terrs]}}}})
+        print(f"Disponibilidad fijada: {len(terrs)} países")
+    else:
+        print("La compra ya tiene países asignados")
     sched = call("GET", f"/v2/inAppPurchases/{iid}/iapPriceSchedule", ok_missing=True)
     if sched and sched.get("data"):
         print("La compra ya tiene precio"); return
