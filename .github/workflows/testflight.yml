@@ -7,7 +7,7 @@ on:
     inputs:
       version:
         description: "Versión visible (ej. 0.1.0)"
-        default: "0.1.0"
+        default: "1.0.1"
       runner:
         description: "Mac de GitHub (si uno no tiene hueco, prueba el otro)"
         type: choice
