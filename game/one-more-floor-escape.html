@@ -1730,6 +1730,12 @@ function escFixCracks(startRow) {
     g[c.y0][c.side] = 1; g[c.y1][c.side] = 1; S.eg.nextCrack = Math.min(S.eg.nextCrack, startRow); return false;
   });
 }
+function escCrackAim(p, pcx, pcy) {
+  const LW = S.LW, g = S.grid; let side = -1;
+  if (p.x <= TS + 6) side = 0; else if (p.x + p.w >= (LW - 1) * TS - 6) side = LW - 1; if (side < 0) return null;
+  for (const dy of [0, -10, 10, -20, 20]) { const ty = Math.floor((pcy + dy) / TS); if (g[ty] && g[ty][side] === 7) { const cy = Math.max(ty * TS + 4, Math.min(ty * TS + TS - 4, pcy)); return Math.atan2(cy - pcy, side ? 1 : -1); } }
+  return null;
+}
 function escHitCrack(pcx, pcy, ang) {
   for (const d of [10, 20, 30]) {
     const tx = Math.floor((pcx + Math.cos(ang) * d) / TS), ty = Math.floor((pcy + Math.sin(ang) * d) / TS);
@@ -3235,6 +3241,7 @@ function update(dt) {
       ang = Math.atan2(ay, ax);
     }
     ang = atkAssist(pcx, pcy, ang);
+    if (S.escape) { const cw = escCrackAim(p, pcx, pcy); if (cw != null) ang = cw; } // v89 (user): pressed against a cracked wall, the hit goes to the wall first
     p.aim = ang;
     const pogo = !p.ground && !p.climb && Math.sin(ang) * S.gdir > 0.6;
     if (Math.cos(ang) > 0.25) p.face = 1; else if (Math.cos(ang) < -0.25) p.face = -1;
@@ -10405,6 +10412,20 @@ function omfAudioSleep() { for (const a of omfAudioCtxs()) { if (a.state === "ru
 document.addEventListener("visibilitychange", () => { if (document.hidden) omfAudioSleep(); else omfAudioWake(); });
 addEventListener("pagehide", omfAudioSleep); addEventListener("pageshow", omfAudioWake); addEventListener("focus", omfAudioWake);
 for (const ev of ["touchend", "pointerdown", "keydown"]) addEventListener(ev, () => { if (omfAudioCtxs().some(a => a.state !== "running")) omfAudioWake(); }, true);
+// v89 (user: sound still lost after minimizing on iPhone): iOS can report the context as "running" after coming back
+// while nothing comes out. After every trip to the background, the first touch does a full kick inside that gesture:
+// suspend, resume, and a one-sample silent buffer (what iOS needs to reopen the audio route).
+var omfAudioKick = false;
+document.addEventListener("visibilitychange", () => { if (document.hidden) omfAudioKick = true; });
+addEventListener("pagehide", () => { omfAudioKick = true; });
+function omfAudioKickNow() {
+  if (!omfAudioKick) return; omfAudioKick = false;
+  for (const a of omfAudioCtxs()) { if (a.state === "closed") continue;
+    try { const go = () => { try { const r = a.resume(); if (r && r.then) r.then(() => { try { const b = a.createBuffer(1, 1, 22050), s = a.createBufferSource(); s.buffer = b; s.connect(a.destination); s.start(0); } catch (e) {} if (window.omfMusic) { try { omfMusic.refresh(); } catch (e) {} } }).catch(() => {}); } catch (e) {} };
+      const q = a.suspend(); if (q && q.then) q.then(go, go); else go(); } catch (e) {} }
+  if (window.omfMusic) { try { omfMusic.unlock(); } catch (e) {} }
+}
+for (const ev of ["touchend", "pointerup", "keydown"]) addEventListener(ev, omfAudioKickNow, true);
 
 // ===== v68 (user, iPhone): iOS has no system back gesture in the app, so a swipe from the left edge goes back.
 // It only works outside play (the d-pad lives on the left during a climb; the II button pauses). It calls navBack():
@@ -10474,7 +10495,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v88";
+var OMF_VER = "Escape v89";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
