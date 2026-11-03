@@ -72,7 +72,13 @@ public class EscapeStorePlugin: CAPPlugin, CAPBridgedPlugin {
                 guard let product = try await Product.products(for: [pid]).first else {
                     call.resolve(["owned": await isOwned(), "error": "Producto no disponible"]); return
                 }
-                switch try await product.purchase() {
+                let result: Product.PurchaseResult
+                if #available(iOS 17.0, *), let scene = await MainActor.run(body: { self.bridge?.viewController?.view.window?.windowScene }) {
+                    result = try await product.purchase(confirmIn: scene)
+                } else {
+                    result = try await product.purchase()
+                }
+                switch result {
                 case .success(let verification):
                     if case .verified(let t) = verification {
                         await t.finish()
@@ -88,7 +94,8 @@ public class EscapeStorePlugin: CAPPlugin, CAPBridgedPlugin {
                     call.resolve(["owned": await isOwned()])
                 }
             } catch {
-                call.resolve(["owned": await isOwned(), "error": error.localizedDescription])
+                let owned = await self.isOwned()
+                call.resolve(["owned": owned, "error": "\(error)"])
             }
         }
     }

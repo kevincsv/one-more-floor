@@ -3,6 +3,7 @@ import Capacitor
 
 /// Copia automática en iCloud (NSUbiquitousKeyValueStore, hasta 1 MB). No necesita Game Center.
 @objc(CloudSavePlugin)
+@objc(CloudSavePlugin)
 public class CloudSavePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CloudSavePlugin"
     public let jsName = "CloudSave"
