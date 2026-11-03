@@ -513,6 +513,20 @@ canvas.hlogo, canvas.pxi, .ped canvas.pv, .wtile canvas.pv, .splash canvas.hlogo
 .boot canvas.hlogo { animation-delay: .9s; }
 @keyframes spDrop { 0% { transform: translateY(-60px); opacity: 0; } 60% { transform: translateY(6px); opacity: 1; } 100% { transform: none; opacity: 1; } }
 
+/* v73 (user: "todos los menús siempre 8-bit pixel"): square corners everywhere, segmented pixel bars, pixel lock */
+body.esc .overlay *, body.esc .wardrobe *, body.esc .infopop * { border-radius: 0 !important; }
+.pxbar { display: flex; gap: 2px; width: max-content; margin: 6px auto 0; padding: 2px; background: #0a0812; border: 2px solid #4a4470; box-shadow: 2px 2px 0 #05040a; }
+.pxbar i { display: block; width: 9px; height: 7px; background: #2a2640; box-shadow: inset 0 -2px 0 #1c1930; }
+.pxbar i.on { background: #f2c14e; box-shadow: inset 0 -2px 0 #b8862a, inset 0 2px 0 #ffe7a0; }
+.codex .pxbar, .casi .pxbar { margin: 5px 0 0; }
+.casi .pxbar { display: inline-flex; vertical-align: middle; margin-left: 6px; }
+.lkline { display: inline-flex; align-items: center; gap: 6px; } .lkline canvas.pxi { width: 9px; height: 9px; }
+.lktxt { display: block; margin-top: 2px; }
+canvas.pxi { vertical-align: middle; display: inline-block; }
+.etitle .lslot canvas.hlogo, .ehero canvas.pxi, .eicons canvas.pxi, .eskin canvas.pxi, .mode .mi canvas.pxi, .wardrobe h2 canvas.pxi { display: block; }
+.pbar, .gbar { border-radius: 0 !important; background: #0a0812 !important; border: 2px solid #4a4470 !important; box-shadow: none !important; }
+.pbar u, .gbar u { background: repeating-linear-gradient(90deg, #f2c14e 0 6px, #0a0812 6px 8px) !important; }
+
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -1610,7 +1624,7 @@ function buildEscape() {
   while (S.genTop > LH - 2 - S.viewRows * 1.6) genEscSegment();
   // a safe start: nothing hostile within 5 tiles of where you appear
   { const p = S.player; S.enemies = S.enemies.filter(e => e.boss || Math.hypot(e.x + e.w / 2 - (p.x + p.w / 2), e.y + e.h / 2 - (p.y + p.h / 2)) > 5 * TS); }
-  toast("¡Escapa hacia arriba! La cámara solo sube: si caes, se acabó");
+  if ((META.escIntro = (META.escIntro || 0) + 1) <= 3) toast("¡Escapa hacia arriba! La cámara solo sube: si caes, se acabó"); // v73: only on the first 3 runs
 }
 /* Boss arenas: at every biome change (and every 150 s in the last biome) the tower builds a closed room.
    You climb in by a short ladder through its floor; the ladder seals, the boss appears, the camera holds still
@@ -3796,7 +3810,7 @@ function noise(x, y) {
   S.rings.push({ x: x + 8, y: y + 11, r: 0, max });
   for (const e of S.enemies) if (Math.hypot(e.x - x, e.y - y) < max) { e.alert = 4; e.noiseX = x + 8; e.noiseY = y + 11; e.noiseT = 3; e.warn = Math.max(e.warn || 0, 0.4); if (has("dark")) e.reveal = 1.4; }
 }
-function toast(text) { text = T(text); if (S.toasts.some(t => t.text === text)) return; S.toasts.push({ text, t: 2.2 }); }
+function toast(text) { text = T(text); if (S.toasts.some(t => t.text === text)) return; S.toasts.push({ text, t: ESCAPE ? 1.8 : 2.2 }); if (ESCAPE && S.toasts.length > 4) S.toasts.splice(0, S.toasts.length - 4); }
 function puff(x, y, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-40, 40), vy: rnd(-30, 0) * S.gdir, life: rnd(.3, .6), c: "#9a94b8", s: 3 }); }
 function puffC(x, y, c, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-50, 50), vy: rnd(-60, 0), life: rnd(.3, .5), c, s: 3 }); }
 function burst(x, y, c, n) { for (let i = 0; i < n; i++) S.parts.push({ x, y, vx: rnd(-180, 180), vy: rnd(-200, 120), g: 500 * S.gdir, life: rnd(.4, .8), c, s: 4 }); }
@@ -4332,7 +4346,7 @@ function codexPage(cat) {
   ov.hidden = false; ov.classList.remove("dead");
   if (cat === "logros") return codexAch();
   if (cat === "heroes") {
-    const row = (name, ok, L, sub) => ok ? `<div><b>✓ ${name}</b>${sub || T("Desbloqueado")}</div>` : `<div class="lk"><b>🔒 ${name}</b>${L.t}${L.n ? `<span class="prog">${L.v}/${L.n}${L.u}</span><span class="pbar"><u style="width:${Math.round(L.v / L.n * 100)}%"></u></span>` : ""}</div>`;
+    const row = (name, ok, L, sub) => ok ? `<div><b>✓ ${name}</b>${sub || T("Desbloqueado")}</div>` : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${name}</b>${L.t}${L.n ? `<span class="prog">${L.v}/${L.n}${L.u}</span>${pxBar(L.v / L.n)}` : ""}</div>`;
     ov.innerHTML = `<h2>${T("PERSONAJES")}</h2><div class="codex">${CHARS.map(c => row(c.name, META.chars.includes(c.id), lockInfo("char", c.id), T(c.desc))).join("")}</div>
       <h3>${T("ASPECTOS")}</h3><div class="codex">${Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).map(id => row(T(HERO_SKINS[id].name) + " · " + (CHARS.find(c => c.id === HERO_SKINS[id].ch) || {}).name, META.skins.includes(id), lockInfo("skin", id))).join("")}</div>
       <button class="go" id="backBtn">${T("Volver")}</button>`;
@@ -6655,7 +6669,7 @@ function draw() {
   ctx.fillStyle = "#5fd1c4"; ctx.fillRect(CW - 214, 10, 180 * clamp(prog, 0, 1), 4);
 
   let banBox = null; // area the start/arena banner covers this frame, so toasts go around it
-  if (S.mode === "play" && S.banner > 0 && S.bannerSmall) {
+  if (S.mode === "play" && S.banner > 0 && (S.bannerSmall || ESCAPE)) { // v73 (user: "messages cover the whole screen"): Escape always uses the slim strip
     // leaving a secret room: a slim strip at the top, so the hero stays visible during the 1.5 s pause
     ctx.globalAlpha = Math.min(1, S.banner); ctx.textAlign = "center"; ctx.font = "12px Silkscreen, monospace";
     const t = T("ESCAPE") + " · " + biome().name.toUpperCase(), w = Math.min(CW - 16, ctx.measureText(t).width + 28), y0 = ESCAPE ? 84 : 40;
@@ -6680,21 +6694,21 @@ function draw() {
     if (cs.length) { ctx.fillStyle = "#5fd1c4"; ctx.fillText(cs.map(c => c.name).join(" · "), CW / 2, CH / 2 + 42 + (mlines.length - 1) * 20); }
     ctx.globalAlpha = 1;
   }
-  ctx.textAlign = "center"; ctx.font = ESCAPE ? "15px 'Pixelify Sans', monospace" : "14px 'Chakra Petch', sans-serif";
+  ctx.textAlign = "center"; ctx.font = ESCAPE ? "11px Silkscreen, monospace" : "14px 'Chakra Petch', sans-serif";
   // toasts wrap to the screen width (long ones used to run off both sides on phones); in Escape they are pixel frames below the HUD
   let ty = ESCAPE ? Math.max(96, escToastY) : 56;
-  S.toasts.slice(-3).forEach(t => {
+  S.toasts.slice(ESCAPE ? -2 : -3).forEach(t => {
     ctx.globalAlpha = Math.min(1, t.t * 2);
     const maxW = CW - 28, lines = [""];
     for (const wd of String(t.text).split(" ")) { const tr = lines[lines.length - 1] + (lines[lines.length - 1] ? " " : "") + wd; if (ctx.measureText(tr).width > maxW - 24 && lines[lines.length - 1]) lines.push(wd); else lines[lines.length - 1] = tr; }
-    const w = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + 24), h = 10 + lines.length * 18, x0 = Math.round(CW / 2 - w / 2);
+    const LH2 = ESCAPE ? 13 : 18, w = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + (ESCAPE ? 14 : 24)), h = (ESCAPE ? 6 : 10) + lines.length * LH2, x0 = Math.round(CW / 2 - w / 2);
     if (banBox && ty - 21 < banBox[1] + 4 && ty - 21 + h + 6 > banBox[0]) ty = banBox[1] + 8 + 21; // go below the banner, never over it
     if (S.nmBox && ty - 21 < S.nmBox[1] + 4 && ty - 21 + h + 6 > S.nmBox[0]) ty = S.nmBox[1] + 8 + 21; // and below the next-modifier panel
-    const y0 = ty - 18;
+    const y0 = ty - (ESCAPE ? 13 : 18);
     if (ESCAPE) { ctx.fillStyle = "#0a0812"; ctx.fillRect(x0 - 3, y0 - 3, w + 6, h + 6); ctx.fillStyle = "#3e3960"; ctx.fillRect(x0 - 1, y0 - 1, w + 2, h + 2); }
     ctx.fillStyle = ESCAPE ? "#1b1829" : "rgba(27,24,41,.92)"; ctx.fillRect(x0, y0, w, h);
-    ctx.fillStyle = "#f2c14e"; lines.forEach((l, k) => ctx.fillText(l, CW / 2, ty + k * 18));
-    ty += h + 8;
+    ctx.fillStyle = "#f2c14e"; lines.forEach((l, k) => ctx.fillText(l, CW / 2, ty + k * LH2 - (ESCAPE ? 3 : 0)));
+    ty += h + (ESCAPE ? 5 : 8);
   });
   ctx.globalAlpha = 1;
   ctx.restore(); CW = hudCW; CH = hudCH;
@@ -9246,7 +9260,8 @@ function lockInfo(kind, id) {
   const k = HERO_SKINS[id], p = SKIN_PROG[id]; if (!k) return { t: "" };
   return p ? { t: T(k.unlock), v: Math.min(p[1], p[0]()), n: p[1], u: p[2] || "" } : { t: T(k.unlock) + " " + T("(en una partida)") };
 }
-function lockHTML(name, L) { return `🔒 <b>${name}</b>: ${L.t}${L.n ? ` · ${L.v}/${L.n}${L.u}<span class="pbar lkbar"><u style="width:${Math.round(L.v / L.n * 100)}%"></u></span>` : ""}`; }
+function lockHTML(name, L) { return `<span class="lkline">${pxi("lock", "#f2c14e", 1)}<b>${name}</b></span><span class="lktxt">${L.t}${L.n ? ` · ${L.v}/${L.n}${L.u}` : ""}</span>${L.n ? pxBar(L.v / L.n) : ""}`; } // v73 (user): 8-bit lock + segmented bar
+function pxBar(f, n) { n = n || 10; const k = Math.max(0, Math.min(n, Math.floor((f || 0) * n + 1e-6))); return `<span class="pxbar" role="img" aria-label="${Math.round((f || 0) * 100)}%">${Array.from({ length: n }, (_, i) => `<i class="${i < k ? "on" : ""}"></i>`).join("")}</span>`; }
 if (ESCAPE) setInterval(() => { if (S && S.escape && !S.test && S.mode === "play" && (S.escBest || 0) >= 150 && !META.chars.includes("nyx")) { META.chars.push("nyx"); saveMeta(); toast(T("Personaje desbloqueado: Nyx")); } }, 1000);
 
 // ===== daily challenge (Escape): today's date is the seed, so everyone climbs the same tower, gets the same start cards and
@@ -9355,7 +9370,7 @@ function infoPop(ik, id) {
   else if (ik === "skin" && HERO_SKINS[id]) { ic = "✦"; name = T(HERO_SKINS[id].name); what = T("Aspecto de") + " " + ((CHARS.find(c => c.id === HERO_SKINS[id].ch) || {}).name || ""); done = META.skins.includes(id); if (!done) { const L = lockInfo("skin", id); how = L.t; if (L.n) v = L.v / L.n; } }
   else if (ik === "feat") { const P = PGS_FEATS.find(f => f[0] === id); if (P) { ic = "🏆"; name = T(P[1]); what = T(P[2]); v = Math.min(1, P[3]() ); done = v >= 1; if (done) v = null; } }
   const el = document.createElement("div"); el.className = "infopop";
-  el.innerHTML = `<div class="ipc${done ? "" : " lock"}"><span class="gi">${ic}</span><b>${name}</b>${what ? `<p>${what}</p>` : ""}${how ? `<p class="how2">${done ? "" : "🔒 "}${how}${v != null ? `<span class="gbar"><u style="width:${Math.round(v * 100)}%"></u></span>` : ""}</p>` : done ? `<p class="how2 ok">✓ ${T("Desbloqueado")}</p>` : ""}<small>${T("Toca para cerrar")}</small></div>`;
+  el.innerHTML = `<div class="ipc${done ? "" : " lock"}"><span class="gi">${ic}</span><b>${name}</b>${what ? `<p>${what}</p>` : ""}${how ? `<p class="how2">${done ? "" : pxi("lock", "#f2c14e", 1) + " "}${how}${v != null ? pxBar(v) : ""}</p>` : done ? `<p class="how2 ok">✓ ${T("Desbloqueado")}</p>` : ""}<small>${T("Toca para cerrar")}</small></div>`;
   el.onclick = () => el.remove(); document.body.appendChild(el); omfSfx("click");
 }
 document.addEventListener("click", e => { const t = e.target.closest && e.target.closest("[data-ik]"); if (t) { e.stopPropagation(); infoPop(t.dataset.ik, t.dataset.id); } });
@@ -10009,7 +10024,7 @@ function escTitleHTML(ch0, db) {
     <div class="ehero"><button class="arr" id="heroPrev" aria-label="${T("Anterior")}">${pxi("left", "#9a94b8", 3)}</button>
       <div class="ped"><button class="pedhero" id="heroTap" aria-label="${T("Cambiar aspecto")}"><canvas class="pv" width="48" height="78" data-cid="${view.id}" data-skin="${ok ? cur : view.id}" data-lock="${ok ? 0 : 1}" data-off="0"></canvas></button><i class="slab"></i></div>
       <button class="arr" id="heroNext" aria-label="${T("Siguiente")}">${pxi("right", "#9a94b8", 3)}</button></div>
-    <p class="ename" style="color:${ok ? view.color : "var(--muted)"}">${ok ? view.name.toUpperCase() : "🔒 " + view.name.toUpperCase()}</p>
+    <p class="ename" style="color:${ok ? view.color : "var(--muted)"}">${ok ? view.name.toUpperCase() : pxi("lock", "#9a94b8", 1) + " " + view.name.toUpperCase()}</p>
     <p class="edesc">${ok ? view.desc : lockHTML(view.name, lockInfo("char", view.id))}</p>
     ${ok && ids.length > 1 ? `<button class="eskin" id="wardBtn">${pxi("hanger", "#5fd1c4")}<span>${T(curK ? curK.name : view.name).toUpperCase()}</span><small>${own}/${ids.length}</small></button>` : ""}
     <div class="difsel" role="group" aria-label="${T("Dificultad")}"><button data-dif="0" class="${META.easy ? "" : "on"}">${T("NORMAL")}</button><button data-dif="1" class="${META.easy ? "on" : ""}">${T("FÁCIL")}</button></div>
@@ -10039,6 +10054,7 @@ function escTitleWire() {
   on("testsBtn", () => { const d = document.getElementById("testsBox"); if (d) { d.open = !d.open; if (d.open) d.scrollIntoView({ block: "nearest" }); } });
   if (!META.chars.includes(view.id)) ov.querySelectorAll(".emodes button").forEach(b => b.disabled = true);
 }
+if (typeof MutationObserver !== "undefined") new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches && n.matches("canvas[data-pi]")) paintPxi(n.parentNode); else if (n.querySelector && n.querySelector("canvas[data-pi]")) paintPxi(n); } }).observe(document.body, { childList: true, subtree: true });
 var ESC_TITLE_READY = true; // the classic title needs the hero add-ons above; earlier title draws use the old layout
 function escWardrobe(ch) {
   const ids = heroSkinsOf(ch.id), cur = heroSkinOf(ch.id);
