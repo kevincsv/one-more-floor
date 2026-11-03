@@ -2808,8 +2808,11 @@ const isSolidTile = t => t === 1 || t >= 4;
    Thick blocks, walls, the ground, springs, conveyors, cracked walls and pistons stay fully solid. Enemies don't change. */
 var OW = 0; // 1 while the hero's sideways and upward checks run
 function owOn(e) { return ESCAPE && e === S.player && S.gdir > 0 && !(S.arena && S.arena.state !== "done") && !e.climb; }
-function owTile(tx, ty) { const g = S.grid; return ty > 0 && ty < S.LH - 1 && tx > 0 && tx < S.LW - 1 && g[ty][tx] === 1 && !solidCode(g[ty - 1][tx]) && !solidCode(g[ty + 1][tx]); }
-function owMover(m) { return m.h <= TS / 2 && !m.side; }
+function owTile(tx, ty) { if (!OW_LEDGES) return false; const g = S.grid; return ty > 0 && ty < S.LH - 1 && tx > 0 && tx < S.LW - 1 && g[ty][tx] === 1 && !solidCode(g[ty - 1][tx]) && !solidCode(g[ty + 1][tx]); }
+// v80 (user picked from the blocks page): stone ledges (thin or not) and the light platform are solid again;
+// only the moving platform and the ghost steps let you jump up through them.
+var OW_LEDGES = false;
+function owMover(m) { return m.kind === "move" || m.kind === "gstep"; }
 function owHit(h) { return h.kind ? owMover(h) : h.w === TS && h.h === TS && owTile(Math.round(h.x / TS), Math.round(h.y / TS)); }
 function hitAt(px, py) {
   const tx = Math.floor(px / TS), ty = Math.floor(py / TS);
@@ -10387,7 +10390,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v79";
+var OMF_VER = "Escape v80";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
