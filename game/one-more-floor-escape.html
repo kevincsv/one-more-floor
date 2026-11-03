@@ -592,6 +592,22 @@ img.trki { width: 1.5em; height: 1.5em; image-rendering: pixelated; vertical-ali
 body.esc .overlay .codex .lk { opacity: .82; }
 body.esc .overlay .codex .lk b { color: #9a94b8; }
 .codex .lk .unl { display: block; margin-bottom: 3px; font: 9px Silkscreen, monospace; letter-spacing: 1px; color: #f2c14e; }
+/* v92: La Huida */
+.mode.hist { border-color: #5fd1c4; }
+.mode.hist .mt { color: #5fd1c4; }
+.hunew { font-style: normal; font-size: 9px; color: #0a0812; background: #f2c14e; padding: 1px 4px; animation: hublink 1s steps(2) infinite; }
+@keyframes hublink { 50% { opacity: .35; } }
+.huida .hutower { display: grid; gap: 4px; margin: 10px auto; width: min(100%, 380px); }
+.huida .hub { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 8px; background: #15121f; border: 2px solid #3e3960; border-left: 6px solid var(--bc); text-align: left; font-family: Silkscreen, monospace; }
+.huida .hub.here { border-color: #5fd1c4; border-left-color: var(--bc); }
+.huida .hn { font-size: 10px; color: var(--bc); }
+.huida .hb { font-size: 10px; color: #ece8f5; grid-column: 1; }
+.huida .he { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 3px; align-items: center; }
+.huida .he i { width: 8px; height: 8px; background: #231f37; box-shadow: 0 0 0 2px #0a0812; }
+.huida .he i.on { background: #b9a7ff; }
+.huida .hust { font: 10px Silkscreen, monospace; color: #9a94b8; }
+.hurew .humem { font-size: 16px; line-height: 1.45; color: #b9a7ff; margin: 8px auto 14px; max-width: 34ch; }
+.acta { font-size: 13px; color: #c9c3e6; background: #15121f; border: 2px solid #3e3960; padding: 8px 10px; margin: 6px auto 10px; max-width: 36ch; line-height: 1.4; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -1778,7 +1794,7 @@ function escEnterRoom(d, force) {
   if (!S.roomTest) skinCount("rooms");
   // you come out on the far side of the wall you broke: through the right wall you appear on the room's left, and the other way round
   const g = S.grid, Q = ESC_ROOM, LW = S.LW, p = S.player, side = d.tx === 0 ? 1 : -1;
-  let pool = ESC_ROOM_TYPES.filter(([k]) => k !== "lore" || !S.loreSeen), tot = pool.reduce((a, [, w]) => a + w, 0), r = Math.random() * tot, kind = pool[0][0];
+  const huEco = typeof huEcoLeft === "function" && huEcoLeft(); let pool = ESC_ROOM_TYPES.map(([k, w]) => [k, k === "lore" && huEco ? 60 : w]).filter(([k]) => k !== "lore" || huEco || !S.loreSeen), tot = pool.reduce((a, [, w]) => a + w, 0), r = Math.random() * tot, kind = pool[0][0];
   // harder tiers tilt the odds toward the bad rooms
   if (escTier() >= 4 && Math.random() < 0.2) kind = Math.random() < 0.5 ? "ambush" : "cursed";
   else for (const [k, w] of pool) { if ((r -= w) < 0) { kind = k; break; } }
@@ -1894,7 +1910,8 @@ function escSecretTick(p, dt) {
         else { const pool = ESC_MOD_POOL.filter(id => RULE[id] && !has(id) && escModOk(id)); if (pool.length) escAddMod(pool[Math.floor(Math.random() * pool.length)], S.t - S.escT0); addGold(60); toast("Maldición… pero +60 de oro"); S.shake = 0.4; } updateHud(true); }
       break;
     case "lore":
-      if (!o.st && near(o)) { o.st = 1; S.loreSeen = true; addGold(15); toast("«Subí para olvidar lo que dejé abajo.» · +15 de oro"); }
+      if (!o.st && near(o) && huOn()) { o.st = 1; huTakeEco(); } // v92: La Huida's Ecos
+      else if (!o.st && near(o)) { o.st = 1; S.loreSeen = true; addGold(15); toast("«Subí para olvidar lo que dejé abajo.» · +15 de oro"); }
       break;
   }
   // leave through the hole you came in by
@@ -1922,7 +1939,7 @@ function escArenaTick(p, dt) { // true while the fight holds the camera and the 
     A.state = "done";
     if (A.held) { A.held = false; S.rules = [...new Set(S.escMods.map(m => m.id).concat(S.rules))]; lastHud = ""; } // the paused modifiers come back
     for (let x = A.open[0]; x <= A.open[1]; x++) { S.grid[A.C][x] = 0; burst(x * TS + 12, A.C * TS + 12, "#9aa0b8", 8); }
-    S.items.push({ kind: "ruby", x: 6 * TS + 5, y: (A.F - 1) * TS + 8, w: 14, h: 14 }); addGold(20); S.trkFog = false; trkDrop("rare", 3 * TS + 5, (A.F - 1) * TS + 8);
+    S.items.push({ kind: "ruby", x: 6 * TS + 5, y: (A.F - 1) * TS + 8, w: 14, h: 14 }); addGold(20); S.trkFog = false; if (!(typeof huOn === "function" && huOn())) trkDrop("rare", 3 * TS + 5, (A.F - 1) * TS + 8);
     toast("El techo se abre: ¡sigue subiendo!"); S.shake = Math.max(S.shake || 0, 0.4);
     return false;
   }
@@ -1933,7 +1950,8 @@ function genEscSegment() {
   const R = S.rng, LW = S.LW, g = S.grid, eg = S.eg, nj = has("nojump");
   { // a boss arena at each biome change, and every 150 s once you're in the last biome
     const el = S.t - S.escT0, z = escBiomeAt(el); if (eg.lastZone == null) { eg.lastZone = z; eg.nextArenaT = ESC_BIOME_T[ESC_BIOME_T.length - 1] + 150; }
-    if (!ESC_ARENAS) eg.lastZone = z; // v91 (user): no bosses in the endless climb; story mode keeps them
+    if (typeof huOn === "function" && huOn()) { if (huArenaDue() && huBuildArena()) return; } // v92: La Huida builds its own arenas at the top of each stretch
+    else if (!ESC_ARENAS) eg.lastZone = z; // v91 (user): no bosses in the endless climb; story mode keeps them
     else if ((z !== eg.lastZone || (z >= 4 && el >= eg.nextArenaT)) && buildEscArena()) { eg.lastZone = z; if (z >= 4) eg.nextArenaT = Math.max(eg.nextArenaT, el) + 150; return; }
   }
   const startRow = eg.row, top = Math.max(6, startRow - ESC_SEG);
@@ -10523,7 +10541,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v91";
+var OMF_VER = "Escape v92";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11302,6 +11320,212 @@ setInterval(() => { if (!S || !S.escape || S.test || S.lab || S.mode !== "play")
 }, 500);
 Object.assign(EN_TEXT, { "PARA DESBLOQUEAR": "TO UNLOCK", "Llega a 75 m en una partida de Escape": "Reach 75 m in one Escape run", "Personaje desbloqueado: Kai": "Hero unlocked: Kai",
   "Empiezas cada bioma nuevo con un escudo que aguanta un golpe.": "You start every new biome with a shield that takes one hit." });
+
+// ===== v92 (user approved spec /mnt/project-files/historia/la-huida-spec.md): LA HUIDA, Escape's story mode.
+// One climb through the 5 biomes in fixed stretches (HU_L rows each, a fixed seed per stretch). At the top of each stretch a
+// closed arena with that biome's boss (bosses live only here). Each boss: its lines, a memory (RECUERDO n/5), a pick of
+// 1 of 2 rare items, a checkpoint (not in Hardcore) and the next biome's vignette. 15 Ecos hide in secret rooms (3 per biome).
+// After El Sello: ending UN PISO MÁS, or BAJAR with 15/15 Ecos. Free in every version, any unlocked hero.
+var HU_L = 200;
+const HU_B = [
+  { n: "La Campana", t: "La campana", c: "#c9a36a", v: ["Despiertas en una escalera que no recuerdas. Abajo, algo gris se traga los escalones.", "En el bolsillo, una nota con tu letra: «Subí para olvidar lo que dejé abajo.»", "Muy arriba, una campana suena sin parar."],
+    i: "Esta vez sí aviso. Esta vez nadie sale.", o: "...¿Quién tenía que tocarme aquella noche?", m: "Tú eras quien tocaba la campana. Aquella noche no la tocaste.",
+    e: ["La cuerda de la campana todavía huele a mis manos.", "Aquí había una panadería. Creo.", "Firmé la primera cláusula sin leerla. El Notario dijo que era lo normal."] },
+  { n: "La Bestia de raíces", t: "Raíces", c: "#7cba46", v: ["Las piedras dan paso a raíces. Las paredes respiran y sudan escarcha.", "Una escaladora busca algo entre ellas. Se llama Nyx.", "Nyx: «Lo que se olvida no desaparece. Se pudre y crece.»"],
+    i: "Todo lo que soltáis, lo guardo yo.", o: "Suelta raíces con nombres grabados. En una pone KAI.", m: "Aquella noche no tocaste la campana porque fuiste a buscar a Kai.",
+    e: ["Las raíces me llaman por un nombre que no es el mío.", "Nyx dice que bajar es la única forma de encontrar algo. No la creo.", "Encontré un zapato pequeño entre las raíces. Lo dejé donde estaba."] },
+  { n: "El Robot fuelle", t: "Engranajes", c: "#ff8a4a", v: ["Humo. Silbatos. Escalones que se deshacen al pisarlos.", "Alguien con una llave inglesa mira una máquina que no para. Es Kai.", "Kai: «Tú me pediste que la construyera. ¿De verdad no te acuerdas de mí?»"],
+    i: "Respira. Respira. Respira. RESPIRA.", o: "Un último suspiro largo. Kai: «Ya está. Ya puedes descansar.»", m: "Firmaste olvidar a Kai a cambio de subir más rápido que el Olvido.",
+    e: ["Kai dice que firmé los planos. No recuerdo saber dibujar.", "Cada piso cuesta menos si no piensas en él.", "Los engranajes llevan iniciales. Algunas son mías."] },
+  { n: "El Notario", t: "Letra pequeña", c: "#8aa8ff", v: ["El suelo se acaba. Solo queda un escritorio flotando y un tintero.", "Nyx: «Yo firmé la Oscuridad para ver lo que no se ve. Tú firmaste todo lo demás.»", "Las estrellas tienen forma de sello."],
+    i: "Lamento la espera. Su expediente es largo.", o: "No muere. Cierra el libro: «Falta una firma.»", m: "El Contrato tiene tu letra. La torre la escribiste tú.",
+    e: ["La tinta del Contrato es del mismo color que mis dedos.", "Si firmo una más, olvidaré por qué empecé. Quizá sea mejor.", "El escritorio tiene un cajón con mi letra. No lo abrí."] },
+  { n: "El Sello", t: "La cima", c: "#e468c8", v: ["La torre se arma con trozos de todo lo anterior.", "Ves tu sombra escribiendo en una pared. Escribe tu nombre.", "Arriba no hay techo. Hay un ojo."],
+    i: "Lacre caliente. Un ojo. Ninguna prisa.", o: "Se agrieta y deja una marca en tu mano: tu propia firma.", m: "El sello del Contrato lo elegiste tú.",
+    e: ["No miré atrás en toda la subida. Ahí está el problema.", "Arriba no hay techo. Hay otro piso. Siempre hay otro piso.", "La campana sonó. Esta vez la oí."] },
+];
+const HU_END = {
+  piso: { t: "UN PISO MÁS", c: "#f2c14e", p: ["El Sello se rompe. Detrás espera el Notario con una hoja en blanco: «Una cláusula más y le dejo subir un piso más.»", "Velo firma.", "La cámara vuelve a subir."] },
+  bajar: { t: "BAJAR", c: "#5fd1c4", p: ["Velo lo recuerda todo y rompe el Contrato.", "Baja hasta el campanario y por fin toca la campana.", "El Olvido se para. Kai y Nyx bajan detrás."] },
+};
+const HU_BIOME = ["Castillo olvidado", "Profundidades vivas", "Reino de las máquinas", "El vacío", "Lo desconocido"];
+function huOn() { return ESCAPE && !!S && S.run === "story" && !!S.hu; }
+function huM() { const H = META.hu = META.hu || {}; H.mem = H.mem || []; H.ecos = H.ecos || []; H.boss = H.boss || []; H.end = H.end || []; H.best = H.best || {}; H.cp = H.cp || {}; return H; }
+function huDk() { return S && S.run === "story" ? (S.easy ? "e" : S.hard ? "h" : "n") : META.easy ? "e" : META.hard ? "h" : "n"; }
+function huRowH(row) { return Math.max(0, (S.LH - 2) - row); }
+function huZoneAtRow(row) { return Math.min(4, S.hu.next, S.hu.base + Math.floor(huRowH(row) / S.hu.L)); } // never past a boss not yet built
+function huArenaDue() { const H = S.hu; return H.next <= 4 && huRowH(S.eg.row) >= (H.next - H.base + 1) * H.L; }
+function huBuildArena() { const H = S.hu; H.forceZ = H.next; let ok = false; try { ok = buildEscArena(); } finally { H.forceZ = null; } if (ok) { S.arena.huZ = H.next; H.next++; } return ok; }
+var huBiome0 = escBiomeAt; escBiomeAt = function (t) { if (huOn()) { if (S.hu.forceZ != null) return S.hu.forceZ; return huZoneAtRow(S.eg ? S.eg.row : S.LH - 2); } return huBiome0(t); };
+var huBp0 = bpStart; bpStart = function (e, room) { if (huOn() && S.arena && S.arena.huZ != null) { S.hu.forceZ = S.arena.huZ; try { return huBp0(e, room); } finally { S.hu.forceZ = null; } } return huBp0(e, room); };
+function huEcoLeft() { if (!huOn()) return false; const z = Math.min(4, S.camZone || 0), M = huM(); return [0, 1, 2].some(i => !M.ecos.includes(z + "-" + i)); }
+function huTakeEco() { const z = Math.min(4, S.camZone || 0), M = huM(), i = [0, 1, 2].find(k => !M.ecos.includes(z + "-" + k)); addGold(15);
+  if (i == null) { storySay0(T("Eco de Velo"), HU_B[z].e[0], "#b9a7ff", 3); return; }
+  if (!S.test) { M.ecos.push(z + "-" + i); saveMeta(); } omfSfx("pick");
+  storySay0(T("Eco de Velo") + " · " + M.ecos.length + "/15", HU_B[z].e[i], "#b9a7ff", 3.2); }
+function huPause() { S.mode = "menu"; S.pauseAt = S.t; ov.hidden = false; ov.classList.remove("dead"); }
+function huResume() { S.escT0 += S.t - (S.pauseAt || S.t); S.mode = "play"; ov.hidden = true; ov.innerHTML = ""; for (const k in input) input[k] = false; lastHud = ""; }
+function huVig(z) { const B = HU_B[z]; return { t: (z + 1) + "/5 · " + T(B.t).toUpperCase(), c: B.c, p: B.v }; }
+function huElapsed() { return Math.max(0, S.t - S.escT0) + (S.hu && S.hu.t0off || 0); }
+// fight start / boss down, from the arena tick
+var huArena0 = escArenaTick; escArenaTick = function (p, dt) { const A = S.arena, st = A && A.state; const r = huArena0(p, dt);
+  if (huOn() && A && A.huZ != null) { const B = HU_B[A.huZ];
+    if (st === "wait" && A.state === "fight") storySay0(B.n, B.i, "#e0566b", 3.6);
+    if (st === "fight" && A.state === "done" && !A.huDone) { A.huDone = true; storySay0(B.n, B.o, "#e0566b", 3.2); const run = S; setTimeout(() => { if (S === run && S.mode === "play") huReward(A.huZ); }, 2600); } }
+  return r; };
+function huReward(z) {
+  const M = huM(); if (!S.test) { if (!M.mem.includes(z)) M.mem.push(z); if (!M.boss.includes(z)) M.boss.push(z); saveMeta(); }
+  huPause(); omfSfx("levelup");
+  if (z === 4) { ov.innerHTML = `<div class="menu hurew"><div class="mlabel">${T("RECUERDO")} 5/5</div><p class="humem">«${T(HU_B[z].m)}»</p><div class="rowbig"><button class="go" id="huGo">${T("Seguir")}</button></div></div>`;
+    document.getElementById("huGo").onclick = () => huEnding(); return; }
+  const a = trkPick("rare"); let b = null; if (a) { S.trk = S.trk || []; S.trk.push(a); b = trkPick("rare"); S.trk.pop(); }
+  const opts = [a, b].filter(Boolean);
+  ov.innerHTML = `<div class="menu hurew"><div class="mlabel">${T("RECUERDO")} ${z + 1}/5</div><p class="humem">«${T(HU_B[z].m)}»</p>
+    ${opts.length ? `<div class="mlabel">${T("ELIGE UN OBJETO")}</div><div class="cards deal">${opts.map(id => `<button class="card" data-o="${id}"><span class="ic">${trkImg(id)}</span><span class="nm">${T(TRK[id].n)}</span><span class="tag">${T("Raro")}</span><span class="ds">${T(TRK[id].d)}</span></button>`).join("")}</div>`
+      : `<div class="rowbig"><button class="go" id="huGo">${T("Seguir")}</button></div>`}</div>`;
+  const next = () => huAfterBoss(z);
+  ov.querySelectorAll("[data-o]").forEach(btn => btn.onclick = () => { trkGive(btn.dataset.o); next(); });
+  const g = document.getElementById("huGo"); if (g) g.onclick = next;
+}
+function huAfterBoss(z) {
+  if (!S.hard && !S.test) { const M = huM(); M.cp[huDk()] = { z: z + 1, ch: S.char.id, lvl: S.lvl || 1, xp: S.xp || 0, perk: Object.assign({}, S.perk || {}), trk: (S.trk || []).slice(), maxhp: S.maxhp, coins: S.coins, t: Math.round(huElapsed()) }; saveMeta(); }
+  storyVignette(huVig(z + 1), () => { huResume(); toast(S.hard ? T("Hardcore: sin puntos de control") : T("PUNTO DE CONTROL GUARDADO")); }, S.hard ? "" : T("PUNTO DE CONTROL GUARDADO"));
+}
+function huEnding() {
+  const M = huM(), kind = M.ecos.length >= 15 ? "bajar" : "piso", E = HU_END[kind], dk = huDk(), tm = Math.round(huElapsed());
+  if (!S.test) { if (!M.end.includes(kind)) M.end.push(kind); if (!M.best[dk] || tm < M.best[dk]) M.best[dk] = tm; delete M.cp[dk]; if (S.hard) M.hardDone = 1; saveMeta();
+    try { pgsUnlock(kind === "bajar" ? "hu_bajar" : "hu_piso"); if (S.hard) pgsUnlock("hu_hard"); } catch (_) {} }
+  storyVignette({ t: T(E.t), c: E.c, p: E.p }, () => { huPause(); S.mode = "menu";
+    ov.innerHTML = `<div class="vign" style="--vc:${E.c}"><div class="vk">${T("FINAL")}</div><h2>${T(E.t)}</h2>
+      <p>${T("Tiempo")}: ${fmtTime(tm)} · ${T("Ecos")}: ${M.ecos.length}/15 · ${T("Finales")}: ${M.end.length}/2</p>
+      ${kind === "piso" ? `<p class="lkor">${T("Encuentra los 15 Ecos para ver el otro final.")}</p>` : ""}
+      <div class="rowbig"><button class="go" id="huMenu">${T("Menú")}</button></div></div>`;
+    document.getElementById("huMenu").onclick = showTitle; }, T("FINAL"));
+}
+// level cards read as the Contract
+var huLvl0 = escLevelCards; escLevelCards = function () { huLvl0(); if (!huOn()) return; const h = ov.querySelector("p"); if (h) h.textContent = T("FIRMA UNA CLÁUSULA");
+  ov.querySelectorAll(".card .nm").forEach(n => { const q = T("Quitar") + " "; if (n.textContent.startsWith(q)) n.textContent = T("TACHAR:") + " " + n.textContent.slice(q.length); }); };
+// starting a climb: a fresh one, or from the last checkpoint
+function huBegin(cp, testL) {
+  const base = cp ? cp.z : 0; if (cp && cp.ch && CHARS.find(c => c.id === cp.ch) && charOk(cp.ch)) S.char = CHARS.find(c => c.id === cp.ch);
+  newRun({ char: S.char.id, kind: "story" }); S.hu = { base, L: testL || HU_L, next: base, forceZ: null, cp: cp || null, t0off: cp ? cp.t || 0 : 0 }; S.rng = mulberry(91000 + base * 7919);
+  if (testL) S.test = true; if (!S.test) { huM().played = 1; saveMeta(); }
+  storyVignette(huVig(base), () => nextRuleStep(), cp ? T("Desde el punto de control") : "LA HUIDA");
+}
+var huStart0 = startFloor; startFloor = function () { const r = huStart0.apply(this, arguments);
+  if (huOn() && S.hu.cp && !S.hu.applied) { const c = S.hu.cp; S.hu.applied = true; S.lvl = c.lvl || 1; S.xp = c.xp || 0; S.perk = Object.assign({}, c.perk || {}); S.trk = (c.trk || []).slice(); S.maxhp = Math.max(S.maxhp, c.maxhp || S.maxhp); S.hp = S.maxhp; S.coins = c.coins || 0; escHudKey = ""; lastHud = ""; }
+  if (huOn() && S.hu.test) S.test = true; return r; };
+var huRec0 = recordRun; recordRun = function (won) { if (huOn()) return; return huRec0(won); };
+// death: the Notary's record
+function huActa() { const last = S.rules.filter(id => RULE[id]).slice(-1)[0], z = Math.min(4, S.camZone || 0), w = T(HU_BIOME[z]) + ", " + (S.escBest || 0) + " m.", q = s => LANG === "en" ? "\u201c" + s + "\u201d" : "\u00ab" + s + "\u00bb";
+  if (!last) return q(T("Conste en acta: el firmante cayó sin cláusulas a las que culpar.")) + " " + w;
+  const r = T(RULE[last].name), v = [T("Conste en acta: el firmante cayó por exceso de") + " " + r + ".", T("Conste en acta: el firmante no leyó la letra pequeña de") + " " + r + ".", r + " " + T("se cobró lo pactado. Conste en acta.")];
+  return q(v[(S.escBest || 0) % v.length]) + " " + w; }
+var huDead0 = showDead; showDead = function () { const r = huDead0.apply(this, arguments); if (!huOn()) return r;
+  const M = huM(), cp = !S.hard && M.cp[huDk()], m = ov.querySelector(".menu"); if (!m) return r;
+  const h1 = m.querySelector("h1"); if (h1) h1.textContent = T("CAÍSTE");
+  const tg = m.querySelector(".tagline"); if (tg) tg.innerHTML = "LA HUIDA · " + T(HU_BIOME[Math.min(4, S.camZone || 0)]);
+  const st = m.querySelector(".stats"); if (st) { st.insertAdjacentHTML("beforebegin", `<p class="acta">${huActa()}</p>`); st.insertAdjacentHTML("beforeend", `<div><b>${S.lvl || 1}</b><span>${T("Nivel")}</span></div>`); }
+  const rb = m.querySelector(".rowbig"); if (rb) rb.innerHTML = (cp ? `<button class="go" id="huCont">${T("Continuar desde")} ${T(HU_B[cp.z - 1].n)}</button>` : "") + `<button class="${cp ? "" : "go"}" id="huNew">${T("Empezar de cero")}</button>`;
+  const rec = document.getElementById("recBtn"); if (rec) rec.remove();
+  const c = document.getElementById("huCont"); if (c) c.onclick = () => huBegin(M.cp[huDk()]);
+  document.getElementById("huNew").onclick = () => huBegin(null); return r; };
+// the title button and the LA HUIDA screen
+function huTitleBtn() { const M = huM(), cp = M.cp[huDk()], z = cp ? cp.z : 0;
+  return `<button class="mode main hist" id="storyBtn"><span class="mi">${pxi("book", "#5fd1c4")}</span><span class="mt">${T("HISTORIA")}${M.played ? "" : ` <i class="hunew">${T("NUEVO")}</i>`}</span><span class="ms">La Huida</span><span class="mv"><small>${T("BIOMA")}</small>${z + 1}/5</span></button>`; }
+var huTH0 = escTitleHTML; escTitleHTML = function () { let h = huTH0.apply(this, arguments);
+  h = h.replace('<button class="mode half" id="dailyBtn"', huTitleBtn() + '<button class="mode half" id="dailyBtn"');
+  h = h.replace('<div class="mlabel">SALAS SECRETAS</div>', `<div class="mlabel">HISTORIA</div><div class="tools">${[0, 1, 2, 3, 4].map(z => `<button data-hz="${z}">${z + 1} · ${T(HU_B[z].n)}</button>`).join("")}<button data-he="piso">${T("Final")} 1</button><button data-he="bajar">${T("Final")} 2</button></div><div class="mlabel">SALAS SECRETAS</div>`);
+  return h; };
+var huTW0 = escTitleWire; escTitleWire = function () { huTW0.apply(this, arguments);
+  const b = document.getElementById("storyBtn"); if (b) b.onclick = () => { omfSfx("click"); huScreen(); };
+  ov.querySelectorAll("[data-hz]").forEach(x => x.onclick = () => huBegin({ z: +x.dataset.hz, lvl: 3 + 2 * +x.dataset.hz }, 18));
+  ov.querySelectorAll("[data-he]").forEach(x => x.onclick = () => { newRun({ char: S.char.id, kind: "story" }); S.hu = { base: 4, L: 18, next: 5, t0off: 0 }; S.test = true; const M = huM(), keep = M.ecos.slice(); if (x.dataset.he === "bajar") M.ecos = Array.from({ length: 15 }, (_, i) => Math.floor(i / 3) + "-" + i % 3); huEnding(); M.ecos = keep; }); };
+function huScreen() {
+  const M = huM(), dk = huDk(), cp = dk !== "h" && M.cp[dk], hard = dk === "h";
+  ov.hidden = false; ov.classList.remove("dead");
+  const rows = [4, 3, 2, 1, 0].map(z => { const B = HU_B[z], won = M.boss.includes(z), ec = [0, 1, 2].map(i => `<i class="${M.ecos.includes(z + "-" + i) ? "on" : ""}"></i>`).join("");
+    return `<div class="hub${cp && cp.z === z ? " here" : ""}" style="--bc:${B.c}"><span class="hn">${z + 1} · ${T(HU_BIOME[z]).toUpperCase()}</span><span class="hb">${won ? "☠ " + T(B.n) : "??? "}</span><span class="he">${ec}</span></div>`; }).join("");
+  ov.innerHTML = `<div class="menu setpage huida"><h2>${pxi("book", "#5fd1c4", 2)} LA HUIDA</h2>
+    <p class="tagline">${T(dk === "e" ? "Fácil" : dk === "h" ? "Hardcore" : "Normal")}${hard ? " · " + T("sin puntos de control") : ""}</p>
+    <div class="hutower">${rows}</div>
+    <p class="hust">${T("RECUERDOS")} ${M.mem.length}/5 · ${T("ECOS")} ${M.ecos.length}/15 · ${T("MEJOR TIEMPO")} ${M.best[dk] ? fmtTime(M.best[dk]) : "—"}</p>
+    <div class="rowbig">${cp ? `<button class="go" id="huCont">${T("Continuar desde")} ${T(HU_B[cp.z - 1].n)} · ${T("nivel")} ${cp.lvl}</button>` : ""}<button class="${cp ? "" : "go"}" id="huNew">${T("Nueva subida")}</button></div>
+    <div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
+  paintPxi(ov);
+  const c = document.getElementById("huCont"); if (c) c.onclick = () => huBegin(M.cp[dk]);
+  document.getElementById("huNew").onclick = () => huBegin(null);
+  document.getElementById("backBtn").onclick = () => { omfSfx("click"); showTitle(); };
+}
+// the stretch bar on the left and the arena warning
+var huDraw0 = storyDrawLine; storyDrawLine = function () { huDraw0(); if (!huOn() || S.mode !== "play") return;
+  const H = S.hu, h = huRowH(Math.floor((S.player.y + S.player.h) / TS)), seg = Math.min(4, H.base + Math.floor(h / H.L)), f = H.next > seg ? 1 : (h % H.L) / H.L;
+  const x = 4, y0 = 96, bh = Math.round(CH * 0.42); ctx.save(); ctx.fillStyle = "#0a0812"; ctx.fillRect(x - 2, y0 - 2, 8, bh + 4);
+  for (let z = 0; z < 5; z++) { const sy = y0 + bh - (z + 1) * bh / 5; ctx.fillStyle = z < seg || (z === seg && H.next > z) ? HU_B[z].c : z === seg ? "#3e3960" : "#231f37"; ctx.fillRect(x, Math.round(sy) + 1, 4, Math.round(bh / 5) - 2);
+    if (z === seg && H.next <= z) { ctx.fillStyle = HU_B[z].c; const fh = Math.round((bh / 5 - 2) * f); ctx.fillRect(x, Math.round(sy + bh / 5 - 1 - fh), 4, fh); } }
+  const left = (H.next - H.base + 1) * H.L - h;
+  if (H.next <= 4 && left > 0 && left <= 25 && !(S.arena && S.arena.state !== "done")) { ctx.font = "10px Silkscreen, monospace"; ctx.textAlign = "left"; const t = T("JEFE A") + " " + left + " M", w = ctx.measureText(t).width + 12;
+    ctx.fillStyle = "#0a0812"; ctx.fillRect(10, y0 - 22, w + 4, 18); ctx.fillStyle = "#e0566b"; ctx.fillRect(10, y0 - 20, w + 2, 14); ctx.fillStyle = "#1b1829"; ctx.fillRect(10, y0 - 18, w, 10); ctx.fillStyle = "#e0566b"; ctx.fillText(t, 16, y0 - 9); }
+  ctx.restore(); ctx.textAlign = "left"; };
+Object.assign(RUN_NAMES, { "story-easy": "Historia · Fácil", "story-hard": "Historia · Hardcore" });
+Object.assign(EN_TEXT, {
+  "La campana": "The bell", "Raíces": "Roots", "Engranajes": "Gears", "Letra pequeña": "Small print", "La cima": "The summit",
+  "La Campana": "The Bell", "La Bestia de raíces": "The Root Beast", "El Robot fuelle": "The Bellows Robot", "El Notario": "The Notary", "El Sello": "The Seal",
+  "Despiertas en una escalera que no recuerdas. Abajo, algo gris se traga los escalones.": "You wake on a staircase you don't remember. Below, something grey swallows the steps.",
+  "En el bolsillo, una nota con tu letra: «Subí para olvidar lo que dejé abajo.»": "In your pocket, a note in your handwriting: \"I climbed to forget what I left below.\"",
+  "Muy arriba, una campana suena sin parar.": "High above, a bell rings without stopping.",
+  "Esta vez sí aviso. Esta vez nadie sale.": "This time I warn you. This time no one gets out.", "...¿Quién tenía que tocarme aquella noche?": "...Who was supposed to ring me that night?",
+  "Tú eras quien tocaba la campana. Aquella noche no la tocaste.": "You were the one who rang the bell. That night you didn't.",
+  "La cuerda de la campana todavía huele a mis manos.": "The bell rope still smells of my hands.", "Aquí había una panadería. Creo.": "There was a bakery here. I think.",
+  "Firmé la primera cláusula sin leerla. El Notario dijo que era lo normal.": "I signed the first clause without reading it. The Notary said that was normal.",
+  "Las piedras dan paso a raíces. Las paredes respiran y sudan escarcha.": "Stones give way to roots. The walls breathe and sweat frost.",
+  "Una escaladora busca algo entre ellas. Se llama Nyx.": "A climber searches for something among them. Her name is Nyx.",
+  "Nyx: «Lo que se olvida no desaparece. Se pudre y crece.»": "Nyx: \"What's forgotten doesn't vanish. It rots and grows.\"",
+  "Todo lo que soltáis, lo guardo yo.": "Everything you let go of, I keep.", "Suelta raíces con nombres grabados. En una pone KAI.": "It drops roots with names carved in them. One says KAI.",
+  "Aquella noche no tocaste la campana porque fuiste a buscar a Kai.": "That night you didn't ring the bell because you went to find Kai.",
+  "Las raíces me llaman por un nombre que no es el mío.": "The roots call me by a name that isn't mine.",
+  "Nyx dice que bajar es la única forma de encontrar algo. No la creo.": "Nyx says going down is the only way to find anything. I don't believe her.",
+  "Encontré un zapato pequeño entre las raíces. Lo dejé donde estaba.": "I found a small shoe among the roots. I left it where it was.",
+  "Humo. Silbatos. Escalones que se deshacen al pisarlos.": "Smoke. Whistles. Steps that crumble as you tread on them.",
+  "Alguien con una llave inglesa mira una máquina que no para. Es Kai.": "Someone with a wrench stares at a machine that won't stop. It's Kai.",
+  "Kai: «Tú me pediste que la construyera. ¿De verdad no te acuerdas de mí?»": "Kai: \"You asked me to build it. You really don't remember me?\"",
+  "Respira. Respira. Respira. RESPIRA.": "Breathe. Breathe. Breathe. BREATHE.", "Un último suspiro largo. Kai: «Ya está. Ya puedes descansar.»": "One last long sigh. Kai: \"There. You can rest now.\"",
+  "Firmaste olvidar a Kai a cambio de subir más rápido que el Olvido.": "You signed away Kai to climb faster than the Oblivion.",
+  "Kai dice que firmé los planos. No recuerdo saber dibujar.": "Kai says I signed the blueprints. I don't remember knowing how to draw.",
+  "Cada piso cuesta menos si no piensas en él.": "Every floor costs less if you don't think about it.", "Los engranajes llevan iniciales. Algunas son mías.": "The gears bear initials. Some are mine.",
+  "El suelo se acaba. Solo queda un escritorio flotando y un tintero.": "The floor runs out. Only a floating desk and an inkwell remain.",
+  "Nyx: «Yo firmé la Oscuridad para ver lo que no se ve. Tú firmaste todo lo demás.»": "Nyx: \"I signed the Darkness to see what can't be seen. You signed everything else.\"",
+  "Las estrellas tienen forma de sello.": "The stars are shaped like seals.",
+  "Lamento la espera. Su expediente es largo.": "Sorry for the wait. Your file is long.", "No muere. Cierra el libro: «Falta una firma.»": "It doesn't die. It closes the book: \"One signature is missing.\"",
+  "El Contrato tiene tu letra. La torre la escribiste tú.": "The Contract is in your handwriting. You wrote the tower.",
+  "La tinta del Contrato es del mismo color que mis dedos.": "The Contract's ink is the same colour as my fingers.",
+  "Si firmo una más, olvidaré por qué empecé. Quizá sea mejor.": "If I sign one more, I'll forget why I started. Maybe that's better.",
+  "El escritorio tiene un cajón con mi letra. No lo abrí.": "The desk has a drawer with my handwriting. I didn't open it.",
+  "La torre se arma con trozos de todo lo anterior.": "The tower builds itself from pieces of everything before.",
+  "Ves tu sombra escribiendo en una pared. Escribe tu nombre.": "You see your shadow writing on a wall. It writes your name.", "Arriba no hay techo. Hay un ojo.": "Up there is no ceiling. There's an eye.",
+  "Lacre caliente. Un ojo. Ninguna prisa.": "Hot wax. An eye. No hurry.", "Se agrieta y deja una marca en tu mano: tu propia firma.": "It cracks and leaves a mark on your hand: your own signature.",
+  "El sello del Contrato lo elegiste tú.": "You chose the Contract's seal.",
+  "No miré atrás en toda la subida. Ahí está el problema.": "I didn't look back the whole climb. That's the problem.",
+  "Arriba no hay techo. Hay otro piso. Siempre hay otro piso.": "Up there is no ceiling. There's another floor. There's always another floor.", "La campana sonó. Esta vez la oí.": "The bell rang. This time I heard it.",
+  "UN PISO MÁS": "ONE MORE FLOOR", "BAJAR": "GO DOWN",
+  "El Sello se rompe. Detrás espera el Notario con una hoja en blanco: «Una cláusula más y le dejo subir un piso más.»": "The Seal breaks. Behind it the Notary waits with a blank sheet: \"One more clause and I'll let you climb one more floor.\"",
+  "Velo firma.": "Velo signs.", "La cámara vuelve a subir.": "The camera starts rising again.",
+  "Velo lo recuerda todo y rompe el Contrato.": "Velo remembers everything and tears up the Contract.", "Baja hasta el campanario y por fin toca la campana.": "Velo goes down to the bell tower and finally rings the bell.",
+  "El Olvido se para. Kai y Nyx bajan detrás.": "The Oblivion stops. Kai and Nyx follow down.",
+  "Castillo olvidado": "Forgotten Castle", "Profundidades vivas": "Living Depths", "Reino de las máquinas": "Machine Kingdom", "El vacío": "The Void", "Lo desconocido": "The Unknown",
+  "Eco de Velo": "Velo's Echo", "RECUERDO": "MEMORY", "ELIGE UN OBJETO": "PICK AN ITEM", "Raro": "Rare", "Seguir": "Continue",
+  "PUNTO DE CONTROL GUARDADO": "CHECKPOINT SAVED", "Hardcore: sin puntos de control": "Hardcore: no checkpoints", "FINAL": "ENDING", "Tiempo": "Time", "Ecos": "Echoes", "Finales": "Endings",
+  "Encuentra los 15 Ecos para ver el otro final.": "Find all 15 Echoes to see the other ending.", "FIRMA UNA CLÁUSULA": "SIGN A CLAUSE", "TACHAR:": "STRIKE:",
+  "Desde el punto de control": "From the checkpoint", "Conste en acta: el firmante cayó sin cláusulas a las que culpar.": "Let the record show: the signer fell with no clauses to blame.",
+  "Conste en acta: el firmante cayó por exceso de": "Let the record show: the signer fell from too much", "Conste en acta: el firmante no leyó la letra pequeña de": "Let the record show: the signer didn't read the small print of",
+  "se cobró lo pactado. Conste en acta.": "collected what was agreed. Let the record show.", "CAÍSTE": "YOU FELL", "Nivel": "Level", "nivel": "level",
+  "Continuar desde": "Continue from", "Empezar de cero": "Start over", "HISTORIA": "STORY", "NUEVO": "NEW", "BIOMA": "BIOME", "Final": "Ending",
+  "sin puntos de control": "no checkpoints", "RECUERDOS": "MEMORIES", "ECOS": "ECHOES", "MEJOR TIEMPO": "BEST TIME", "Nueva subida": "New climb", "JEFE A": "BOSS IN",
+  "Historia · Fácil": "Story · Easy", "Historia · Hardcore": "Story · Hardcore"
+});
+window.__hu = { begin: huBegin, screen: huScreen, ending: huEnding, meta: huM, reward: z => huReward(z) };
+if (S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); // the title drawn before this add-on gets the HISTORIA button
+var huPz0 = escPause; escPause = function () { huPz0(); if (!huOn() || S.mode !== "menu") return; const b = document.getElementById("rstBtn"); if (b) { b.textContent = T("Empezar de cero"); b.onclick = () => huBegin(null); } };
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
