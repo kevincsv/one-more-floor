@@ -5,7 +5,6 @@ import GameKit
 /// Game Center con la misma API que PlayGamesPlugin (Android).
 /// Los ids del juego ("m100", "height"...) se mapean a "omf_<id>" en App Store Connect.
 @objc(GameCenterPlugin)
-@objc(GameCenterPlugin)
 public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControllerDelegate {
     public let identifier = "GameCenterPlugin"
     public let jsName = "GameCenter"
