@@ -126,6 +126,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", default="1.0.0")
     ap.add_argument("--no-media", action="store_true")
+    ap.add_argument("--build", default="", help="exact build number to attach (default: newest valid)")
     ap.add_argument("--submit", action="store_true", help="send the version to App Review at the end")
     o = ap.parse_args()
     a = ASC()
@@ -284,7 +285,8 @@ def main():
 
     # newest valid build with this version
     builds = a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
-                                    "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1})["data"]
+                                    "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1,
+                                    **({"filter[version]": o.build} if o.build else {})})["data"]
     if builds:
         b = builds[0]
         a.call("PATCH", f"/v1/appStoreVersions/{vid}/relationships/build", {"data": {"type": "builds", "id": b["id"]}})
