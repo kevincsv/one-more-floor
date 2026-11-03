@@ -181,6 +181,22 @@ def main():
     except (RuntimeError, StopIteration, KeyError) as e:
         print("WARN price:", str(e)[:300])
 
+    # availability: every territory (app and in-app purchase)
+    terrs = None
+    try:
+        terrs = [t["id"] for t in a.all("/v1/territories", limit=200)]
+        if not a.call("GET", f"/v1/apps/{aid}/appAvailabilityV2", ok=(200, 404)).get("data"):
+            a.call("POST", "/v2/appAvailabilities", {"data": {"type": "appAvailabilities", "attributes": {"availableInNewTerritories": True},
+                "relationships": {"app": {"data": {"type": "apps", "id": aid}},
+                                  "territoryAvailabilities": {"data": [{"type": "territoryAvailabilities", "id": "${" + t + "}"} for t in terrs]}}},
+                "included": [{"type": "territoryAvailabilities", "id": "${" + t + "}", "attributes": {"available": True},
+                              "relationships": {"territory": {"data": {"type": "territories", "id": t}}}} for t in terrs]})
+            print("App availability: all", len(terrs), "territories")
+        else:
+            print("App availability already set")
+    except RuntimeError as e:
+        print("WARN app availability:", str(e)[:400])
+
     # age rating: only mild cartoon/fantasy violence
     try:
         ar = a.get(f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
@@ -264,6 +280,16 @@ def main():
             print("In-app purchase", IAP_ID, iap["attributes"].get("state"))
             a.call("PATCH", f"/v2/inAppPurchases/{iap['id']}", {"data": {"type": "inAppPurchases", "id": iap["id"], "attributes": {
                 "reviewNote": "Non-consumable. Opens from the title screen (FULL ESCAPE) and from Settings. Unlocks Horde mode, the heroes Kai and Nyx and all wardrobe looks. RESTORE PURCHASE is on the same screen."}}})
+            try:
+                if not a.call("GET", f"/v2/inAppPurchases/{iap['id']}/inAppPurchaseAvailability", ok=(200, 404)).get("data"):
+                    tl = terrs or [t["id"] for t in a.all("/v1/territories", limit=200)]
+                    a.call("POST", "/v1/inAppPurchaseAvailabilities", {"data": {"type": "inAppPurchaseAvailabilities",
+                        "attributes": {"availableInNewTerritories": True}, "relationships": {
+                            "inAppPurchase": {"data": {"type": "inAppPurchases", "id": iap["id"]}},
+                            "availableTerritories": {"data": [{"type": "territories", "id": t} for t in tl]}}}})
+                    print("In-app purchase availability: all territories")
+            except RuntimeError as e:
+                print("WARN in-app purchase availability:", str(e)[:400])
             shotf = os.path.join(ROOT, "iap", "review-screenshot.png")
             cur = a.call("GET", f"/v2/inAppPurchases/{iap['id']}/appStoreReviewScreenshot")
             if cur and cur.get("data"):
