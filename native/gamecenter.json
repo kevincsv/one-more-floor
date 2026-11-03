@@ -41,7 +41,7 @@
    "en": "Vertigo",
    "cond_es": "Llega a 250 m en Escape",
    "cond_en": "Reach 250 m in Escape",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -50,7 +50,7 @@
    "en": "Wings of wax",
    "cond_es": "Llega a 400 m en Escape",
    "cond_en": "Reach 400 m in Escape",
-   "points": 40,
+   "points": 35,
    "hidden": false
   },
   {
@@ -59,7 +59,7 @@
    "en": "Blackout",
    "cond_es": "Sobrevive 5:30 en Escape",
    "cond_en": "Survive 5:30 in Escape",
-   "points": 50,
+   "points": 45,
    "hidden": false
   },
   {
@@ -68,7 +68,7 @@
    "en": "Max level",
    "cond_es": "Llega a nivel 10 en una partida",
    "cond_en": "Reach level 10 in one run",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -77,7 +77,7 @@
    "en": "One hit",
    "cond_es": "Aguanta 60 s sin recibir daño en una partida",
    "cond_en": "Go 60 s without damage in one run",
-   "points": 40,
+   "points": 35,
    "hidden": false
   },
   {
@@ -86,7 +86,7 @@
    "en": "Echo",
    "cond_es": "Llega al nivel 7 con Nyx",
    "cond_en": "Reach level 7 as Nyx",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -95,7 +95,7 @@
    "en": "Breadcrumbs",
    "cond_es": "Llega a 200 m con Velo",
    "cond_en": "Reach 200 m as Velo",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -104,7 +104,7 @@
    "en": "Tide",
    "cond_es": "Llega a 200 m con Kai",
    "cond_en": "Reach 200 m as Kai",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -113,7 +113,7 @@
    "en": "Split",
    "cond_es": "Llega a 200 m con Nyx",
    "cond_en": "Reach 200 m as Nyx",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -122,7 +122,7 @@
    "en": "Magnetism",
    "cond_es": "Aguanta 3:45 con Kai",
    "cond_en": "Survive 3:45 as Kai",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -131,7 +131,7 @@
    "en": "Quake",
    "cond_es": "Aguanta 3:45 con Nyx",
    "cond_en": "Survive 3:45 as Nyx",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -140,7 +140,7 @@
    "en": "Liar",
    "cond_es": "Llega a El vacío",
    "cond_en": "Reach the Void",
-   "points": 40,
+   "points": 30,
    "hidden": false
   },
   {
@@ -149,7 +149,7 @@
    "en": "Labyrinth",
    "cond_es": "Llega a Lo desconocido",
    "cond_en": "Reach the Unknown",
-   "points": 50,
+   "points": 45,
    "hidden": false
   },
   {
@@ -158,7 +158,7 @@
    "en": "Midnight",
    "cond_es": "Vence a 10 enemigos en los primeros 30 s",
    "cond_en": "Defeat 10 enemies in the first 30 s",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -167,7 +167,7 @@
    "en": "Inertia",
    "cond_es": "Aguanta 2 min sin recibir daño",
    "cond_en": "Last 2 min without taking damage",
-   "points": 25,
+   "points": 20,
    "hidden": false
   },
   {
@@ -176,7 +176,7 @@
    "en": "Burning floor",
    "cond_es": "Pasa 60 s sin pararte",
    "cond_en": "Go 60 s without stopping",
-   "points": 15,
+   "points": 10,
    "hidden": false
   },
   {
@@ -185,7 +185,7 @@
    "en": "Ammo",
    "cond_es": "Sube 50 m atacando 5 veces o menos",
    "cond_en": "Climb 50 m with 5 attacks or fewer",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -194,7 +194,7 @@
    "en": "Rings",
    "cond_es": "Sube 100 m con 1 corazón",
    "cond_en": "Climb 100 m on 1 heart",
-   "points": 25,
+   "points": 20,
    "hidden": false
   },
   {
@@ -203,7 +203,7 @@
    "en": "Moon",
    "cond_es": "Pasa 3 s seguidos en el aire",
    "cond_en": "Stay in the air for 3 s straight",
-   "points": 15,
+   "points": 10,
    "hidden": false
   },
   {
@@ -212,7 +212,7 @@
    "en": "Vampire",
    "cond_es": "Vence 100 enemigos con Velo",
    "cond_en": "Defeat 100 enemies as Velo",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -221,7 +221,7 @@
    "en": "Glutton",
    "cond_es": "Vence 100 enemigos con Kai",
    "cond_en": "Defeat 100 enemies as Kai",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -230,7 +230,7 @@
    "en": "Hunter",
    "cond_es": "Vence 100 enemigos con Nyx",
    "cond_en": "Defeat 100 enemies as Nyx",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -239,7 +239,7 @@
    "en": "Shields",
    "cond_es": "Vence 25 enemigos con el pogo",
    "cond_en": "Defeat 25 enemies with a pogo strike",
-   "points": 15,
+   "points": 10,
    "hidden": false
   },
   {
@@ -248,7 +248,7 @@
    "en": "Recoil",
    "cond_es": "Llega a combo x25",
    "cond_en": "Reach a x25 combo",
-   "points": 25,
+   "points": 20,
    "hidden": false
   },
   {
@@ -257,7 +257,7 @@
    "en": "Tail",
    "cond_es": "Vence 10 enemigos en 5 s",
    "cond_en": "Defeat 10 enemies within 5 s",
-   "points": 25,
+   "points": 20,
    "hidden": false
   },
   {
@@ -266,7 +266,7 @@
    "en": "Statues",
    "cond_es": "Vence al Mímico 3 veces",
    "cond_en": "Defeat the Mimic 3 times",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -275,7 +275,7 @@
    "en": "Blink",
    "cond_es": "Entra en 3 salas ocultas en una misma partida",
    "cond_en": "Enter 3 hidden rooms in one run",
-   "points": 25,
+   "points": 20,
    "hidden": false
   },
   {
@@ -284,7 +284,7 @@
    "en": "Sweep",
    "cond_es": "Supera el Reto de la gema",
    "cond_en": "Beat the Gem Trial",
-   "points": 15,
+   "points": 10,
    "hidden": false
   },
   {
@@ -293,7 +293,7 @@
    "en": "Decoys",
    "cond_es": "Entra en la sala del Ídolo maldito",
    "cond_en": "Enter the Cursed Idol room",
-   "points": 15,
+   "points": 10,
    "hidden": true
   },
   {
@@ -302,7 +302,7 @@
    "en": "Sirens",
    "cond_es": "Bebe de la Fuente 3 veces",
    "cond_en": "Drink from the Fountain 3 times",
-   "points": 15,
+   "points": 10,
    "hidden": false
   },
   {
@@ -311,7 +311,7 @@
    "en": "Debris",
    "cond_es": "Rompe 10 paredes agrietadas",
    "cond_en": "Break 10 cracked walls",
-   "points": 15,
+   "points": 10,
    "hidden": false
   },
   {
@@ -320,7 +320,7 @@
    "en": "Beanstalk",
    "cond_es": "Gasta 300 de oro en tiendas",
    "cond_en": "Spend 300 gold in shops",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -329,7 +329,7 @@
    "en": "Cursed gold",
    "cond_es": "Ten 200 de oro a la vez",
    "cond_en": "Hold 200 gold at once",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -356,7 +356,7 @@
    "en": "Echo blade",
    "cond_es": "Vence 5 enemigos con el 3er golpe del combo en 1 min",
    "cond_en": "Defeat 5 enemies with the 3rd combo hit within 1 min",
-   "points": 20,
+   "points": 15,
    "hidden": false
   },
   {
@@ -365,7 +365,7 @@
    "en": "Thirst",
    "cond_es": "Vence 300 enemigos en total",
    "cond_en": "Defeat 300 enemies in total",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -374,7 +374,7 @@
    "en": "Magnet",
    "cond_es": "Recoge 1000 monedas en total",
    "cond_en": "Collect 1000 coins in total",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -383,7 +383,7 @@
    "en": "Loot",
    "cond_es": "Abre 10 salas de Tesoro",
    "cond_en": "Open 10 Treasure rooms",
-   "points": 25,
+   "points": 20,
    "hidden": false
   },
   {
@@ -392,7 +392,7 @@
    "en": "Glass heart",
    "cond_es": "Sube 150 m con 1 corazón",
    "cond_en": "Climb 150 m on 1 heart",
-   "points": 30,
+   "points": 25,
    "hidden": false
   },
   {
@@ -410,7 +410,43 @@
    "en": "Dedicated",
    "cond_es": "Completa 50 retos diarios",
    "cond_en": "Complete 50 daily challenges",
-   "points": 15,
+   "points": 10,
+   "hidden": false
+  },
+  {
+   "id": "hu_piso",
+   "es": "La Huida",
+   "en": "The Escape",
+   "cond_es": "Termina el modo historia",
+   "cond_en": "Finish story mode",
+   "points": 50,
+   "hidden": false
+  },
+  {
+   "id": "hu_bajar",
+   "es": "Bajar es salir",
+   "en": "Down is out",
+   "cond_es": "Consigue el final verdadero de la historia",
+   "cond_en": "Get the true ending of story mode",
+   "points": 60,
+   "hidden": true
+  },
+  {
+   "id": "hu_hard",
+   "es": "Huida imposible",
+   "en": "Impossible escape",
+   "cond_es": "Termina la historia en Hardcore",
+   "cond_en": "Finish story mode on Hardcore",
+   "points": 50,
+   "hidden": false
+  },
+  {
+   "id": "hu_campana",
+   "es": "Toque de campana",
+   "en": "Bell toll",
+   "cond_es": "Vence a La Campana en el modo historia",
+   "cond_en": "Defeat the Bell in story mode",
+   "points": 40,
    "hidden": false
   }
  ]

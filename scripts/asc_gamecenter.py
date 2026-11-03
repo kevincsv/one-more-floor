@@ -128,7 +128,18 @@ def game_center():
     ach_recs = {a["attributes"]["vendorIdentifier"]: a["id"]
                 for a in all_pages(f"/v1/gameCenterDetails/{det_id}/gameCenterAchievements?limit=200")}
     have_ach = set(ach_recs)
-    # Actualizar textos de logros existentes si cambiaron en gamecenter.json
+    # Actualizar puntos y textos de logros existentes si cambiaron en gamecenter.json
+    # (primero bajar puntos y luego subir, para no pasar nunca de 1000)
+    pts_now = {a["attributes"]["vendorIdentifier"]: a["attributes"].get("points")
+               for a in all_pages(f"/v1/gameCenterDetails/{det_id}/gameCenterAchievements?limit=200")}
+    for a in sorted(data["achievements"], key=lambda x: (x["points"] - (pts_now.get(pre + x["id"]) or 0))):
+        aid = ach_recs.get(pre + a["id"])
+        if aid and pts_now.get(pre + a["id"]) != a["points"]:
+            try:
+                call("PATCH", f"/v1/gameCenterAchievements/{aid}", {"data": {"type": "gameCenterAchievements", "id": aid,
+                     "attributes": {"points": a["points"]}}})
+            except Exception as e:
+                print("!! puntos", a["id"], str(e)[:300]); problems.append("puntos " + a["id"])
     changed = 0
     for a in data["achievements"]:
         aid = ach_recs.get(pre + a["id"])
