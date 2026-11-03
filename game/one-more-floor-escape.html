@@ -579,6 +579,19 @@ img.trki { width: 1.5em; height: 1.5em; image-rendering: pixelated; vertical-ali
 .plog li b { flex: none; width: 14px; font-weight: 400; text-align: center; }
 .plog li.new { color: #f2c14e; }
 .plog p { margin: 0; font-size: 10px; color: #9a94b8; }
+/* v91 (user): castle background on the main menu (the wall and mossy floor of the store header) */
+.etitle::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(10,8,18,.55), rgba(10,8,18,.35) 40%, rgba(10,8,18,.75)), url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAEY0lEQVR42pVYy44cNwysIibxYwPYyCHI/39gcrK92YMqB5ES9eqemYNW6FVTLRaLLIrf3v7C/U8xoSACAggqnjOvSPNXfvrv4xeI3x+fwwAl9U0EQOob+CaPYds8Dp/DmIvgb483kpLw2udPG1RfuEeK9MF3SQAfj68GFAGUCkj4n1JgVFH9EhAqssHFGt29mbP75rjm9OPkKgJqIxE2RbCENX9OQgKpIgQSEkBYN/vCKJIA6ohhTCvvTwL6aFK3Vk9V7St2IQkNO9Yn1r1O7OebkRLQoqh5aIvhzUnqZoWAJIYdwX1f8Wn+VvwDcGQaAnRT2ewZBxLhDzLwnTDxORZMuKJhAEhT2DFQ8g+pn1iNmYW/Yl8Lf2tm8BmH9sHJ9fX8FRN31Cs8EUipEDVPNG7AgNITUGW2x2pDgAHYCzj05UoUUIrXC55sY0kgTR03f7c0njCQguJJ5QBUeRmfc4lDypJD6LHHaMNk5gmCJ9sMS0AlclFzUmWz2BBI9UcSCEvZ4BDHSv5rmKRAbifBEROSi32k1zwCDWp5CZ1XzhACsJSjjKyFzGtKri89LqHEEKW6pmN2HKNr5snMDWUEwB79nUsQwB+//kmpTgQ+f/oG4EEwdAE4VMc0+klaZGtXuvuprk9Sq7jXcn9kKAU0oFQmpFO5v96+/CmVmnMB/nj/18gi2RLe/Tzt9EmONKxwJMclJhEaDEwqN2rlLS4ekF5raUuzp4pEwLYpJ805jlpSOu8KR7K54UnnBmCAyIj4iLRdbal8MAF2ioNldEye1Dlrwj/FlT+yeLdV2WBzy2MtF4UXCtN7w3griJ7ROadxOolnqhL/sZTCLHmt6qLY5sun756X1h2eKwPP6BwcEJ3jqmZ0/28JHMxQNHIgv+8sslWg8BzdfU7ey5wbTHJcLShV9e9xbzt9pY7AtYDktuFJufyJdmCL7lCJyY7SUjdK4kDL1F5P7PkIH74i+aMrk3srJzSsd0tGTS1GtWym9Eh+5qqFXhTydK3rPvB6l2JUz3YCbW3p8+LZJmpFzEvplVtdn1oS+LdZh5OEaTpHo/a85slSQ9ZWo+YotV0k0Cw0VawxNgS41rmrBjktcSE7YwKcebJHg8zZpsmIepLav3etKhHeH9skHZ+qBLroEBIOK0+OZ8gcmHOOb2JU6jfUs1DqdPO9w1UlOCyJtoLRD2Ru6BKHhHaL9XRzw1D/klK/oUixWwrUAM2YrPgchBQJrncKY77acaPatNTNDJWBjQ++sPbEoyy/uAsaOwHdiCBODOmqds8N5owUFWC4lEtVAt4+gDTOCeCWAhcXFcd++syN0LxqnrYEcEbAspqqDRwkU/KZnr4Xum+WFzuRZiZuoDFk8LQyPkp9grphgQ2BLMvnsN/hw70CTJ/P/R3HFTdcWXKCEwNzbKwz4vc//r672R1+7x8/T8vv7rdv30iZSvv6oeWh9TvHPu4wma4mdtdIl2Pv6ZYur+FpjQ9Rce2gpdgO9D+ccB5EsGMKIQAAAABJRU5ErkJggg==) 0 0 / 192px 96px repeat; image-rendering: pixelated; }
+.etitle .ped .slab { position: relative; width: 72px; height: 40px; border: 0; background: none; }
+.etitle .ped .slab::before { content: ""; position: absolute; top: 0; left: 50%; width: 100vw; height: 40px; transform: translateX(-50%); background: url(data:image/png;base64,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) center top / 128px 106px repeat-x; image-rendering: pixelated; }
+.etitle .ehero .arr { position: relative; z-index: 1; }
+.lkor { display: block; margin: 6px 0 2px; font: 10px Silkscreen, monospace; color: var(--muted, #9a94b8); }
+.wlocks { display: grid; gap: 8px; margin-top: 4px; text-align: left; max-height: 30vh; overflow-y: auto; }
+.wlocks .wl { background: #15121f; border: 2px solid #3e3960; padding: 6px 8px; }
+.wlocks .fullcta { justify-self: center; }
+/* v91 (user): locked cards in the Codex say what the bar is */
+body.esc .overlay .codex .lk { opacity: .82; }
+body.esc .overlay .codex .lk b { color: #9a94b8; }
+.codex .lk .unl { display: block; margin-bottom: 3px; font: 9px Silkscreen, monospace; letter-spacing: 1px; color: #f2c14e; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -820,7 +833,7 @@ const CHARS = [
 
 /* ---------- meta (saved per browser) ---------- */
 const META_KEY = "omf-meta-v2";
-let META = { unlocked: START_DECK.slice(), survive: {}, combos: [], best: 0, chars: ["kai", "velo"], daily: {} };
+let META = { unlocked: START_DECK.slice(), survive: {}, combos: [], best: 0, chars: ESCAPE ? ["velo"] : ["kai", "velo"], daily: {} };
 try { const m = JSON.parse(localStorage.getItem(META_KEY) || "null"); if (m && m.unlocked) META = Object.assign(META, m); } catch (_) {}
 if (!META.chars.includes("velo")) META.chars.push("velo");
 function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(META)); } catch (_) {} }
@@ -1035,7 +1048,7 @@ function achRow(icon, name, u, ok, extra) {
   if (ok) return `<div><b>${icon} ${name}</b>${extra || ""}</div>`;
   const v = achProg(u), hid = u.star && v <= 0, raw = Math.min(u.goal, (() => { try { return u.prog(); } catch (_) { return 0; } })());
   const cnt = u.goal > 1 ? Math.floor(raw) + "/" + u.goal : Math.floor(v * 100) + "%";
-  return `<div class="lk"><b><span class="sil">${icon}</span> ???</b><span class="cond">${hid ? (LANG === "en" ? "★ Secret feat" : "★ Hazaña secreta") : achTxt(u)}</span>${hid ? "" : `<span class="pbar"><u style="width:${Math.round(v * 100)}%"></u></span><small class="pnum">${cnt}</small>`}</div>`;
+  return `<div class="lk"><b><span class="sil">${icon}</span> ???</b><span class="cond">${hid ? "" : `<span class="unl">${pxi("lock", "#f2c14e", 1)} ${T("PARA DESBLOQUEAR")}</span>`}${hid ? (LANG === "en" ? "★ Secret feat" : "★ Hazaña secreta") : achTxt(u)}</span>${hid ? "" : `<span class="pbar"><u style="width:${Math.round(v * 100)}%"></u></span><small class="pnum">${cnt}</small>`}</div>`;
 }
 
 // ===== Google Play Juegos (solo en la app Android; en web/iOS todo es no-op) =====
@@ -1915,11 +1928,13 @@ function escArenaTick(p, dt) { // true while the fight holds the camera and the 
   }
   return true;
 }
+var ESC_ARENAS = false;
 function genEscSegment() {
   const R = S.rng, LW = S.LW, g = S.grid, eg = S.eg, nj = has("nojump");
   { // a boss arena at each biome change, and every 150 s once you're in the last biome
     const el = S.t - S.escT0, z = escBiomeAt(el); if (eg.lastZone == null) { eg.lastZone = z; eg.nextArenaT = ESC_BIOME_T[ESC_BIOME_T.length - 1] + 150; }
-    if ((z !== eg.lastZone || (z >= 4 && el >= eg.nextArenaT)) && buildEscArena()) { eg.lastZone = z; if (z >= 4) eg.nextArenaT = Math.max(eg.nextArenaT, el) + 150; return; }
+    if (!ESC_ARENAS) eg.lastZone = z; // v91 (user): no bosses in the endless climb; story mode keeps them
+    else if ((z !== eg.lastZone || (z >= 4 && el >= eg.nextArenaT)) && buildEscArena()) { eg.lastZone = z; if (z >= 4) eg.nextArenaT = Math.max(eg.nextArenaT, el) + 150; return; }
   }
   const startRow = eg.row, top = Math.max(6, startRow - ESC_SEG);
   const zone = escBiomeAt(S.t - S.escT0), f = S.floor, tier = escTier(), flyK = 0.4 + 0.6 * escWarm(); // v59: fewer flyers in the first 2 minutes
@@ -2124,7 +2139,7 @@ function escapeTick(p, dt) {
   S.floor = 1 + Math.floor(Math.min(escD(), 9) * 1.6); // enemy count and speed follow the difficulty tier
   const tier = escTier(); if (tier !== (S.escTierSeen || 0)) { S.escTierSeen = tier; toast(T("Dificultad: ") + T(ESC_TIERS[tier][0])); S.shake = Math.max(S.shake || 0, 0.2); }
   S.camZone = S.rowZone[clamp(Math.floor((S.camY + CH / 2) / TS), 0, S.LH - 1)] || 0;
-  if (S.camZone !== S.escZoneSeen) { S.escZoneSeen = S.camZone; toast(T("Nuevo bioma: ") + BIOMES[S.camZone].name); const m = ESC_BIOME_MOD[S.camZone]; if (m && RULE[m]) escAddMod(m, el); }
+  if (S.camZone !== S.escZoneSeen) { S.escZoneSeen = S.camZone; if (S.camZone > 0) S.trkFog = trk("niebla"); toast(T("Nuevo bioma: ") + BIOMES[S.camZone].name); const m = ESC_BIOME_MOD[S.camZone]; if (m && RULE[m]) escAddMod(m, el); }
   // modifiers: a new one every 30 s, each lasting 60 s (+15 s per difficulty tier), at most escMaxMods() at once
   for (const m of S.escMods.slice()) if (el >= m.until) { S.escMods = S.escMods.filter(x => x !== m); S.rules = S.rules.filter(r => r !== m.id); escSurvived(m.id); toast("− " + RULE[m.id].icon + " " + RULE[m.id].name); lastHud = ""; }
   if (el >= S.escNextMod) {
@@ -9393,7 +9408,6 @@ function showHow() {
     ["◐", "Modificadores", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una."],
     ["★", "Sube de nivel", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador."],
     ["▣", "Salas secretas", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos."],
-    ["☠", "Jefes", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo."],
     ["📖", "Hazañas", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice."]];
   ov.innerHTML = `<div class="menu"><h2>${T("CÓMO SE JUEGA")}</h2><div class="howl">${rows.map(([i, t, d]) => `<div><span class="hi">${i}</span><b>${T(t)}</b><p>${T(d)}</p></div>`).join("")}</div>
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
@@ -9402,7 +9416,7 @@ function showHow() {
 
 // ===== how to unlock heroes and looks: condition + progress, shown when you tap a locked card and in the Codex
 const escBestAll = () => Math.max(bestOf("escape"), S && S.escape && !S.test ? S.escBest || 0 : 0);
-const CHAR_ESC = { nyx: { t: "Llega a 150 m en una partida de Escape", v: () => escBestAll(), n: 150, u: " m" } };
+const CHAR_ESC = { kai: { t: "Llega a 75 m en una partida de Escape", v: () => escBestAll(), n: 75, u: " m" }, nyx: { t: "Llega a 150 m en una partida de Escape", v: () => escBestAll(), n: 150, u: " m" } };
 const SKIN_PROG = { velo_cuervo: [() => escBestAll(), 300, " m"], kai_explorador: [() => META.cnt.rooms || 0, 3], kai_escudero: [() => META.cnt.bosses || 0, 1], kai_caballero: [() => META.cnt.bosses || 0, 3],
   kai_minero: [() => META.cnt.coins || 0, 500], kai_enano: [() => META.cnt.buys || 0, 5], nyx_sombra: [() => escBestAll(), 600, " m"] };
 var SKIN_RUN = ["velo_cuervo", "velo_brasa", "kai_campeon", "kai_bruto", "kai_golem", "nyx_bruja", "nyx_sombra", "nyx_estelar"];
@@ -9417,7 +9431,7 @@ function lockInfo(kind, id) {
 }
 function lockHTML(name, L) { return `<span class="lkline">${pxi("lock", "#f2c14e", 1)}<b>${name}</b></span><span class="lktxt">${L.t}${L.n ? ` · ${L.v}/${L.n}${L.u}` : ""}</span>${L.n ? pxBar(L.v / L.n) : ""}`; } // v73 (user): 8-bit lock + segmented bar
 function pxBar(f, n) { n = n || 10; const k = Math.max(0, Math.min(n, Math.floor((f || 0) * n + 1e-6))); return `<span class="pxbar" role="img" aria-label="${Math.round((f || 0) * 100)}%">${Array.from({ length: n }, (_, i) => `<i class="${i < k ? "on" : ""}"></i>`).join("")}</span>`; }
-if (ESCAPE) setInterval(() => { if (S && S.escape && !S.test && S.mode === "play" && (S.escBest || 0) >= 150 && !META.chars.includes("nyx")) { META.chars.push("nyx"); saveMeta(); toast(T("Personaje desbloqueado: Nyx")); } }, 1000);
+if (ESCAPE) setInterval(() => { if (!S || !S.escape || S.test || S.mode !== "play") return; for (const [id, m, nm] of [["kai", 75, "Kai"], ["nyx", 150, "Nyx"]]) if ((S.escBest || 0) >= m && !META.chars.includes(id)) { META.chars.push(id); saveMeta(); toast(T("Personaje desbloqueado: " + nm)); } }, 1000);
 
 // ===== daily challenge (Escape): today's date is the seed, so everyone climbs the same tower, gets the same start cards and
 // the same timed modifiers. Generation and the start cards draw from their own seeded streams (sounds and enemy AI also use
@@ -10193,9 +10207,11 @@ function pxi(n, c, k) { return `<canvas class="pxi" width="9" height="9" data-pi
 function paintPxi(root) { (root || document).querySelectorAll("canvas[data-pi]").forEach(cv => { const g = ESC_PI && ESC_PI[cv.dataset.pi], x = cv.getContext("2d"); if (!g) return; x.clearRect(0, 0, 9, 9); x.fillStyle = cv.dataset.pc; for (let y = 0; y < 9; y++) for (let i = 0; i < 9; i++) if (g[y][i] === "#") x.fillRect(i, y, 1, 1); }); }
 function hlogoAttach(root, maxScale) { (root || document).querySelectorAll("canvas.hlogo").forEach(cv => { if (!window.OMF_LOGO_I) return; const k = Math.max(1, Math.min(maxScale || 3, Math.floor((Math.min(innerWidth, 460) - 28) / 104), Math.floor(186 / 70))); OMF_LOGO_I.attach(cv, k); }); }
 function heroSkinsOf(cid) { return Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].ch === cid); }
-function skinOwned(id) { const k = HERO_SKINS[id]; return k && (!k.unlock || (META.skins || []).includes(id)); }
+function fullBought() { return typeof PAY_ON !== "undefined" && PAY_ON && fullOwned(); }
+function charOk(id) { return META.chars.includes(id) || fullBought(); } // v91 (user): heroes and skins unlock by playing, or all at once with Escape completo
+function skinOwned(id) { const k = HERO_SKINS[id]; return k && (!k.unlock || (META.skins || []).includes(id) || fullBought()); }
 function escTitleHTML(ch0, db) {
-  const view = CHARS.find(c => c.id === S.titleView) || ch0, paid = !heroPaidOk(view.id), ok = META.chars.includes(view.id) && !paid, cur = heroesOn() ? heroSkinOf(view.id) : view.id;
+  const view = CHARS.find(c => c.id === S.titleView) || ch0, ok = charOk(view.id), paid = !ok && typeof PAY_ON !== "undefined" && PAY_ON, cur = heroesOn() ? heroSkinOf(view.id) : view.id;
   const ids = heroesOn() ? heroSkinsOf(view.id) : [], own = ids.filter(skinOwned).length, curK = HERO_SKINS[cur];
   const store = !!window.OMF_STORE, ach = PGS ? `<button id="pgsAch" title="${T("Logros")}" aria-label="${T("Logros")}">${pxi("star", "#5fd1c4")}</button>` : `<button id="achBtn" title="${T("Logros")}" aria-label="${T("Logros")}">${pxi("star", "#5fd1c4")}</button>`;
   return `<div class="menu etitle">
@@ -10204,7 +10220,7 @@ function escTitleHTML(ch0, db) {
       <div class="ped"><button class="pedhero" id="heroTap" aria-label="${T("Cambiar aspecto")}"><canvas class="pv" width="48" height="78" data-cid="${view.id}" data-skin="${ok ? cur : view.id}" data-lock="${ok ? 0 : 1}" data-off="0"></canvas></button><i class="slab"></i></div>
       <button class="arr" id="heroNext" aria-label="${T("Siguiente")}">${pxi("right", "#9a94b8", 3)}</button></div>
     <p class="ename" style="color:${ok ? view.color : "var(--muted)"}">${ok ? view.name.toUpperCase() : pxi("lock", "#9a94b8", 1) + " " + view.name.toUpperCase()}</p>
-    <p class="edesc">${ok ? view.desc : paid ? `${view.desc}<button class="fullcta" id="fullBtn">${pxi("lock", "#f2c14e", 1)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</button>` : lockHTML(view.name, lockInfo("char", view.id))}</p>
+    <p class="edesc">${ok ? view.desc : lockHTML(T("PARA DESBLOQUEAR"), lockInfo("char", view.id)) + (paid ? `<span class="lkor">${Lx("o", "or")}</span><button class="fullcta" id="fullBtn">${pxi("lock", "#f2c14e", 1)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</button>` : "")}</p>
     ${ok && ids.length > 1 ? `<button class="eskin" id="wardBtn">${pxi("hanger", "#5fd1c4")}<span>${T(curK ? curK.name : view.name).toUpperCase()}</span><small>${own}/${ids.length}</small></button>` : ""}
     ${escDifHTML()}
     <div class="emodes${ok ? "" : " off"}">
@@ -10225,17 +10241,17 @@ function escTitleHTML(ch0, db) {
 function escTitleWire() {
   paintPxi(ov); hlogoAttach(ov);
   const view = CHARS.find(c => c.id === S.titleView) || S.char, i0 = CHARS.indexOf(view);
-  const go = d => { const n = CHARS[(i0 + d + CHARS.length) % CHARS.length]; S.titleView = n.id; if (META.chars.includes(n.id) && heroPaidOk(n.id)) S.char = n; omfSfx("click"); showTitle(); };
+  const go = d => { const n = CHARS[(i0 + d + CHARS.length) % CHARS.length]; S.titleView = n.id; if (charOk(n.id)) S.char = n; omfSfx("click"); showTitle(); };
   const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
   on("heroPrev", () => go(-1)); on("heroNext", () => go(1));
   { const c = document.getElementById("payChk"); if (c) c.onchange = () => { try { localStorage.setItem("omf-paytest", c.checked ? "1" : "0"); } catch (_) {} location.reload(); }; }
   on("payReset", () => { META.fullTest = false; saveMeta(); showTitle(); });
   on("fullBtn", () => showFull()); if (!fullOwned()) on("hordeBtn", () => showFull());
-  on("heroTap", () => { if (!META.chars.includes(view.id) || !heroPaidOk(view.id) || !heroesOn()) return; const ids = heroSkinsOf(view.id).filter(skinOwned); if (ids.length < 2) return;
+  on("heroTap", () => { if (!charOk(view.id) || !heroesOn()) return; const ids = heroSkinsOf(view.id).filter(skinOwned); if (ids.length < 2) return;
     const cur = heroSkinOf(view.id); META.skin[view.id] = ids[(ids.indexOf(cur) + 1) % ids.length]; saveMeta(); omfSfx("pick"); showTitle(); });
   on("wardBtn", () => escWardrobe(view)); on("retoBtn", () => { omfSfx("click"); showRetos(); }); on("pgsLb", () => pgsShow("leaderboard"));
   on("testsBtn", () => { const d = document.getElementById("testsBox"); if (d) { d.open = !d.open; if (d.open) d.scrollIntoView({ block: "nearest" }); } });
-  if (!META.chars.includes(view.id) || !heroPaidOk(view.id)) ov.querySelectorAll(".emodes button").forEach(b => b.disabled = true);
+  if (!charOk(view.id)) ov.querySelectorAll(".emodes button").forEach(b => b.disabled = true);
 }
 if (typeof MutationObserver !== "undefined") new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches && n.matches("canvas[data-pi]")) paintPxi(n.parentNode); else if (n.querySelector && n.querySelector("canvas[data-pi]")) paintPxi(n); } }).observe(document.body, { childList: true, subtree: true });
 var ESC_TITLE_READY = true; // the classic title needs the hero add-ons above; earlier title draws use the old layout
@@ -10245,12 +10261,14 @@ function escWardrobe(ch) {
   el.innerHTML = `<h2>${pxi("hanger", "#5fd1c4")} ${ch.name.toUpperCase()} · ${T("ASPECTOS")}</h2>
     <div class="wgrid">${ids.map((id, i) => { const ok = skinOwned(id), k = HERO_SKINS[id]; return `<button class="wtile${id === cur ? " sel" : ""}" data-w="${id}"><canvas class="pv" width="32" height="52" data-cid="${ch.id}" data-skin="${id}" data-lock="${ok ? 0 : 1}" data-off="${i * 0.6}"></canvas>${ok ? "" : pxi("lock", "#9a94b8", 1)}<span>${ok ? T(k.name).slice(0, 9) : "???"}</span></button>`; }).join("")}</div>
     <p class="winfo" id="wInfo">${T("Listo para usar")}: ${T(HERO_SKINS[cur] ? HERO_SKINS[cur].name : ch.name)}</p>
+    ${ids.some(id => !skinOwned(id)) ? `<div class="wlocks"><div class="mlabel">${T("PARA DESBLOQUEAR")}</div>${ids.filter(id => !skinOwned(id)).map(id => `<div class="wl">${lockHTML(T(HERO_SKINS[id].name), lockInfo("skin", id))}</div>`).join("")}${typeof PAY_ON !== "undefined" && PAY_ON ? `<button class="fullcta" id="wFull">${pxi("lock", "#f2c14e", 1)} ${Lx("O TODO CON ESCAPE COMPLETO", "OR ALL WITH FULL ESCAPE")}</button>` : ""}</div>` : ""}
     <button class="wok" id="backBtn">OK</button>`;
   document.body.appendChild(el); paintPxi(el); animPortraits();
   el.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { const id = b.dataset.w, k = HERO_SKINS[id], info = el.querySelector("#wInfo");
     if (skinOwned(id)) { META.skin[ch.id] = id; saveMeta(); omfSfx("pick"); el.querySelectorAll(".wtile").forEach(t => t.classList.toggle("sel", t === b)); info.textContent = T("Listo para usar") + ": " + T(k.name); }
     else info.innerHTML = lockHTML(T(k.name), lockInfo("skin", id)); });
   el.querySelector("#backBtn").onclick = () => { el.remove(); omfSfx("click"); showTitle(); };
+  { const fb = el.querySelector("#wFull"); if (fb) fb.onclick = () => { el.remove(); showFull(); }; }
 }
 
 // ===== v71 (user, platforms thread spec /mnt/project-files/plataformas/plataformas-elegidas-spec.md): 5 new Escape platforms.
@@ -10505,7 +10523,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v90";
+var OMF_VER = "Escape v91";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10571,19 +10589,19 @@ recordRun = function () { const r = recordRun0.apply(this, arguments); cloudQueu
 // v88 (user: a reinstall did not bring the save back): after a fresh install iCloud hands the stored copy over a few
 // seconds AFTER launch (the "initial" change), and get() answers empty until then. Pushing in that window wrote the
 // fresh empty save over the backup. Now nothing is pushed until the cloud copy has been read or ~40 s have passed.
-var cloudReady = false, cloudT0 = Date.now(), cloudEv = [], cloudHad = 0, cloudReadyT = 0;
+var cloudReady = false, cloudT0 = Date.now(), cloudEv = [], cloudHad = 0, cloudReadyT = 0, cloudDbg = { up: 0, upOk: null, upErr: "", upKb: 0, down: 0, found: null, at: 0, m: 0, downErr: "" }; // v91: what really happened, shown in Ajustes
 function cloudSetReady() { if (cloudReady) return; cloudReady = true; clearTimeout(cloudReadyT); cloudQueue(); }
 function cloudQueue() { if (!CLOUD || !cloudAvail || !cloudReady) return; clearTimeout(cloudT); cloudT = setTimeout(cloudPush, 3000); }
 function cloudPush() {
   if (!CLOUD || !cloudAvail || !cloudReady) return; clearTimeout(cloudT);
-  try { const r = CLOUD.set({ key: "omf-save", value: JSON.stringify(saveBlob()) }); if (r && r.then) r.then(() => { cloudOk = true; cloudLast = Date.now(); try { const q = CLOUD.synchronize(); if (q && q.catch) q.catch(() => {}); } catch (_) {} }).catch(() => {}); } catch (_) {}
+  try { const val = JSON.stringify(saveBlob()); cloudDbg.up = Date.now(); cloudDbg.upKb = Math.ceil(val.length / 1024); const r = CLOUD.set({ key: "omf-save", value: val }); if (r && r.then) r.then(() => { cloudOk = true; cloudLast = Date.now(); cloudDbg.upOk = true; cloudDbg.upErr = ""; try { const q = CLOUD.synchronize(); if (q && q.catch) q.catch(() => {}); } catch (_) {} }).catch(e => { cloudDbg.upOk = false; cloudDbg.upErr = String(e && e.message || e).slice(0, 60); errLog(cloudDbg.upErr, "cloudSet"); }); } catch (e) { cloudDbg.upOk = false; cloudDbg.upErr = String(e && e.message || e).slice(0, 60); }
 }
 function cloudPull(done) {
   if (!CLOUD || !cloudAvail) { if (done) done(null); return; }
   try { const r = CLOUD.get({ key: "omf-save" }); if (!r || !r.then) { if (done) done(null); return; }
-    r.then(res => { cloudOk = true; const v = res && res.value; let blob = null;
-      if (v) { try { blob = JSON.parse(v); cloudHad = blob.at || Date.now(); if (applyBlob(blob) && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); } catch (e) { errLog(e.message, "cloudPull"); } cloudSetReady(); }
-      if (done) done(blob); else cloudQueue(); }).catch(e => { errLog(String(e && e.message || e), "cloudGet"); if (done) done(null); }); } catch (_) { if (done) done(null); }
+    r.then(res => { cloudOk = true; const v = res && res.value; let blob = null; cloudDbg.down = Date.now(); cloudDbg.found = !!v; cloudDbg.downErr = "";
+      if (v) { try { blob = JSON.parse(v); cloudHad = blob.at || Date.now(); cloudDbg.at = blob.at || 0; try { const mm = blob.meta ? (typeof blob.meta === "string" ? JSON.parse(blob.meta) : blob.meta) : null; cloudDbg.m = mm ? Math.max(mm.best || 0, ...Object.values(mm.escBest || {}).map(Number).filter(x => x === x), 0) : 0; } catch (_) {} if (applyBlob(blob) && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); } catch (e) { errLog(e.message, "cloudPull"); } cloudSetReady(); }
+      if (done) done(blob); else cloudQueue(); }).catch(e => { cloudDbg.down = Date.now(); cloudDbg.downErr = String(e && e.message || e).slice(0, 60); errLog(cloudDbg.downErr, "cloudGet"); if (done) done(null); }); } catch (_) { if (done) done(null); }
 }
 // right after launch: ask again a few times while iCloud downloads, then allow saving anyway
 function cloudBoot() { cloudPull(); for (const ms of [2500, 6000, 12000, 25000]) setTimeout(() => { if (!cloudReady) cloudPull(); }, ms); cloudReadyT = setTimeout(cloudSetReady, 40000); }
@@ -10592,6 +10610,10 @@ if (CLOUD) {
   try { const r = CLOUD.addListener("changed", ev => { cloudEv.push(((ev && ev.reason) || "?") + " " + hhmm(Date.now())); if (cloudEv.length > 5) cloudEv.shift(); if (!cloudAvail) return; cloudPull(); if (ev && ev.reason === "initial") setTimeout(cloudSetReady, 1500); }); if (r && r.catch) r.catch(() => {}); } catch (_) {}
   addEventListener("pagehide", cloudPush); document.addEventListener("visibilitychange", () => { if (document.hidden) cloudPush(); });
 }
+function cloudDbgHTML() { const D = cloudDbg, d = x => x ? new Date(x).toLocaleString() : "—";
+  const down = !D.down ? Lx("aún no ha leído", "not read yet") : D.downErr ? Lx("error", "error") + ": " + D.downErr : D.found ? Lx("encontró una copia del ", "found a copy from ") + d(D.at) : Lx("iCloud no tiene ninguna copia", "iCloud has no copy");
+  const up = !D.up ? Lx("aún no ha subido (espera a leer primero)", "not uploaded yet (waits to read first)") : D.upOk === false ? Lx("error", "error") + ": " + D.upErr : D.upOk ? Lx("subida bien", "uploaded OK") + " · " + D.upKb + " KB" : Lx("subiendo…", "uploading…");
+  return `<p class="ctldesc cloudbg">${Lx("Bajada", "Download")} ${D.down ? hhmm(D.down) : ""}: ${down}<br>${Lx("Subida", "Upload")} ${D.up ? hhmm(D.up) : ""}: ${up}${cloudEv.length ? "<br>" + Lx("Avisos de iCloud", "iCloud events") + ": " + cloudEv.join(", ") : ""}</p>`; }
 function b64(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
 function unb64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 async function exportCode() {
@@ -10619,7 +10641,7 @@ showSettings = function () {
     <div class="ctlsel"><button data-hq="0" aria-pressed="${!META.hq}">${Lx("FLUIDO", "SMOOTH")}</button><button data-hq="1" aria-pressed="${!!META.hq}">${Lx("NÍTIDO", "SHARP")}</button></div>
     <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p>
     <div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
-    ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}` : ""}
+    ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}${cloudDbgHTML()}` : ""}
     <p class="ctldesc">${Lx("Exporta un código para pasar tu progreso a otro aparato. Al importar se suma lo de los dos, nunca se borra nada.", "Export a code to move your progress to another device. Importing joins both, nothing is ever erased.")}</p>
     <div class="ctlsel"><button id="expBtn">${Lx("EXPORTAR", "EXPORT")}</button><button id="impBtn">${Lx("IMPORTAR", "IMPORT")}</button></div>
     <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
@@ -10720,10 +10742,11 @@ var RETO_T = [
   { id: "coins", k: "coins", n: [50, 150, 300], t: n => [`Recoge ${n} de oro`, `Collect ${n} gold`] },
 ];
 var RETO_FRAMES = [[3, "#c98a4a", ["Marco de bronce", "Bronze frame"]], [10, "#c9cde0", ["Marco de plata", "Silver frame"]], [25, "#f2c14e", ["Marco de oro", "Gold frame"]]];
+var RETO_BOSS = ["boss", "bossx", "nohit"]; // v91: no bosses in the endless climb
 function retoGen(day) {
   const R = mulberry(day * 7919 + 17), used = new Set(), list = [];
   for (let d = 0; d < 3; d++) {
-    const pool = RETO_T.filter(t => !used.has(t.k) && (!t.ds || t.ds.includes(d)));
+    const pool = RETO_T.filter(t => !used.has(t.k) && (!t.ds || t.ds.includes(d)) && !(ESCAPE && !ESC_ARENAS && RETO_BOSS.includes(t.id)));
     const t = pool[Math.floor(R() * pool.length)]; used.add(t.k);
     list.push({ t: t.id, d, n: t.n[d], x: t.x ? t.x(d, R) : null, p: 0, done: false });
   }
@@ -10732,7 +10755,7 @@ function retoGen(day) {
 function retos() {
   const day = todayKey(); if (!RETO_T) return { day, list: [], total: 0, full: 0 }; // the title can draw before this add-on loads
   META.retos = META.retos || { day: 0, list: [], total: 0, full: 0 };
-  if (META.retos.day !== day || !(META.retos.list || []).length) { META.retos.list = retoGen(day); META.retos.day = day; }
+  if (META.retos.day !== day || !(META.retos.list || []).length || (ESCAPE && !ESC_ARENAS && META.retos.list.some(it => RETO_BOSS.includes(it.t)))) { META.retos.list = retoGen(day); META.retos.day = day; }
   return META.retos;
 }
 function retoMerge(a, b) {
@@ -10887,7 +10910,7 @@ var PAY_ON = (PAY_NATIVE || PAY_TEST) && !(window.NL_VERSION || window.Neutralin
 var STOREP = (() => { try { return PAY_NATIVE ? window.Capacitor.registerPlugin("EscapeStore") : null; } catch (_) { return null; } })();
 var fullPrice = "3,99 US$";
 function fullOwned() { if (!PAY_ON) return true; return PAY_TEST ? !!(META && META.fullTest) : !!(META && META.full); }
-function heroPaidOk(id) { return id === "velo" || fullOwned(); }
+function heroPaidOk(id) { return true; } function heroPaidOk0(id) { return id === "velo" || fullOwned(); }
 function storeCall(m, a) { try { const r = STOREP && STOREP[m](a || {}); return r && r.then ? r : Promise.reject(new Error("no store")); } catch (e) { return Promise.reject(e); } }
 function setFull(v) { if (PAY_TEST) META.fullTest = v; else META.full = v; saveMeta0(); }
 if (PAY_ON && !PAY_TEST && STOREP) {
@@ -10897,7 +10920,7 @@ if (PAY_ON && !PAY_TEST && STOREP) {
   try { const l = STOREP.addListener("ownedChanged", r => { const was = fullOwned(); setFull(!!(r && r.owned)); if (was !== fullOwned()) { if (fullOwned()) toast(Lx("¡Escape completo desbloqueado!", "Full Escape unlocked!")); if (S && S.mode === "title" && !ov.hidden) { if (ov.querySelector(".fullpg")) showFull(); else if (ov.querySelector(".etitle")) showTitle(); } } }); if (l && l.catch) l.catch(() => {}); } catch (_) {}
 }
 // a hero bought with feats but not with the purchase can't stay selected
-function fullCharFix() { if (S && S.char && !heroPaidOk(S.char.id)) S.char = CHARS.find(c => c.id === "velo") || S.char; }
+function fullCharFix() { if (S && S.char && !charOk(S.char.id)) S.char = CHARS.find(c => c.id === "velo") || S.char; }
 var showTitle1 = showTitle;
 showTitle = function () { fullCharFix(); return showTitle1.apply(this, arguments); };
 function showFull() {
@@ -10970,7 +10993,7 @@ var TRK = {
   o_ancla: { n: "Ancla de plomo", r: "maldito", d: "No te empuja el viento y los golpes casi no te mueven, pero saltas un 10% menos.", rows: [".....oo.....", "....oddo....", "....odo.....", "...oooooo...", "....oddo....", "....oddo....", "....oddo....", "o...oddo...o", "od..oddo..do", "odd.oddo.ddo", ".oddddddddo.", "..oooooooo.."] },
   o_engranaje: { n: "Corazón de engranaje", r: "raro", d: "Si pasas 90 s sin recibir daño, recuperas un corazón.", rows: ["............", ".oo..oo..oo.", "odroorrooro.", ".orrrrrrrro.", "orrrrRRrrrro", "orrrRddRrrro", "orrrRddRrrro", ".orrrRRrrro.", "..orrrrrro..", "...orrrro...", "....orro....", ".....oo....."] },
   o_sombra: { n: "Sombra cosida", r: "raro", d: "Una sombra tuya repite cada ataque medio segundo después.", rows: ["............", "....oooo....", "...okkkko...", "...okpkpk...", "...okkkko...", "....okko....", "..okkkkkko..", ".okkkkkkkko.", "..okkkkkko..", "...oko.oko..", "...oko.oko..", "...oo...oo.."] },
-  o_niebla: { n: "Frasco de niebla", r: "comun", d: "Empiezas cada pelea contra un jefe con un escudo que aguanta un golpe.", rows: ["............", "....oooo....", "....obbo....", ".....oo.....", "....osso....", "...osggso...", "..osgtgtgso.", "..ogtgtgtgo.", "..otgtgtgto.", "..ottttttto.", "...ooooooo..", "............"] },
+  o_niebla: { n: "Frasco de niebla", r: "comun", d: "Empiezas cada bioma nuevo con un escudo que aguanta un golpe.", rows: ["............", "....oooo....", "....obbo....", ".....oo.....", "....osso....", "...osggso...", "..osgtgtgso.", "..ogtgtgtgo.", "..otgtgtgto.", "..ottttttto.", "...ooooooo..", "............"] },
   o_dado: { n: "Dado de hueso", r: "comun", d: "Al subir de nivel las cartas ofrecen una opción más.", rows: ["............", "..oooooooo..", ".owwwwwwwwo.", ".owoowwoowo.", ".owoowwoowo.", ".owwwwwwwwo.", ".owwwoowwwo.", ".owoowwoowo.", ".owoowwoowo.", ".owwwwwwwgo.", "..oooooooo..", "............"] },
   o_pacto: { n: "Pacto en blanco", r: "maldito", d: "Tu ataque hace +2 de daño, pero siempre cargas con un modificador malo más.", rows: ["............", ".oooooooooo.", ".owwwwwwwwo.", ".owggggggwo.", ".owwwwwwwwo.", ".owggggwwwo.", ".owwwwwwwwo.", ".owwwwwrrwo.", ".owwwwrRrwo.", ".owwwwwrrwo.", ".oooooooooo.", "............"] },
 };
@@ -11063,7 +11086,7 @@ function trkHudHTML() { return S && S.trk && S.trk.length ? `<div class="trks">$
 var trkHurt0 = hurt;
 hurt = function (dir, drown) {
   const p = S && S.player; if (!S || !S.escape || !p) return trkHurt0.apply(this, arguments);
-  if (!(p.inv > 0) && !drown && S.trkFog && S.arena && S.arena.state !== "done") { S.trkFog = false; p.inv = 1; burst(p.x + p.w / 2, p.y + p.h / 2, "#5fd6c4", 16); toast(T("El frasco de niebla aguanta el golpe")); return; }
+  if (!(p.inv > 0) && !drown && S.trkFog) { S.trkFog = false; p.inv = 1; burst(p.x + p.w / 2, p.y + p.h / 2, "#5fd6c4", 16); toast(T("El frasco de niebla aguanta el golpe")); return; }
   const hp0 = S.hp; const r = trkHurt0.apply(this, arguments);
   if (S.hp < hp0) {
     S.trkGear = 0;
@@ -11160,7 +11183,7 @@ platDraw = function (cx, cy) {
     if (trk("luciernagas")) { ctx.save(); for (let i = 0; i < 3; i++) { const a = (S.trkFlyA || 0) + i * Math.PI * 2 / 3, fx = Math.round(p.x + p.w / 2 + Math.cos(a) * 30), fy = Math.round(p.y + p.h / 2 + Math.sin(a) * 26);
       if (typeof sprGlow === "function") sprGlow(fx, fy, 14, "255,207,90", 0.35); ctx.fillStyle = "#ffcf5a"; ctx.fillRect(fx - 2, fy - 2, 4, 4); ctx.fillStyle = "#fff6ea"; ctx.fillRect(fx - 1, fy - 1, 2, 2); } ctx.restore(); }
     if (S.trkRing > 0) { ctx.save(); ctx.strokeStyle = "rgba(255,207,90," + (S.trkRing / 0.4) + ")"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + p.h / 2, 30 + (0.4 - S.trkRing) * 400, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-    if (S.trkFog && S.arena && S.arena.state !== "done") { ctx.save(); ctx.globalAlpha = 0.35 + 0.1 * Math.sin(S.t * 5); ctx.strokeStyle = "#5fd6c4"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + p.h / 2, 20, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    if (S.trkFog) { ctx.save(); ctx.globalAlpha = 0.35 + 0.1 * Math.sin(S.t * 5); ctx.strokeStyle = "#5fd6c4"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + p.h / 2, 20, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
   } catch (e) { errLog(e.message, "trkDraw"); }
 };
 // death screen: the items you carried
@@ -11242,6 +11265,43 @@ drawNextMod = function (nx, y0) { // a pill flush with the left edge: icon, name
   for (let i2 = 0; i2 < n; i2++) drawSkullPx(Math.round(x + 6 + lw + 6 + i2 * 9), y + 5, 1, true);
   ctx.restore(); ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace"; };
 Object.assign(EN_TEXT, { "AVISOS": "MESSAGES", "Sin avisos en esta partida": "No messages this run", "EN": "IN" });
+
+// ===== v91 (user: "elimina los jefes del modo infinito, el modo historia sí debe tenerlos"): feats that needed a boss get an
+// Escape goal instead (heights per hero, biomes reached, time without damage); boss skins and the 3 boss items too.
+function escBossFix() {
+  if (!ESCAPE || ESC_ARENAS) return;
+  const U = (tab, id, es, en, prog) => { if (tab[id]) Object.assign(tab[id], { es, en, prog }); };
+  U(UNLOCKS, "noise", "Llega a 100 m con Velo", "Reach 100 m as Velo", () => AF("e_velo100"));
+  U(UNLOCKS, "mirror", "Llega a 100 m con Kai", "Reach 100 m as Kai", () => AF("e_kai100"));
+  U(UNLOCKS, "onehit", "Aguanta 60 s sin recibir daño en una partida", "Go 60 s without damage in one run", () => AC("escNoHit") / 60);
+  U(UNLOCKS, "echo", "Llega al nivel 7 con Nyx", "Reach level 7 as Nyx", () => AF("e_nyx7"));
+  U(UNLOCKS, "crumbs", "Llega a 200 m con Velo", "Reach 200 m as Velo", () => AF("e_velo200"));
+  U(UNLOCKS, "tide", "Llega a 200 m con Kai", "Reach 200 m as Kai", () => AF("e_kai200"));
+  U(UNLOCKS, "clone", "Llega a 200 m con Nyx", "Reach 200 m as Nyx", () => AF("e_nyx200"));
+  U(UNLOCKS, "wind", "Aguanta 3:45 con Velo", "Survive 3:45 as Velo", () => AF("e_velo345"));
+  U(UNLOCKS, "magnet", "Aguanta 3:45 con Kai", "Survive 3:45 as Kai", () => AF("e_kai345"));
+  U(UNLOCKS, "quake", "Aguanta 3:45 con Nyx", "Survive 3:45 as Nyx", () => AF("e_nyx345"));
+  U(UNLOCKS, "liar", "Llega a El vacío", "Reach the Void", () => AF("e_z3"));
+  U(UNLOCKS, "maze", "Llega a Lo desconocido", "Reach the Unknown", () => AF("e_z4"));
+  U(UNLOCKS, "midnight", "Vence a 10 enemigos en los primeros 30 s", "Defeat 10 enemies in the first 30 s", () => AC("earlyBest") / 10);
+  U(GOOD_UNLOCKS, "o_campanilla", "Llega a Profundidades vivas", "Reach the Living Depths", () => AF("e_z1"));
+  U(GOOD_UNLOCKS, "o_corona", "Llega al Reino de las máquinas", "Reach the Machine Kingdom", () => AF("e_z2"));
+  U(GOOD_UNLOCKS, "o_pacto", "Llega a El vacío", "Reach the Void", () => AF("e_z3"));
+  for (const [id, m, es, en] of [["kai_escudero", 150, "Llega a 150 m con Kai", "Reach 150 m as Kai"], ["kai_caballero", 400, "Llega a 400 m con Kai", "Reach 400 m as Kai"]]) {
+    if (HERO_SKINS[id]) HERO_SKINS[id].unlock = es; EN_TEXT[es] = en;
+    SKIN_RULES[id] = () => S.escape && S.char && S.char.id === "kai" && (S.escBest || 0) >= m; delete SKIN_PROG[id]; if (!SKIN_RUN.includes(id)) SKIN_RUN.push(id); }
+  if (typeof TRK !== "undefined" && TRK.o_niebla) TRK.o_niebla.d = "Empiezas cada bioma nuevo con un escudo que aguanta un golpe.";
+}
+escBossFix();
+// the marks those goals read, checked every frame of an Escape climb
+setInterval(() => { if (!S || !S.escape || S.test || S.lab || S.mode !== "play") return;
+  const ch = S.char && S.char.id, m = S.escBest || 0, el = Math.max(0, S.t - S.escT0), z = S.camZone || 0;
+  if (ch === "velo" && m >= 100) achMark("e_velo100"); if (ch === "kai" && m >= 100) achMark("e_kai100"); if (ch === "kai" && m >= 200) achMark("e_kai200");
+  if (ch === "nyx" && m >= 200) achMark("e_nyx200"); if (ch === "velo" && el >= 225) achMark("e_velo345"); if (ch === "kai" && el >= 225) achMark("e_kai345");
+  for (let k = 1; k <= Math.min(4, z); k++) achMark("e_z" + k);
+}, 500);
+Object.assign(EN_TEXT, { "PARA DESBLOQUEAR": "TO UNLOCK", "Llega a 75 m en una partida de Escape": "Reach 75 m in one Escape run", "Personaje desbloqueado: Kai": "Hero unlocked: Kai",
+  "Empiezas cada bioma nuevo con un escudo que aguanta un golpe.": "You start every new biome with a shield that takes one hit." });
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
