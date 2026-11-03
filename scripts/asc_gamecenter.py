@@ -191,7 +191,7 @@ step("compra Escape completo", iap)
 
 if problems:
     print("Terminado con avisos:", ", ".join(problems))
-    if "dispositivos" in problems:
+    if "dispositivos" in problems and os.environ.get("NEED_DEVICE", "1") == "1":
         sys.exit(2)   # sin dispositivo la firma fallará; mejor parar aquí con un mensaje claro
 else:
     print("Apple listo: capacidades y Game Center al día")

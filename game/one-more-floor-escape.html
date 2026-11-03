@@ -658,7 +658,9 @@ function fitView(force) {
     cv.style.width = cw + "px"; cv.style.height = ch + "px";
     cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
     // seam fix: one art pixel (TS/16) = a whole number of canvas pixels, so tiles never leave hairlines between them
-    { const ART = TS / 16, k = Math.max(1, Math.round(cv.width / wW * ART)); SCALE = k / ART; cv.width = Math.round(wW * SCALE); cv.height = Math.round(wH * SCALE); }
+    // v82 (user: "más fluido, 60 fps o más"): the canvas is drawn at most 3 canvas pixels per art pixel and the browser
+    // scales it up pixelated, so a 3x phone fills 4x fewer pixels per frame and looks the same (Ajustes > GRÁFICOS > NÍTIDO lifts the cap)
+    { const ART = TS / 16, kMax = (typeof META !== "undefined" && META.hq) ? 9 : 3, k = Math.max(1, Math.min(kMax, Math.round(cv.width / wW * ART))); SCALE = k / ART; cv.width = Math.round(wW * SCALE); cv.height = Math.round(wH * SCALE); }
     CW = wW; CH = wH; dk.width = CW; dk.height = CH;
     return;
   }
@@ -1838,7 +1840,10 @@ function escSecretTick(p, dt) {
       if (o.st > 0.9) { S.grid[Q.F - 1][R.ex] = 1; S.grid[Q.F - 2][R.ex] = 1; }
       if (R.wave === 0 || (R.wave < 3 && !live.length && o.st >= 1)) {
         if (R.wave === 2) { R.wave = 3; escRoomCoins(1, 12, 12, (Q.a + Q.b + 1) / 2 * TS + 30); escGainXp(3); toast("¡Superada! Las rejas suben"); }
-        else { R.wave++; const types = ["walker", "hopper", "bat", "shooter", "charger"]; for (let i = 0; i < 2 + R.wave; i++) { const t = types[Math.floor(Math.random() * types.length)], x = (Q.a + 1 + Math.floor(Math.random() * (Q.b - Q.a - 1))) * TS; const e = mkEnemy(t, x, (Q.C + 2) * TS); e.room = true; e.alert = 99; S.enemies.push(e); } toast(R.wave === 1 ? "¡Emboscada!" : "¡Segunda oleada!"); }
+        else { R.wave++; const types = ["walker", "hopper", "bat", "shooter", "charger"]; // v83 (user): never drop a foe on the hero's head: only columns at least 3 tiles away (or the farthest ones in a narrow room)
+          const pcx = S.player.x + S.player.w / 2, cols = []; for (let c = Q.a + 1; c < Q.b; c++) cols.push(c);
+          let safe = cols.filter(c => Math.abs(c * TS + TS / 2 - pcx) >= 3 * TS); if (!safe.length) safe = cols.sort((u, v) => Math.abs(v * TS + TS / 2 - pcx) - Math.abs(u * TS + TS / 2 - pcx)).slice(0, 2);
+          for (let i = 0; i < 2 + R.wave; i++) { const t = types[Math.floor(Math.random() * types.length)], x = safe[Math.floor(Math.random() * safe.length)] * TS; const e = mkEnemy(t, x, (Q.C + 2) * TS); e.room = true; e.alert = 99; S.enemies.push(e); } toast(R.wave === 1 ? "¡Emboscada!" : "¡Segunda oleada!"); }
       }
       if (R.wave === 3) { o.st = Math.max(0, o.st - dt * 2); if (o.st < 0.5) { S.grid[Q.F - 1][R.ex] = 0; S.grid[Q.F - 2][R.ex] = 0; } }
       break; }
@@ -2750,8 +2755,27 @@ function drawEscapeEnemy(e, white) {
   ctx.fillStyle = white ? "#ffffff" : "#5a2f6a"; ctx.beginPath(); ctx.arc(cx, cy, R0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = "#e0566b"; ctx.fillRect(cx - 4, cy - 2, 3, 3); ctx.fillRect(cx + 2, cy - 2, 3, 3);
 }
+// v81 (user: "se mete en las paredes"): a ledge glued to the tower wall (or sitting on blocks) has sides it can't go
+// round. Then the urchin walks the free part of the loop and turns back at the wall instead of crawling through it.
+function urchinBounds(e) {
+  const g = S.grid, sol = (x, y) => y < 0 || y >= S.LH || x < 0 || x >= S.LW || solidCode(g[y][x]);
+  const x0 = Math.round(e.px0 / TS), x1 = Math.round(e.px1 / TS) - 1, y0 = Math.round(e.py0 / TS), y1 = Math.round(e.py1 / TS) - 1;
+  let lb = false, rb = false, ub = false;
+  for (let y = y0; y <= y1; y++) { if (sol(x0 - 1, y)) lb = true; if (sol(x1 + 1, y)) rb = true; }
+  for (let x = x0; x <= x1; x++) if (sol(x, y1 + 1)) ub = true;
+  for (const m of S.movers || []) if (m.side && Math.abs(m.y - e.py0) < TS && (Math.abs(m.fx - e.px1) < 2 || Math.abs(m.fx + m.fw - e.px0) < 2)) { if (m.side > 0) lb = true; else rb = true; }
+  const r = 8, W = e.px1 - e.px0 + 2 * r, Hh = e.py1 - e.py0 + 2 * r, P = 2 * (W + Hh), m = r + e.w / 2 + 1;
+  e.bk = null;
+  if (ub || (lb && rb)) e.bk = [m, W - m];                 // top only, back and forth
+  else if (lb) e.bk = [m, 2 * W + Hh - m];                  // top, free right side, underside
+  else if (rb) e.bk = [W + Hh + m, P + W - m];              // underside, free left side, top
+  if (e.bk && e.bk[1] <= e.bk[0]) e.bk = [e.bk[0], e.bk[0]];
+  if (e.bk) { let s0 = ((e.ps % P) + P) % P; if (e.bk[1] > P && s0 < e.bk[0]) s0 += P; e.ps = Math.min(e.bk[1], Math.max(e.bk[0], s0)); }
+}
 function urchinAt(e) {
   const r = 8, W = e.px1 - e.px0 + 2 * r, Hh = e.py1 - e.py0 + 2 * r, P = 2 * (W + Hh);
+  if (e.bk === undefined && S.grid) urchinBounds(e);
+  if (e.bk) { if (e.ps >= e.bk[1]) { e.ps = e.bk[1]; if (e.pdir > 0) e.pdir = -1; } if (e.ps <= e.bk[0]) { e.ps = e.bk[0]; if (e.pdir < 0) e.pdir = 1; } }
   let s = ((e.ps % P) + P) % P, cx, cy;
   if (s < W) { cx = e.px0 - r + s; cy = e.py0 - r; e.side = 0; }
   else if ((s -= W) < Hh) { cx = e.px1 + r; cy = e.py0 - r + s; e.side = 1; }
@@ -3499,6 +3523,7 @@ function escEnemyAI(e, dt, p, dx, dy, dist) {
     return true;
   }
   if (e.type === "urchin") {
+    if (!e.bkLive) { e.bkLive = true; urchinBounds(e); }
     const onIt = p.x + p.w > e.px0 - 4 && p.x < e.px1 + 4 && p.y + p.h > e.py0 - 2 * TS && p.y < e.py1 + TS;
     if (onIt && !e.angry) { e.angry = true; e.warn = 0.6; }
     if (!onIt) e.angry = false;
@@ -10383,14 +10408,15 @@ if (ESCAPE) {
   window.addEventListener("blur", () => escPause());
   document.addEventListener("keydown", e => { if (e.key === "Escape" || e.key === "p" || e.key === "P") { if (S && S.mode === "play") escPause(); else if (document.getElementById("resBtn")) escResume(); } });
 }
-const escLandscape = () => ESCAPE && window.matchMedia && matchMedia("(orientation: landscape) and (pointer: coarse)").matches;
+const escLandMQ = window.matchMedia ? matchMedia("(orientation: landscape) and (pointer: coarse)") : null;
+const escLandscape = () => ESCAPE && !!escLandMQ && escLandMQ.matches;
 // the title was drawn before this add-on loaded: draw it again so the picker shows the heroes
 if (S && S.mode === "title") showTitle();
 { let re = null; try { re = sessionStorage.getItem("omf-reopen"); sessionStorage.removeItem("omf-reopen"); } catch (_) {}
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v80";
+var OMF_VER = "Escape v83";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10409,7 +10435,7 @@ if (window.OMF_STORE) { const lb = document.getElementById("lab"); if (lb) lb.re
 // ---------- A. iCloud key-value copy (iOS) + backup code everywhere ----------
 var CLOUD = (() => { try { const C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform() || C.getPlatform() !== "ios") return null; return C.registerPlugin("CloudSave"); } catch (_) { return null; } })();
 var cloudT = 0, cloudLast = 0, cloudOk = false, cloudAvail = false; // the iCloud line and syncing wait for status().available
-var SAVE_SETTINGS = ["easy", "music", "sound", "sfxVol", "musVol", "skin", "escIntro", "ghostTip"]; // newest copy wins
+var SAVE_SETTINGS = ["easy", "hq", "music", "sound", "sfxVol", "musVol", "skin", "escIntro", "ghostTip"]; // newest copy wins
 function saveBlob() { let ctl = null, lang = null; try { ctl = localStorage.getItem("omf-ctl"); lang = localStorage.getItem("omf-lang"); } catch (_) {} return { v: 1, at: META.saveAt || Date.now(), meta: META, runs: localRuns(), ctl, lang }; }
 function mergeArr(a, b) {
   if (a.every(x => typeof x !== "object") && b.every(x => typeof x !== "object")) return [...new Set(a.concat(b))];
@@ -10491,7 +10517,10 @@ showSettings = function () {
   showSettings0();
   const pg = ov.querySelector(".setpage"), row = pg && pg.querySelector(".rowbig"); if (!row || pg.querySelector(".setx")) return;
   const errs = errList(), box = document.createElement("div"); box.className = "setx";
-  box.innerHTML = `<div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
+  box.innerHTML = `<div class="mlabel">${Lx("GRÁFICOS", "GRAPHICS")}</div>
+    <div class="ctlsel"><button data-hq="0" aria-pressed="${!META.hq}">${Lx("FLUIDO", "SMOOTH")}</button><button data-hq="1" aria-pressed="${!!META.hq}">${Lx("NÍTIDO", "SHARP")}</button></div>
+    <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p>
+    <div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
     ${CLOUD && cloudAvail ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>` : ""}
     <p class="ctldesc">${Lx("Exporta un código para pasar tu progreso a otro aparato. Al importar se suma lo de los dos, nunca se borra nada.", "Export a code to move your progress to another device. Importing joins both, nothing is ever erased.")}</p>
     <div class="ctlsel"><button id="expBtn">${Lx("EXPORTAR", "EXPORT")}</button><button id="impBtn">${Lx("IMPORTAR", "IMPORT")}</button></div>
@@ -10501,6 +10530,7 @@ showSettings = function () {
     <p class="infoln">${OMF_VER} · ${Lx("Errores", "Errors")}: <b>${errs.length}</b></p>
     ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`;
   pg.insertBefore(box, row); paintPxi(box);
+  box.querySelectorAll("[data-hq]").forEach(b => b.onclick = () => { META.hq = b.dataset.hq === "1"; saveMeta(); omfSfx("click"); box.querySelectorAll("[data-hq]").forEach(o => o.setAttribute("aria-pressed", String(o === b))); fitView(true); });
   const $b = id => box.querySelector("#" + id), bk = $b("bkBox"), ta = $b("bkCode"), msg = $b("bkMsg");
   const say = t => { msg.textContent = t; };
   $b("expBtn").onclick = async () => { omfSfx("click"); bk.hidden = false; $b("bkApply").hidden = true; $b("bkCopy").hidden = false; ta.readOnly = true; ta.value = await exportCode(); say(""); };

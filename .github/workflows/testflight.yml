@@ -13,6 +13,10 @@ on:
         type: choice
         options: [macos-15, macos-26]
         default: macos-15
+      entitlements:
+        description: "Firmar con iCloud y Game Center (necesita un dispositivo registrado)"
+        type: boolean
+        default: false
       placeholder_device:
         description: "Registrar un dispositivo de relleno si no hay ninguno (hace falta para firmar con iCloud/Game Center)"
         type: boolean
@@ -49,8 +53,12 @@ jobs:
           grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 15.0' ios/App/App.xcodeproj/project.pbxproj
           npx cap sync ios
           # Entitlements: Game Center + iCloud key-value
-          cp native/ios/App.entitlements ios/App/App/App.entitlements
-          ruby native/ios/add-entitlements.rb ios/App/App.xcodeproj || { sudo gem install xcodeproj --no-document && ruby native/ios/add-entitlements.rb ios/App/App.xcodeproj; }
+          if [ "${{ inputs.entitlements }}" = "true" ]; then
+            cp native/ios/App.entitlements ios/App/App/App.entitlements
+            ruby native/ios/add-entitlements.rb ios/App/App.xcodeproj || { sudo gem install xcodeproj --no-document && ruby native/ios/add-entitlements.rb ios/App/App.xcodeproj; }
+          else
+            echo "Sin entitlements: Game Center e iCloud no funcionarán en esta build"
+          fi
           grep -q "OmfNative" ios/App/Podfile && echo "Plugins nativos OmfNative enlazados"
           grep -o '"packageClassList".*' ios/App/App/capacitor.config.json
           # Pantalla de arranque lisa #100e1a (se funde con el splash del juego)
@@ -98,6 +106,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           REGISTER_PLACEHOLDER_DEVICE: ${{ inputs.placeholder_device && '1' || '0' }}
+          NEED_DEVICE: ${{ inputs.entitlements && '1' || '0' }}
         run: |
           python3 -m pip install --quiet --break-system-packages pyjwt cryptography requests || python3 -m pip install --quiet pyjwt cryptography requests
           python3 scripts/asc_gamecenter.py
@@ -105,7 +114,7 @@ jobs:
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
             -archivePath build/App.xcarchive -destination 'generic/platform=iOS' $AUTH \
-            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} CODE_SIGN_STYLE=Automatic $([ "${{ inputs.entitlements }}" = "true" ] || echo CODE_SIGNING_ALLOWED=NO) \
             MARKETING_VERSION=${{ inputs.version }} CURRENT_PROJECT_VERSION=${{ github.run_number }} archive
       - name: Subir a TestFlight
         timeout-minutes: 35
