@@ -31,7 +31,23 @@ jobs:
       - name: Clave de App Store Connect
         env: { ASC_KEY_P8: "${{ secrets.ASC_KEY_P8 }}" }
         run: |
-          mkdir -p ~/keys && printf '%s\n' "$ASC_KEY_P8" > ~/keys/AuthKey.p8
+          mkdir -p ~/keys
+          # Acepta la clave pegada con o sin saltos de línea, con o sin BEGIN/END, o en base64 del archivo.
+          python3 - <<'PY'
+          import os, re, base64
+          raw = os.environ["ASC_KEY_P8"].strip()
+          if "BEGIN" not in raw:
+              try:
+                  dec = base64.b64decode(re.sub(r"\s", "", raw)).decode()
+                  if "BEGIN" in dec: raw = dec
+              except Exception: pass
+          body = re.sub(r"-----(BEGIN|END)[^-]*-----", "", raw)
+          body = re.sub(r"[^A-Za-z0-9+/=]", "", body)
+          pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
+          open(os.path.expanduser("~/keys/AuthKey.p8"), "w").write(pem)
+          print("Clave normalizada:", len(body), "caracteres en base64")
+          PY
+          openssl pkey -in ~/keys/AuthKey.p8 -noout && echo "Clave válida"
           echo "AUTH=-allowProvisioningUpdates -authenticationKeyPath $HOME/keys/AuthKey.p8 -authenticationKeyID ${{ secrets.ASC_KEY_ID }} -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}" >> $GITHUB_ENV
       - name: Archivar (firmado)
         run: |
