@@ -207,6 +207,8 @@ def main():
 
     # App Review contact (only if given as secrets) and notes
     rd = {"demoAccountRequired": False, "notes": read("default", "review_notes") or ""}
+    if read("default", "contact_email"):
+        rd["contactEmail"] = read("default", "contact_email")
     for env, k in (("REVIEW_FIRST_NAME", "contactFirstName"), ("REVIEW_LAST_NAME", "contactLastName"), ("REVIEW_PHONE", "contactPhone"), ("REVIEW_EMAIL", "contactEmail")):
         if os.environ.get(env):
             rd[k] = os.environ[env]
@@ -217,7 +219,7 @@ def main():
         else:
             a.call("POST", "/v1/appStoreReviewDetails", {"data": {"type": "appStoreReviewDetails", "attributes": rd,
                 "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": vid}}}}})
-        print("Review details ok" + ("" if "contactEmail" in rd else " (contact info missing: fill it in App Store Connect)"))
+        print("Review details ok" + ("" if "contactPhone" in rd else " (name/phone for App Review missing: fill them in App Store Connect)"))
     except RuntimeError as e:
         print("WARN review details:", e)
 
