@@ -168,14 +168,16 @@ def main():
                   "profanityOrCrudeHumor", "sexualContentGraphicAndNudity", "sexualContentOrNudity",
                   "violenceCartoonOrFantasy", "violenceRealistic", "violenceRealisticProlongedGraphicOrSadistic")
         SKIP = ("kidsAgeBand", "ageRatingOverride", "ageRatingOverrideV2", "koreaAgeRatingOverride", "developerAgeRatingInfoUrl")
+        BOOLS = ("gambling", "lootBox", "unrestrictedWebAccess", "messagingAndChat", "userGeneratedContent", "advertising",
+                 "parentalControls", "ageAssurance", "healthOrWellnessTopics", "socialMedia", "socialMediaAgeRestricted")
         for k, v in ar["attributes"].items():
             if k in SKIP:
                 continue
             elif k == "violenceCartoonOrFantasy":
                 attrs[k] = "INFREQUENT_OR_MILD"
-            elif k in LEVELS or isinstance(v, str):
+            elif k in LEVELS:
                 attrs[k] = "NONE"
-            else:
+            elif isinstance(v, bool) or k in BOOLS:
                 attrs[k] = False
         a.call("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
         print("Age rating set (mild fantasy violence only)")
