@@ -10,6 +10,7 @@
   "dependencies": {
     "@capacitor/cli": "^7.6.10",
     "@capacitor/core": "^7.6.10",
-    "@capacitor/ios": "^7.6.10"
+    "@capacitor/ios": "^7.6.10",
+    "omf-native": "file:native/omf-native"
   }
 }

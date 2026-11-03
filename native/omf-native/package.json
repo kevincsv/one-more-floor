@@ -1,0 +1,7 @@
+{
+  "name": "omf-native",
+  "version": "0.1.0",
+  "description": "Plugins nativos de One More Floor Escape: GameCenter y CloudSave (iCloud key-value)",
+  "private": true,
+  "capacitor": { "ios": { "src": "ios" } }
+}

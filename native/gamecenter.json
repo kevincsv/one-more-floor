@@ -1,0 +1,399 @@
+{
+ "prefix": "omf_",
+ "leaderboards": [
+  {
+   "id": "height",
+   "formatter": "INTEGER",
+   "suffix_en": " m",
+   "suffix_es": " m",
+   "en": "Escape · Height",
+   "es": "Escape · Altura"
+  },
+  {
+   "id": "time",
+   "formatter": "ELAPSED_TIME_MILLISECOND",
+   "en": "Escape · Time",
+   "es": "Escape · Tiempo"
+  },
+  {
+   "id": "daily_height",
+   "formatter": "INTEGER",
+   "suffix_en": " m",
+   "suffix_es": " m",
+   "en": "Daily challenge · Height",
+   "es": "Reto diario · Altura",
+   "daily": true
+  }
+ ],
+ "achievements": [
+  {
+   "id": "m100",
+   "es": "Cien metros",
+   "en": "One hundred meters",
+   "cond_es": "Llega a 100 m en Escape",
+   "cond_en": "Reach 100 m in Escape",
+   "points": 10,
+   "hidden": false
+  },
+  {
+   "id": "m250",
+   "es": "Vértigo",
+   "en": "Vertigo",
+   "cond_es": "Llega a 250 m en Escape",
+   "cond_en": "Reach 250 m in Escape",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "wax",
+   "es": "Alas de cera",
+   "en": "Wings of wax",
+   "cond_es": "Llega a 400 m en Escape",
+   "cond_en": "Reach 400 m in Escape",
+   "points": 40,
+   "hidden": false
+  },
+  {
+   "id": "blackout",
+   "es": "Apagón",
+   "en": "Blackout",
+   "cond_es": "Sobrevive 5:30 en Escape",
+   "cond_en": "Survive 5:30 in Escape",
+   "points": 50,
+   "hidden": false
+  },
+  {
+   "id": "lv10",
+   "es": "Nivel máximo",
+   "en": "Max level",
+   "cond_es": "Llega a nivel 10 en una partida",
+   "cond_en": "Reach level 10 in one run",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "onehit",
+   "es": "Un golpe",
+   "en": "One hit",
+   "cond_es": "Vence a La Campana sin recibir daño",
+   "cond_en": "Defeat the Bell without taking damage",
+   "points": 40,
+   "hidden": false
+  },
+  {
+   "id": "echo",
+   "es": "Eco",
+   "en": "Echo",
+   "cond_es": "Llega a nivel 7 con Nyx",
+   "cond_en": "Reach level 7 as Nyx",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "crumbs",
+   "es": "Migas",
+   "en": "Breadcrumbs",
+   "cond_es": "Llega a 200 m con Velo",
+   "cond_en": "Reach 200 m as Velo",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "tide",
+   "es": "Marea",
+   "en": "Tide",
+   "cond_es": "Vence a la Bestia de raíces con Kai",
+   "cond_en": "Defeat the Root beast as Kai",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "clone",
+   "es": "División",
+   "en": "Split",
+   "cond_es": "Vence a la Bestia de raíces con Nyx",
+   "cond_en": "Defeat the Root beast as Nyx",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "magnet",
+   "es": "Magnetismo",
+   "en": "Magnetism",
+   "cond_es": "Vence al Robot fuelle con Kai",
+   "cond_en": "Defeat the Bellows robot as Kai",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "quake",
+   "es": "Terremoto",
+   "en": "Quake",
+   "cond_es": "Sobrevive 3:45 con Nyx",
+   "cond_en": "Survive 3:45 as Nyx",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "liar",
+   "es": "Mentiroso",
+   "en": "Liar",
+   "cond_es": "Vence al Notario",
+   "cond_en": "Defeat the Notary",
+   "points": 40,
+   "hidden": false
+  },
+  {
+   "id": "maze",
+   "es": "Laberinto",
+   "en": "Labyrinth",
+   "cond_es": "Vence a El Sello",
+   "cond_en": "Defeat the Seal",
+   "points": 50,
+   "hidden": false
+  },
+  {
+   "id": "midnight",
+   "es": "Medianoche",
+   "en": "Midnight",
+   "cond_es": "Vence 10 enemigos en los primeros 30 s",
+   "cond_en": "Defeat 10 enemies in the first 30 s",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "inertia",
+   "es": "Inercia",
+   "en": "Inertia",
+   "cond_es": "Aguanta 2 min sin recibir daño",
+   "cond_en": "Last 2 min without taking damage",
+   "points": 25,
+   "hidden": false
+  },
+  {
+   "id": "hot",
+   "es": "Suelo ardiente",
+   "en": "Burning floor",
+   "cond_es": "Pasa 60 s sin pararte",
+   "cond_en": "Go 60 s without stopping",
+   "points": 15,
+   "hidden": false
+  },
+  {
+   "id": "ammo",
+   "es": "Munición",
+   "en": "Ammo",
+   "cond_es": "Sube 50 m atacando 5 veces o menos",
+   "cond_en": "Climb 50 m with 5 attacks or fewer",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "rings",
+   "es": "Anillos",
+   "en": "Rings",
+   "cond_es": "Sube 100 m con 1 corazón",
+   "cond_en": "Climb 100 m on 1 heart",
+   "points": 25,
+   "hidden": false
+  },
+  {
+   "id": "moon",
+   "es": "Luna",
+   "en": "Moon",
+   "cond_es": "Pasa 3 s seguidos en el aire",
+   "cond_en": "Stay in the air for 3 s straight",
+   "points": 15,
+   "hidden": false
+  },
+  {
+   "id": "vamp",
+   "es": "Vampiro",
+   "en": "Vampire",
+   "cond_es": "Vence 100 enemigos con Velo",
+   "cond_en": "Defeat 100 enemies as Velo",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "glutton",
+   "es": "Glotón",
+   "en": "Glutton",
+   "cond_es": "Vence 100 enemigos con Kai",
+   "cond_en": "Defeat 100 enemies as Kai",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "hunter",
+   "es": "Cazador",
+   "en": "Hunter",
+   "cond_es": "Vence 100 enemigos con Nyx",
+   "cond_en": "Defeat 100 enemies as Nyx",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "shields",
+   "es": "Escudos",
+   "en": "Shields",
+   "cond_es": "Vence 25 enemigos con el pogo",
+   "cond_en": "Defeat 25 enemies with a pogo strike",
+   "points": 15,
+   "hidden": false
+  },
+  {
+   "id": "recoil",
+   "es": "Retroceso",
+   "en": "Recoil",
+   "cond_es": "Llega a combo x25",
+   "cond_en": "Reach a x25 combo",
+   "points": 25,
+   "hidden": false
+  },
+  {
+   "id": "tail",
+   "es": "Cola",
+   "en": "Tail",
+   "cond_es": "Vence 10 enemigos en 5 s",
+   "cond_en": "Defeat 10 enemies within 5 s",
+   "points": 25,
+   "hidden": false
+  },
+  {
+   "id": "statues",
+   "es": "Estatuas",
+   "en": "Statues",
+   "cond_es": "Vence al Mímico 3 veces",
+   "cond_en": "Defeat the Mimic 3 times",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "blink",
+   "es": "Parpadeo",
+   "en": "Blink",
+   "cond_es": "Entra en 3 salas ocultas en una misma partida",
+   "cond_en": "Enter 3 hidden rooms in one run",
+   "points": 25,
+   "hidden": false
+  },
+  {
+   "id": "sweep",
+   "es": "Barrido",
+   "en": "Sweep",
+   "cond_es": "Supera el Reto de la gema",
+   "cond_en": "Beat the Gem Trial",
+   "points": 15,
+   "hidden": false
+  },
+  {
+   "id": "decoy",
+   "es": "Señuelos",
+   "en": "Decoys",
+   "cond_es": "Entra en la sala del Ídolo maldito",
+   "cond_en": "Enter the Cursed Idol room",
+   "points": 15,
+   "hidden": true
+  },
+  {
+   "id": "sirens",
+   "es": "Sirenas",
+   "en": "Sirens",
+   "cond_es": "Bebe de la Fuente 3 veces",
+   "cond_en": "Drink from the Fountain 3 times",
+   "points": 15,
+   "hidden": false
+  },
+  {
+   "id": "debris",
+   "es": "Escombros",
+   "en": "Debris",
+   "cond_es": "Rompe 10 paredes agrietadas",
+   "cond_en": "Break 10 cracked walls",
+   "points": 15,
+   "hidden": false
+  },
+  {
+   "id": "bean",
+   "es": "Habichuela",
+   "en": "Beanstalk",
+   "cond_es": "Gasta 300 de oro en tiendas",
+   "cond_en": "Spend 300 gold in shops",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "gold",
+   "es": "Oro maldito",
+   "en": "Cursed gold",
+   "cond_es": "Ten 200 de oro a la vez",
+   "cond_en": "Hold 200 gold at once",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "shrink",
+   "es": "Diminuto",
+   "en": "Tiny",
+   "cond_es": "Muere en los primeros 20 m",
+   "cond_en": "Die in the first 20 m",
+   "points": 5,
+   "hidden": true
+  },
+  {
+   "id": "broken",
+   "es": "Pantalla rota",
+   "en": "Broken screen",
+   "cond_es": "Muere 10 veces",
+   "cond_en": "Die 10 times",
+   "points": 5,
+   "hidden": false
+  },
+  {
+   "id": "ecohoja",
+   "es": "Hoja eco",
+   "en": "Echo blade",
+   "cond_es": "Vence 5 enemigos con el 3er golpe del combo en 1 min",
+   "cond_en": "Defeat 5 enemies with the 3rd combo hit within 1 min",
+   "points": 20,
+   "hidden": false
+  },
+  {
+   "id": "vampiro",
+   "es": "Sed",
+   "en": "Thirst",
+   "cond_es": "Vence 300 enemigos en total",
+   "cond_en": "Defeat 300 enemies in total",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "iman",
+   "es": "Imán",
+   "en": "Magnet",
+   "cond_es": "Recoge 1000 monedas en total",
+   "cond_en": "Collect 1000 coins in total",
+   "points": 30,
+   "hidden": false
+  },
+  {
+   "id": "botin",
+   "es": "Botín",
+   "en": "Loot",
+   "cond_es": "Abre 10 salas de Tesoro",
+   "cond_en": "Open 10 Treasure rooms",
+   "points": 25,
+   "hidden": false
+  },
+  {
+   "id": "cristal",
+   "es": "Corazón de cristal",
+   "en": "Glass heart",
+   "cond_es": "Sube 150 m con 1 corazón",
+   "cond_en": "Climb 150 m on 1 heart",
+   "points": 30,
+   "hidden": false
+  }
+ ]
+}
