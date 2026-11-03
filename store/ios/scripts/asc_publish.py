@@ -136,14 +136,18 @@ def main():
     # app info: categories, name, subtitle, privacy URL per locale
     infos = a.all(f"/v1/apps/{aid}/appInfos")
     info = next((i for i in infos if i["attributes"].get("appStoreState") not in ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO")), infos[0])
-    try:
-        a.call("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {
-            "primaryCategory": {"data": {"type": "appCategories", "id": "GAMES"}},
-            "primarySubcategoryOne": {"data": {"type": "appCategories", "id": "GAMES_ACTION"}},
-            "primarySubcategoryTwo": {"data": {"type": "appCategories", "id": "GAMES_ARCADE"}}}}})
-        print("Categories: Games > Action, Arcade")
-    except RuntimeError as e:
-        print("WARN categories:", e)
+    def cats(*subs):
+        rel = {"primaryCategory": {"data": {"type": "appCategories", "id": "GAMES"}}}
+        for n, c in zip(("primarySubcategoryOne", "primarySubcategoryTwo"), subs):
+            rel[n] = {"data": {"type": "appCategories", "id": c}}
+        a.call("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": rel}})
+    for subs in (("GAMES_ACTION", "GAMES_ARCADE"), ("GAMES_ACTION",), ()):
+        try:
+            cats(*subs)
+            print("Categories: Games", subs)
+            break
+        except RuntimeError as e:
+            print("WARN categories", subs, str(e)[:200])
     ilocs = {l["attributes"]["locale"]: l for l in a.all(f"/v1/appInfos/{info['id']}/appInfoLocalizations")}
     for folder, loc in LOCALES.items():
         attrs = {k: v for k, v in {"name": read(folder, "name"), "subtitle": read(folder, "subtitle"),
@@ -159,16 +163,20 @@ def main():
     try:
         ar = a.get(f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
         attrs = {}
+        LEVELS = ("alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "gunsOrOtherWeapons",
+                  "horrorOrFearThemes", "matureOrSuggestiveThemes", "medicalOrTreatmentInformation",
+                  "profanityOrCrudeHumor", "sexualContentGraphicAndNudity", "sexualContentOrNudity",
+                  "violenceCartoonOrFantasy", "violenceRealistic", "violenceRealisticProlongedGraphicOrSadistic")
+        SKIP = ("kidsAgeBand", "ageRatingOverride", "ageRatingOverrideV2", "koreaAgeRatingOverride", "developerAgeRatingInfoUrl")
         for k, v in ar["attributes"].items():
-            if isinstance(v, bool) or k in ("gambling", "lootBox", "unrestrictedWebAccess", "messagingAndChat", "userGeneratedContent",
-                                            "advertising", "parentalControls", "ageAssurance", "healthOrWellnessTopics"):
-                attrs[k] = False
+            if k in SKIP:
+                continue
             elif k == "violenceCartoonOrFantasy":
                 attrs[k] = "INFREQUENT_OR_MILD"
-            elif k in ("kidsAgeBand", "ageRatingOverride", "ageRatingOverrideV2", "koreaAgeRatingOverride", "developerAgeRatingInfoUrl"):
-                continue
-            else:
+            elif k in LEVELS or isinstance(v, str):
                 attrs[k] = "NONE"
+            else:
+                attrs[k] = False
         a.call("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
         print("Age rating set (mild fantasy violence only)")
     except RuntimeError as e:

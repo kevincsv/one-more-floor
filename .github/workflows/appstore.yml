@@ -36,4 +36,4 @@ jobs:
           REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
         run: |
           python store/ios/scripts/asc_publish.py --version "${{ inputs.version }}" \
-            ${{ inputs.media && '' || '--no-media' }} ${{ inputs.submit && '--submit' || '' }}
+            ${{ format('{0}', inputs.media) == 'false' && '--no-media' || '' }} ${{ format('{0}', inputs.submit) == 'true' && '--submit' || '' }}
