@@ -128,6 +128,12 @@ jobs:
           xcodebuild -exportArchive -archivePath build/App.xcarchive -exportPath build \
             -exportOptionsPlist build/ExportOptions.plist $AUTH
           ls -la build/*.ipa
+          # Comprobar que la app firmada lleva los entitlements de iCloud y Game Center
+          rm -rf build/check && mkdir -p build/check && unzip -q build/App.ipa -d build/check
+          codesign -d --entitlements :- build/check/Payload/App.app 2>/dev/null | tee build/entitlements.plist | grep -E "ubiquity-kvstore|game-center|aps-environment|application-identifier" -A1 || true
+          if [ "${{ inputs.entitlements }}" = "true" ] && ! grep -q "ubiquity-kvstore-identifier" build/entitlements.plist; then
+            echo "::error::La app firmada no lleva el entitlement de iCloud key-value"; exit 1
+          fi
           # Subida con altool y reintentos (la subida directa de Apple a veces se queda colgada)
           mkdir -p ~/.appstoreconnect/private_keys
           cp ~/keys/AuthKey.p8 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8

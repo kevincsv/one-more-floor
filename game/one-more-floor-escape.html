@@ -462,6 +462,8 @@ body:has(#splash) #ov { visibility: hidden; }
 .difsel button { font-family: var(--font-display); font-size: 12px; letter-spacing: 1px; padding: 6px 16px; background: var(--panel); color: var(--muted); border: 2px solid var(--line); min-width: 96px; }
 .difsel button + button { border-left: 0; }
 .difsel button.on { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+.difsel button.hc.on { background: #e0566b; border-color: #e0566b; }
+.difinfo { font-size: 12px; line-height: 1.35; color: var(--muted); text-align: center; max-width: 340px; margin: -2px auto 8px; padding: 0 8px; }
 body.mirrored #tLeft, body.mirrored #tRight, body.mirrored #gDpad [data-d="l"], body.mirrored #gDpad [data-d="r"] { transform: scaleX(-1); color: #e0566b; border-color: #e0566b !important; filter: drop-shadow(0 0 3px rgba(224,86,107,.7)); }
 /* v68 boot splash + swipe-back arrow */
 .boot { position: fixed; inset: 0; z-index: 130; background: var(--bg, #100e1a); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; touch-action: none; }
@@ -1102,7 +1104,8 @@ function newRun(opts = {}) {
   if (typeof document !== "undefined") document.body.classList.remove("mirrored");
   S.horde = ESCAPE && !!opts.horde && run === "escape"; /* v68 (user): HORDA, no modifiers, more enemies, own records */
   S.easy = ESCAPE && !!META.easy && !S.horde; if (S.easy) { S.maxhp += 1; S.hp += 1; } // v59 (user): Easy mode, +1 heart (more in escEasy)
-  const rk = S.easy ? run + "-easy" : S.horde ? run + "-horde" : run;
+  S.hard = ESCAPE && !!META.hard && !S.easy && !S.horde; // v87 (user): HARDCORE, nothing can be jumped through from below, camera 15% faster, own records
+  const rk = S.easy ? run + "-easy" : S.hard ? run + "-hard" : S.horde ? run + "-horde" : run;
   S.snap = { u: [...META.unlocked], g: [...(META.goods || [])], sk: [...(META.skins || [])], ch: [...META.chars], best: bestOf(rk), bestT: run === "escape" ? Math.max(0, ...localRuns().filter(x => x.run === rk).map(x => x.time || 0)) : 0 };
   if (daily) {
     const R = mulberry(seed + 7), seq = RULES.map(r => r.id);
@@ -2085,7 +2088,7 @@ function escapeTick(p, dt) {
   const locked = escArenaTick(p, dt);
   const target = p.y + p.h / 2 - CH * (CTL === "franja" ? (CH < 20 * TS ? 0.5 : 0.4) : 0.45) + DEV_RISE; // short screens: keep more of the climb in view above you. v68: framed DEV_RISE lower, since the Devourer covers the bottom
   if (!locked && target < S.camY) S.camY = target;
-  if (!locked && el > 3 && S.banner <= 0 && !S.roomTest) S.camY -= Math.min(66, 16 + escD() * 7) * (1 - 0.15 * perk("freno")) * (S.easy ? 0.7 : 1) * dt; // camera push grows with difficulty, capped
+  if (!locked && el > 3 && S.banner <= 0 && !S.roomTest) S.camY -= Math.min(66, 16 + escD() * 7) * (1 - 0.15 * perk("freno")) * (S.easy ? 0.7 : S.hard ? 1.15 : 1) * dt; // camera push grows with difficulty, capped
   S.camY = Math.max(0, S.camY);
   // the view's height can change after the run starts (title -> play shows the control strip): keep the bottom edge
   // where it was, and in the first seconds or a test room never count it as a fall, so nobody starts the run dead
@@ -2837,13 +2840,13 @@ const isSolidTile = t => t === 1 || t >= 4;
    tower's side walls) and thin platforms, and lands on them from above, so they don't have to walk round them.
    Thick blocks, walls, the ground, springs, conveyors, cracked walls and pistons stay fully solid. Enemies don't change. */
 var OW = 0; // 1 while the hero's sideways and upward checks run
-function owOn(e) { return ESCAPE && e === S.player && S.gdir > 0 && !(S.arena && S.arena.state !== "done") && !e.climb; }
+function owOn(e) { return ESCAPE && !S.hard && e === S.player && S.gdir > 0 && !(S.arena && S.arena.state !== "done") && !e.climb; }
 function owTile(tx, ty) { if (!OW_LEDGES && !S.easy) return false; // v84 (user): easy mode lets you jump up through every platform
   const g = S.grid; return ty > 0 && ty < S.LH - 1 && tx > 0 && tx < S.LW - 1 && g[ty][tx] === 1 && !solidCode(g[ty - 1][tx]) && !solidCode(g[ty + 1][tx]); }
 // v80 (user picked from the blocks page): stone ledges (thin or not) and the light platform are solid again;
 // only the moving platform and the ghost steps let you jump up through them.
 var OW_LEDGES = false;
-function owMover(m) { return m.kind === "move" || m.kind === "gstep" || (S.easy && !m.side); }
+function owMover(m) { return S.easy || m.kind === "move" || m.kind === "gstep" || m.kind === "lightp" || m.kind === "root" || m.kind === "piston"; } // v88 (user): Normal also lets you through light platforms (G), roots (M) and pistons (N); Easy: every platform
 function owHit(h) { return h.kind ? owMover(h) : h.w === TS && h.h === TS && owTile(Math.round(h.x / TS), Math.round(h.y / TS)); }
 function hitAt(px, py) {
   const tx = Math.floor(px / TS), ty = Math.floor(py / TS);
@@ -3928,7 +3931,7 @@ function finishFloor() {
     achFinishFloor(was);
     META.best = Math.max(META.best, was + 1);
     if (was + 1 >= 5 && !META.chars.includes("nyx")) { META.chars.push("nyx"); toast("Personaje desbloqueado: Nyx"); }
-    if (S.daily) { const k = String(S.seed) + (S.easy ? "e" : ""); META.daily[k] = Math.max(META.daily[k] || 0, was + 1); }
+    if (S.daily) { const k = String(S.seed) + (S.easy ? "e" : S.hard ? "h" : ""); META.daily[k] = Math.max(META.daily[k] || 0, was + 1); }
     saveMeta();
   }
   S.floor++; if (isBoss(was)) S.hp = Math.min(S.maxhp, S.hp + 1); S.mult = 1; // healing only after a boss
@@ -4074,12 +4077,12 @@ function showTitle() {
   { const lb = document.getElementById("labBar"); if (lb) lb.remove(); }
   if (!S) newRun();
   S.mode = "title"; ov.hidden = false; ov.classList.remove("dead");
-  const dk = String(todayKey()) + (ESCAPE && META.easy ? "e" : ""), db = META.daily[dk] || 0, ch = S.char;
+  const dk = String(todayKey()) + (ESCAPE && META.easy ? "e" : ESCAPE && META.hard ? "h" : ""), db = META.daily[dk] || 0, ch = S.char;
   const chip = c => { const ok = META.chars.includes(c.id); return `<button class="chr ${ch.id === c.id ? "sel" : ""}" data-c="${c.id}" ${ok ? "" : "disabled"} aria-label="${c.name}">
       <canvas class="pv" width="48" height="78" data-cid="${c.id}" data-lock="${ok ? 0 : 1}" data-off="${CHARS.indexOf(c) * 1.3}"></canvas><span class="nm" style="color:${ok ? c.color : "var(--muted)"}">${ok ? c.name : "🔒"}</span></button>`; };
   const okCh = META.chars.includes(ch.id);
   const modes = ESCAPE
-    ? `<button class="mode main" id="goBtn"><span class="mi">▲</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin: la cámara solo sube</span><span class="mv"><small>MEJOR</small>${bestOf(META.easy ? "escape-easy" : "escape")} m</span></button>
+    ? `<button class="mode main" id="goBtn"><span class="mi">▲</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin: la cámara solo sube</span><span class="mv"><small>MEJOR</small>${bestOf(escDifKind())} m</span></button>
        <button class="mode" id="dailyBtn"><span class="mi">☀</span><span class="mt">DESAFÍO DIARIO</span><span class="ms">La misma torre para todos hoy${dailyStreak() > 1 ? " · " + T("racha") + " " + dailyStreak() : ""}</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
        <button class="mode" id="hordeBtn"><span class="mi">⚔</span><span class="mt">HORDA</span><span class="ms">Sin modificadores: solo muchos más enemigos</span><span class="mv"><small>MEJOR</small>${bestOf("escape-horde")} m</span></button>`
     : `<button class="mode main" id="goBtn"><span class="mi">⚑</span><span class="mt">HISTORIA</span><span class="ms">50 pisos · la subida de Velo · ${(META.ecos || []).length}/25 ecos</span><span class="mv"><small>MEJOR</small>${META.best || 0}</span></button>
@@ -4092,7 +4095,7 @@ function showTitle() {
     <div class="chars">${CHARS.map(chip).join("")}</div>
     <p class="cdesc"><b style="color:${ch.color}">${ch.name}</b><br><span>${okCh ? ch.desc : ""}</span></p>
     ${okCh ? skinRow(ch) : ""}
-    ${ESCAPE ? `<div class="difsel" role="group" aria-label="${T("Dificultad")}"><button data-dif="0" class="${META.easy ? "" : "on"}">${T("NORMAL")}</button><button data-dif="1" class="${META.easy ? "on" : ""}">${T("FÁCIL")}</button></div>` : ""}
+    ${ESCAPE ? `${escDifHTML()}` : ""}
     <div class="modes">${modes}</div>
     <div class="tools"><button id="lbBtn"><span aria-hidden="true">🏆</span> <span>Récords</span></button><button id="codexBtn"><span aria-hidden="true">📖</span> <span>Códice</span></button>${ESCAPE && !PGS ? `<button id="achBtn"><span aria-hidden="true">🏆</span> <span>Logros</span></button>` : ""}${PGS ? `<button id="pgsAch"><span aria-hidden="true">🏅</span> <span>Logros</span></button><button id="pgsLb"><span aria-hidden="true">📈</span> <span>Ranking</span></button>` : ""}${ESCAPE ? `<button id="setBtn"><span aria-hidden="true">⚙</span> <span>Ajustes</span></button><button id="howBtn"><span aria-hidden="true">❓</span> <span>Cómo se juega</span></button>` : ""}${ESCAPE ? "" : `<button id="portBtn">${PORTRAIT ? "Modo horizontal" : "Modo vertical"}</button>`}</div>
     ${window.OMF_STORE ? "" : `<details class="how bt"><summary>PRUEBAS</summary>
@@ -4120,7 +4123,7 @@ function showTitle() {
   on("goBtn", () => { newRun({ char: S.char.id, kind: ESCAPE ? "escape" : "story" }); nextRuleStep(); });
   on("hordeBtn", () => { newRun({ char: S.char.id, kind: "escape", horde: true }); startFloor(); });
   on("endlessBtn", () => { newRun({ char: S.char.id, kind: "endless" }); nextRuleStep(); });
-  on("dailyBtn", () => { newRun({ char: S.char.id, kind: "daily" }); { const k = String(S.seed) + (S.easy ? "e" : ""); if (!(k in META.daily)) { META.daily[k] = 0; saveMeta(); } } nextRuleStep(); });
+  on("dailyBtn", () => { newRun({ char: S.char.id, kind: "daily" }); { const k = String(S.seed) + (S.easy ? "e" : S.hard ? "h" : ""); if (!(k in META.daily)) { META.daily[k] = 0; saveMeta(); } } nextRuleStep(); });
   on("platBtn", testPlats);
   on("labBtn", mobLab); on("itemLabBtn", itemLab);
   { const c = document.getElementById("boxChk"); if (c) c.onchange = () => { window.OMF_SHOWBOXES = c.checked; }; }
@@ -4130,8 +4133,8 @@ function showTitle() {
   ov.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => storyTestVignette(+b.dataset.sv));
   ov.querySelectorAll("[data-se]").forEach(b => b.onclick = () => storyTestEnding(b.dataset.se));
   on("stGo", () => storyTestFloor(+document.getElementById("stFloor").value || 1));
-  ov.querySelectorAll("[data-dif]").forEach(b => b.onclick = () => { META.easy = b.dataset.dif === "1"; saveMeta(); omfSfx("click"); showTitle(); });
-  on("lbBtn", () => showRecords(ESCAPE ? (META.easy ? "escape-easy" : "escape") : "endless"));
+  ov.querySelectorAll("[data-dif]").forEach(b => b.onclick = () => { META.easy = b.dataset.dif === "e"; META.hard = b.dataset.dif === "h"; saveMeta(); omfSfx("click"); showTitle(); });
+  on("lbBtn", () => showRecords(ESCAPE ? escDifKind() : "endless"));
   on("codexBtn", () => showCodex()); on("setBtn", showSettings); on("achBtn", () => showCodex("logros")); on("howBtn", showHow); on("pgsAch", () => pgsShow("achievements")); on("pgsLb", () => pgsShow("leaderboard"));
   on("langBtn", () => { try { localStorage.setItem("omf-lang", LANG === "en" ? "es" : "en"); } catch (_) {} location.reload(); });
   on("portBtn", () => { try { localStorage.setItem("omf-portrait", PORTRAIT ? "0" : "1"); } catch (_) {} location.reload(); });
@@ -4575,7 +4578,7 @@ function showDead() {
     : `<div><b>${S.floor}</b><span>Piso</span></div><div><b>${S.coins}</b><span>Oro</span></div><div><b>${S.lastRank ? "#" + S.lastRank : "—"}</b><span>Puesto</span></div>`;
   ov.innerHTML = `<div class="menu">
     <h1>${S.escape ? "CAÍSTE" : "CAÍSTE EN EL PISO " + S.floor}</h1>
-    <p class="tagline"><span>${T(RUN_NAMES[S.easy ? S.run + "-easy" : S.run] || "")}</span>${S.escape && S.lastRank ? " · #" + S.lastRank : ""}</p>
+    <p class="tagline"><span>${T(RUN_NAMES[S.easy ? S.run + "-easy" : S.hard ? S.run + "-hard" : S.run] || "")}</span>${S.escape && S.lastRank ? " · #" + S.lastRank : ""}</p>
     ${storyOn() ? `<p class="acta">${storyActa()}</p>` : ""}
     <div class="stats">${stats}</div>
     ${runGains()}
@@ -4591,9 +4594,15 @@ function showDead() {
 }
 
 /* ---------- records: local on every device, shared between players on the published page ---------- */
-const RUN_NAMES = { story: "Historia", endless: "Infinito", daily: "Desafío diario", escape: "Escape", "escape-easy": "Escape · Fácil", "daily-easy": "Diario · Fácil", "escape-horde": "Horda" };
+const RUN_NAMES = { story: "Historia", endless: "Infinito", daily: "Desafío diario", escape: "Escape", "escape-easy": "Escape · Fácil", "daily-easy": "Diario · Fácil", "escape-hard": "Escape · Hardcore", "daily-hard": "Diario · Hardcore", "escape-horde": "Horda" };
 const fmtTime = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
 function localRuns() { try { return JSON.parse(localStorage.getItem("omf-runs") || "[]"); } catch (_) { return []; } }
+function escDifKind() { return META.easy ? "escape-easy" : META.hard ? "escape-hard" : "escape"; }
+const ESC_DIF_INFO = { e: "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.",
+  n: "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.",
+  h: "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte." };
+function escDifHTML() { const d = META.easy ? "e" : META.hard ? "h" : "n";
+  return `<div class="difsel" role="group" aria-label="${T("Dificultad")}">${[["e", "FÁCIL"], ["n", "NORMAL"], ["h", "HARDCORE"]].map(([k, n]) => `<button data-dif="${k}" class="${d === k ? "on" : ""}${k === "h" ? " hc" : ""}">${T(n)}</button>`).join("")}</div><p class="difinfo">${T(ESC_DIF_INFO[d])}</p>`; }
 function bestOf(kind) { const r = localRuns().filter(x => x.run === kind); return r.length ? Math.max(...r.map(x => x.floor)) : 0; }
 const scoreCmp = (a, b) => (b.won ? 1 : 0) - (a.won ? 1 : 0) || b.floor - a.floor || b.gold - a.gold;
 let LB = null; // { db, user, me } once the shared store answers
@@ -4607,11 +4616,11 @@ let LB = null; // { db, user, me } once the shared store answers
 })();
 function recordRun(won) {
   if (S.test) return;
-  const entry = { run: S.easy ? S.run + "-easy" : S.horde ? S.run + "-horde" : S.run, floor: S.escape ? (S.escBest || 0) : won ? FINAL_FLOOR : S.floor, gold: S.coins, char: S.char.id, won: !!won, day: S.daily ? String(S.seed) : "", at: Date.now() };
+  const entry = { run: S.easy ? S.run + "-easy" : S.hard ? S.run + "-hard" : S.horde ? S.run + "-horde" : S.run, floor: S.escape ? (S.escBest || 0) : won ? FINAL_FLOOR : S.floor, gold: S.coins, char: S.char.id, won: !!won, day: S.daily ? String(S.seed) : "", at: Date.now() };
   if (S.escape) entry.time = Math.round(Math.max(0, S.t - S.escT0));
   const all = localRuns(); all.push(entry);
   const keep = [];
-  for (const k of ["story", "endless", "daily", "escape", "escape-easy", "daily-easy", "escape-horde"]) keep.push(...all.filter(x => x.run === k).sort(scoreCmp).slice(0, 15));
+  for (const k of ["story", "endless", "daily", "escape", "escape-easy", "daily-easy", "escape-hard", "daily-hard", "escape-horde"]) keep.push(...all.filter(x => x.run === k).sort(scoreCmp).slice(0, 15));
   try { localStorage.setItem("omf-runs", JSON.stringify(keep)); } catch (_) {}
   const mine = keep.filter(x => x.run === entry.run && (!entry.run.startsWith("daily") || x.day === entry.day)).sort(scoreCmp);
   const i = mine.findIndex(x => x.at === entry.at); S.lastRank = i >= 0 ? i + 1 : 0;
@@ -4643,7 +4652,7 @@ function showRecords(kind) {
   const loc = localRuns().filter(x => x.run === kind && (!kind.startsWith("daily") || x.day === today)).sort(scoreCmp).slice(0, 10);
   const row = (r, i, who) => kind.startsWith("escape") ? `<div><b>${i + 1}. ${who}</b>${r.floor} m · ${fmtTime(r.time || 0)} · ${CHARS.find(c => c.id === r.char)?.name || ""}</div>` : `<div><b>${i + 1}. ${who}</b>Piso ${r.floor}${r.won ? " · torre superada" : ""} · ${r.gold} de oro · ${CHARS.find(c => c.id === r.char)?.name || ""}</div>`;
   ov.innerHTML = `<h2>RÉCORDS</h2>
-    <div class="row">${(ESCAPE ? ["escape", "daily", "escape-easy", "daily-easy", "escape-horde"] : ["endless", "story", "daily"]).map(k => `<button data-k="${k}" ${k === kind ? 'aria-pressed="true" style="border-color:var(--amber);color:var(--amber)"' : ""}>${RUN_NAMES[k]}</button>`).join("")}</div>
+    <div class="row">${(ESCAPE ? ["escape", "daily", "escape-easy", "daily-easy", "escape-hard", "daily-hard", "escape-horde"] : ["endless", "story", "daily"]).map(k => `<button data-k="${k}" ${k === kind ? 'aria-pressed="true" style="border-color:var(--amber);color:var(--amber)"' : ""}>${RUN_NAMES[k]}</button>`).join("")}</div>
     <h3>TODOS LOS JUGADORES${kind.startsWith("daily") ? " · HOY" : ""}</h3>
     <div class="codex" id="lbShared"><div class="lk">${LB ? "Cargando…" : "Los récords compartidos funcionan en la página publicada del juego. Aquí ves los tuyos."}</div></div>
     <h3>TUS MEJORES PARTIDAS</h3>
@@ -9403,7 +9412,7 @@ function dailyStreak() { const d = META.dailyStreak || { last: 0, n: 0 }, t = to
   return d.last === t || d.last === y ? d.n : 0; }
 function dailyRecord() {
   if (!S || !S.daily || !S.escape || S.test) return;
-  const k = String(S.seed) + (S.easy ? "e" : ""); META.daily[k] = Math.max(META.daily[k] || 0, S.escBest || 0);
+  const k = String(S.seed) + (S.easy ? "e" : S.hard ? "h" : ""); META.daily[k] = Math.max(META.daily[k] || 0, S.escBest || 0);
   const d = META.dailyStreak || { last: 0, n: 0 }, t = todayKey();
   if (d.last !== t) { META.dailyStreak = { last: t, n: dailyStreak() + 1 }; } saveMeta();
 }
@@ -10180,9 +10189,9 @@ function escTitleHTML(ch0, db) {
     <p class="ename" style="color:${ok ? view.color : "var(--muted)"}">${ok ? view.name.toUpperCase() : pxi("lock", "#9a94b8", 1) + " " + view.name.toUpperCase()}</p>
     <p class="edesc">${ok ? view.desc : paid ? `${view.desc}<button class="fullcta" id="fullBtn">${pxi("lock", "#f2c14e", 1)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</button>` : lockHTML(view.name, lockInfo("char", view.id))}</p>
     ${ok && ids.length > 1 ? `<button class="eskin" id="wardBtn">${pxi("hanger", "#5fd1c4")}<span>${T(curK ? curK.name : view.name).toUpperCase()}</span><small>${own}/${ids.length}</small></button>` : ""}
-    <div class="difsel" role="group" aria-label="${T("Dificultad")}"><button data-dif="0" class="${META.easy ? "" : "on"}">${T("NORMAL")}</button><button data-dif="1" class="${META.easy ? "on" : ""}">${T("FÁCIL")}</button></div>
+    ${escDifHTML()}
     <div class="emodes${ok ? "" : " off"}">
-      <button class="mode main" id="goBtn"><span class="mi">${pxi("up", "#f2c14e")}</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin</span><span class="mv"><small>MEJOR</small>${bestOf(META.easy ? "escape-easy" : "escape")} m</span></button>
+      <button class="mode main" id="goBtn"><span class="mi">${pxi("up", "#f2c14e")}</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin</span><span class="mv"><small>MEJOR</small>${bestOf(escDifKind())} m</span></button>
       <button class="mode half" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e")}</span><span class="mt">DIARIO</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
       <button class="mode half${fullOwned() ? "" : " paid"}" id="hordeBtn"><span class="mi">${pxi(fullOwned() ? "swords" : "lock", fullOwned() ? "#e0566b" : "#f2c14e")}</span><span class="mt">HORDA</span><span class="mv">${fullOwned() ? `<small>MEJOR</small>${bestOf("escape-horde")} m` : ""}</span></button>
     </div>
@@ -10465,7 +10474,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v86";
+var OMF_VER = "Escape v88";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10484,7 +10493,7 @@ if (window.OMF_STORE) { const lb = document.getElementById("lab"); if (lb) lb.re
 // ---------- A. iCloud key-value copy (iOS) + backup code everywhere ----------
 var CLOUD = (() => { try { const C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform() || C.getPlatform() !== "ios") return null; return C.registerPlugin("CloudSave"); } catch (_) { return null; } })();
 var cloudT = 0, cloudLast = 0, cloudOk = false, cloudAvail = false; // the iCloud line and syncing wait for status().available
-var SAVE_SETTINGS = ["easy", "hq", "music", "sound", "sfxVol", "musVol", "skin", "escIntro", "ghostTip"]; // newest copy wins
+var SAVE_SETTINGS = ["easy", "hard", "hq", "music", "sound", "sfxVol", "musVol", "skin", "escIntro", "ghostTip"]; // newest copy wins
 function saveBlob() { let ctl = null, lang = null; try { ctl = localStorage.getItem("omf-ctl"); lang = localStorage.getItem("omf-lang"); } catch (_) {} return { v: 1, at: META.saveAt || Date.now(), meta: META, runs: localRuns(), ctl, lang }; }
 function mergeArr(a, b) {
   if (a.every(x => typeof x !== "object") && b.every(x => typeof x !== "object")) return [...new Set(a.concat(b))];
@@ -10512,7 +10521,7 @@ function mergeObj(L, R, rNew, depth) {
 }
 function keepRuns(all) {
   const seen = new Set(), uniq = all.filter(x => { const k = x.run + "|" + x.at; if (seen.has(k)) return false; seen.add(k); return true; });
-  const keep = []; for (const k of ["story", "endless", "daily", "escape", "escape-easy", "daily-easy", "escape-horde"]) keep.push(...uniq.filter(x => x.run === k).sort(scoreCmp).slice(0, 15));
+  const keep = []; for (const k of ["story", "endless", "daily", "escape", "escape-easy", "daily-easy", "escape-hard", "daily-hard", "escape-horde"]) keep.push(...uniq.filter(x => x.run === k).sort(scoreCmp).slice(0, 15));
   return keep;
 }
 function applyBlob(blob) {
@@ -10528,19 +10537,28 @@ var saveMeta0 = saveMeta;
 saveMeta = function () { META.saveAt = Date.now(); saveMeta0(); cloudQueue(); };
 var recordRun0 = recordRun;
 recordRun = function () { const r = recordRun0.apply(this, arguments); cloudQueue(); return r; };
-function cloudQueue() { if (!CLOUD || !cloudAvail) return; clearTimeout(cloudT); cloudT = setTimeout(cloudPush, 3000); }
+// v88 (user: a reinstall did not bring the save back): after a fresh install iCloud hands the stored copy over a few
+// seconds AFTER launch (the "initial" change), and get() answers empty until then. Pushing in that window wrote the
+// fresh empty save over the backup. Now nothing is pushed until the cloud copy has been read or ~40 s have passed.
+var cloudReady = false, cloudT0 = Date.now(), cloudEv = [], cloudHad = 0, cloudReadyT = 0;
+function cloudSetReady() { if (cloudReady) return; cloudReady = true; clearTimeout(cloudReadyT); cloudQueue(); }
+function cloudQueue() { if (!CLOUD || !cloudAvail || !cloudReady) return; clearTimeout(cloudT); cloudT = setTimeout(cloudPush, 3000); }
 function cloudPush() {
-  if (!CLOUD || !cloudAvail) return; clearTimeout(cloudT);
+  if (!CLOUD || !cloudAvail || !cloudReady) return; clearTimeout(cloudT);
   try { const r = CLOUD.set({ key: "omf-save", value: JSON.stringify(saveBlob()) }); if (r && r.then) r.then(() => { cloudOk = true; cloudLast = Date.now(); try { const q = CLOUD.synchronize(); if (q && q.catch) q.catch(() => {}); } catch (_) {} }).catch(() => {}); } catch (_) {}
 }
-function cloudPull() {
-  if (!CLOUD || !cloudAvail) return;
-  try { const r = CLOUD.get({ key: "omf-save" }); if (!r || !r.then) return;
-    r.then(res => { cloudOk = true; const v = res && res.value; if (v) { try { if (applyBlob(JSON.parse(v)) && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); } catch (_) {} } cloudQueue(); }).catch(() => {}); } catch (_) {}
+function cloudPull(done) {
+  if (!CLOUD || !cloudAvail) { if (done) done(null); return; }
+  try { const r = CLOUD.get({ key: "omf-save" }); if (!r || !r.then) { if (done) done(null); return; }
+    r.then(res => { cloudOk = true; const v = res && res.value; let blob = null;
+      if (v) { try { blob = JSON.parse(v); cloudHad = blob.at || Date.now(); if (applyBlob(blob) && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); } catch (e) { errLog(e.message, "cloudPull"); } cloudSetReady(); }
+      if (done) done(blob); else cloudQueue(); }).catch(e => { errLog(String(e && e.message || e), "cloudGet"); if (done) done(null); }); } catch (_) { if (done) done(null); }
 }
+// right after launch: ask again a few times while iCloud downloads, then allow saving anyway
+function cloudBoot() { cloudPull(); for (const ms of [2500, 6000, 12000, 25000]) setTimeout(() => { if (!cloudReady) cloudPull(); }, ms); cloudReadyT = setTimeout(cloudSetReady, 40000); }
 if (CLOUD) {
-  try { const st = CLOUD.status(); if (st && st.then) st.then(r => { cloudAvail = !!(r && r.available); if (cloudAvail) cloudPull(); }).catch(() => {}); } catch (_) {}
-  try { const r = CLOUD.addListener("changed", () => cloudPull()); if (r && r.catch) r.catch(() => {}); } catch (_) {}
+  try { const st = CLOUD.status(); if (st && st.then) st.then(r => { cloudAvail = !!(r && r.available); if (cloudAvail) cloudBoot(); }).catch(() => {}); } catch (_) {}
+  try { const r = CLOUD.addListener("changed", ev => { cloudEv.push(((ev && ev.reason) || "?") + " " + hhmm(Date.now())); if (cloudEv.length > 5) cloudEv.shift(); if (!cloudAvail) return; cloudPull(); if (ev && ev.reason === "initial") setTimeout(cloudSetReady, 1500); }); if (r && r.catch) r.catch(() => {}); } catch (_) {}
   addEventListener("pagehide", cloudPush); document.addEventListener("visibilitychange", () => { if (document.hidden) cloudPush(); });
 }
 function b64(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
@@ -10570,7 +10588,7 @@ showSettings = function () {
     <div class="ctlsel"><button data-hq="0" aria-pressed="${!META.hq}">${Lx("FLUIDO", "SMOOTH")}</button><button data-hq="1" aria-pressed="${!!META.hq}">${Lx("NÍTIDO", "SHARP")}</button></div>
     <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p>
     <div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
-    ${CLOUD && cloudAvail ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>` : ""}
+    ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}` : ""}
     <p class="ctldesc">${Lx("Exporta un código para pasar tu progreso a otro aparato. Al importar se suma lo de los dos, nunca se borra nada.", "Export a code to move your progress to another device. Importing joins both, nothing is ever erased.")}</p>
     <div class="ctlsel"><button id="expBtn">${Lx("EXPORTAR", "EXPORT")}</button><button id="impBtn">${Lx("IMPORTAR", "IMPORT")}</button></div>
     <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
@@ -10586,6 +10604,10 @@ showSettings = function () {
   $b("impBtn").onclick = () => { omfSfx("click"); bk.hidden = false; $b("bkApply").hidden = false; $b("bkCopy").hidden = true; ta.readOnly = false; ta.value = ""; ta.focus(); say(Lx("Pega aquí tu código y pulsa APLICAR.", "Paste your code here and press APPLY.")); };
   $b("bkCopy").onclick = () => copyText(ta.value, ta).then(ok => { omfSfx("click"); say(ok ? Lx("Copiado.", "Copied.") : Lx("Selecciónalo y cópialo.", "Select it and copy it.")); });
   $b("bkApply").onclick = async () => { try { await importCode(ta.value); omfSfx("levelup"); say(Lx("Progreso importado y sumado.", "Progress imported and joined.")); } catch (_) { omfSfx("hurt"); say(Lx("Ese código no es válido.", "That code isn't valid.")); } };
+  const cg = $b("cloudGet"); if (cg) cg.onclick = () => { omfSfx("click"); say(Lx("Buscando en iCloud…", "Checking iCloud…"));
+    try { const q = CLOUD.synchronize(); if (q && q.catch) q.catch(() => {}); } catch (_) {}
+    setTimeout(() => cloudPull(b => { if (b) { omfSfx("levelup"); say(Lx("Copia de iCloud del ", "iCloud copy from ") + new Date(b.at || Date.now()).toLocaleString() + Lx(" sumada a tu progreso.", " joined into your progress.")); cloudSetReady(); }
+      else say(Lx("No hay ninguna copia en iCloud para esta app todavía.", "There's no iCloud copy for this app yet.") + (cloudEv.length ? " (" + cloudEv.join(", ") + ")" : "")); }), 800); };
   const ec = $b("errCopy"); if (ec) ec.onclick = () => { bk.hidden = false; $b("bkApply").hidden = true; $b("bkCopy").hidden = false; const t = errList().map(e => `${e.at} ${e.v} [${e.s}] ${e.m} @ ${e.w}`).join("\n"); ta.readOnly = true; ta.value = t; copyText(t, ta).then(ok => say(ok ? Lx("Errores copiados.", "Errors copied.") : Lx("Selecciónalos y cópialos.", "Select and copy them."))); };
 };
 if (ov && ov.querySelector(".setpage") && !ov.querySelector(".setx")) showSettings();
@@ -10596,8 +10618,8 @@ OMF_SFX.reto = [[880, 1320, 0.1, "triangle", 0, 0.5], [1320, 1320, 0.16, "triang
 function recInit() {
   S.recM = 0; S.recM2 = 0; S.recM3 = 0; S.recHit = false; S.recFx = 0;
   if (!ESCAPE || S.test || !(S.run === "escape" || S.run === "daily")) return;
-  if (S.daily) { S.recM = META.daily[String(S.seed) + (S.easy ? "e" : "")] || 0; return; }
-  const kind = S.easy ? "escape-easy" : S.horde ? "escape-horde" : "escape";
+  if (S.daily) { S.recM = META.daily[String(S.seed) + (S.easy ? "e" : S.hard ? "h" : "")] || 0; return; }
+  const kind = S.easy ? "escape-easy" : S.hard ? "escape-hard" : S.horde ? "escape-horde" : "escape";
   const b = localRuns().filter(x => x.run === kind).map(x => x.floor || 0).sort((a, c) => c - a);
   S.recM = b[0] || 0; S.recM2 = b[1] || 0; S.recM3 = b[2] || 0;
 }
@@ -11156,6 +11178,7 @@ Object.assign(EN_TEXT, {
 window.__trk = { give: id => trkGive(id), drop: (src, x, y) => trkDrop(src, x, y), TRK, meta: () => META, unlock: () => { for (const id in TRK) if (!META.goods.includes(id)) META.goods.push(id); } };
 if (!OMF_SFX.boom) OMF_SFX.boom = [[110, 40, 0.28, "noise", 0, 0.8], [70, 35, 0.3, "sawtooth", 0, 0.5]];
 
+Object.assign(EN_TEXT, { "HARDCORE": "HARDCORE", "Escape · Hardcore": "Escape · Hardcore", "Diario · Hardcore": "Daily · Hardcore", "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.": "+1 heart, the camera rises slower, at most 2 modifiers and you can jump up through every platform. Separate records, off the rankings.", "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.": "The usual climb: moving and light platforms, roots, pistons and ghost steps can be jumped through from below.", "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte.": "No platform can be jumped through from below and the camera rises 15% faster. Separate records." });
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>

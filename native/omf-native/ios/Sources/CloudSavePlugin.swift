@@ -32,9 +32,12 @@ public class CloudSavePlugin: CAPPlugin, CAPBridgedPlugin {
         notifyListeners("changed", data: ["keys": keys, "reason": names[reason] ?? "unknown"])
     }
 
-    /// iCloud disponible = hay cuenta de iCloud en el dispositivo.
+    /// El almacén key-value funciona aunque iCloud Drive esté apagado (solo necesita sesión de iCloud),
+    /// así que available es siempre true; iCloudDrive se informa aparte por si el juego quiere mostrarlo.
     @objc func status(_ call: CAPPluginCall) {
-        call.resolve(["ok": true, "available": FileManager.default.ubiquityIdentityToken != nil])
+        call.resolve(["ok": true, "available": true,
+                      "iCloudDrive": FileManager.default.ubiquityIdentityToken != nil,
+                      "synced": store.synchronize()])
     }
 
     /// { key } -> { value: string | null }
