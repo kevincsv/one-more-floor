@@ -309,6 +309,34 @@ def main():
     except RuntimeError as e:
         print("WARN in-app purchase:", str(e)[:600])
 
+    # Game Center achievement images (8-bit medals in store/ios/gamecenter/<id>.png), only where missing
+    try:
+        gcd = a.call("GET", f"/v1/apps/{aid}/gameCenterDetail", ok=(200, 404)).get("data")
+        if gcd:
+            done = 0
+            for ach in a.all(f"/v1/gameCenterDetails/{gcd['id']}/gameCenterAchievements", limit=200):
+                vid_ = (ach["attributes"].get("vendorIdentifier") or "").removeprefix("omf_")
+                imgf = os.path.join(ROOT, "gamecenter", vid_ + ".png")
+                if not os.path.exists(imgf):
+                    continue
+                data = open(imgf, "rb").read()
+                for loc in a.all(f"/v1/gameCenterAchievements/{ach['id']}/localizations", limit=50):
+                    if a.call("GET", f"/v1/gameCenterAchievementLocalizations/{loc['id']}/gameCenterAchievementImage", ok=(200, 404)).get("data"):
+                        continue
+                    obj = a.call("POST", "/v1/gameCenterAchievementImages", {"data": {"type": "gameCenterAchievementImages",
+                        "attributes": {"fileName": vid_ + ".png", "fileSize": len(data)},
+                        "relationships": {"gameCenterAchievementLocalization": {"data": {"type": "gameCenterAchievementLocalizations", "id": loc["id"]}}}}})["data"]
+                    for op in obj["attributes"]["uploadOperations"]:
+                        h = {x["name"]: x["value"] for x in op.get("requestHeaders", [])}
+                        r = requests.request(op["method"], op["url"], headers=h, data=data[op["offset"]: op["offset"] + op["length"]], timeout=300)
+                        if r.status_code >= 300:
+                            raise RuntimeError(f"upload part failed {r.status_code} {r.text[:300]}")
+                    a.call("PATCH", f"/v1/gameCenterAchievementImages/{obj['id']}", {"data": {"type": "gameCenterAchievementImages", "id": obj["id"], "attributes": {"uploaded": True}}})
+                    done += 1
+            print("Game Center achievement images uploaded:", done)
+    except RuntimeError as e:
+        print("WARN Game Center images:", str(e)[:400])
+
     # newest valid build with this version
     builds = a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
                                     "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1,
