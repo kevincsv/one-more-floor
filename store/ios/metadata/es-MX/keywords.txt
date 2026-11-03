@@ -1,0 +1,1 @@
+roguelike,plataformas,pixel,8 bits,retro,escalar,torre,arcade,saltar,infinito,jefes,indie,acción

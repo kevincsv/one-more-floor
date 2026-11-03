@@ -1,0 +1,39 @@
+# Rellena la ficha de One More Floor Escape en App Store Connect (textos, capturas, vídeos, edad, categorías)
+# y engancha la build. Solo la manda a revisión de Apple si marcas "submit".
+# Usa los mismos secrets que TestFlight: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8.
+# Opcionales para la revisión: REVIEW_FIRST_NAME, REVIEW_LAST_NAME, REVIEW_PHONE, REVIEW_EMAIL.
+name: App Store (ficha)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión de la App Store (la misma que la build, ej. 1.0.0)"
+        default: "1.0.0"
+      media:
+        description: "Subir capturas y vídeos"
+        type: boolean
+        default: true
+      submit:
+        description: "Enviar a revisión de Apple"
+        type: boolean
+        default: false
+jobs:
+  ficha:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyjwt cryptography requests
+      - name: Ficha de la App Store
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          REVIEW_FIRST_NAME: ${{ secrets.REVIEW_FIRST_NAME }}
+          REVIEW_LAST_NAME: ${{ secrets.REVIEW_LAST_NAME }}
+          REVIEW_PHONE: ${{ secrets.REVIEW_PHONE }}
+          REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
+        run: |
+          python store/ios/scripts/asc_publish.py --version "${{ inputs.version }}" \
+            ${{ inputs.media && '' || '--no-media' }} ${{ inputs.submit && '--submit' || '' }}
