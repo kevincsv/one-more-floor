@@ -16,7 +16,7 @@ on:
       entitlements:
         description: "Firmar con iCloud y Game Center (necesita un dispositivo registrado)"
         type: boolean
-        default: false
+        default: true
       placeholder_device:
         description: "Registrar un dispositivo de relleno si no hay ninguno (hace falta para firmar con iCloud/Game Center)"
         type: boolean
