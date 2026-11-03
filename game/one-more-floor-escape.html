@@ -473,6 +473,43 @@ body.mirrored #tLeft, body.mirrored #tRight, body.mirrored #gDpad [data-d="l"], 
 .swback { position: fixed; left: 0; top: 50%; z-index: 140; width: 34px; height: 34px; border: 2px solid var(--line, #3b3552); background: var(--panel, #1c1830); color: var(--muted, #aaa); font: 26px/28px var(--font-display, monospace); text-align: center; opacity: 0; transform: translate(-40px,-50%); pointer-events: none; }
 .swback.go { color: var(--bg, #100e1a); background: var(--amber, #ffcf5a); border-color: var(--amber, #ffcf5a); }
 
+/* v71 classic title (Escape) */
+.etitle { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 0 14px; max-width: 440px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.etitle .lslot { height: 186px; display: flex; align-items: center; justify-content: center; }
+canvas.hlogo, canvas.pxi { image-rendering: pixelated; display: block; }
+.ehero { display: flex; align-items: flex-end; justify-content: center; gap: 22px; }
+.ehero .arr { background: none; border: 0; padding: 10px; margin-bottom: 30px; cursor: pointer; }
+.ped { display: flex; flex-direction: column; align-items: center; }
+.ped .pedhero { background: none; border: 0; padding: 0; cursor: pointer; }
+.ped canvas.pv { width: 48px; height: 78px; image-rendering: pixelated; display: block; }
+.ped .slab { display: block; width: 72px; height: 9px; background: #4a4470; border-top: 3px solid #8a83b8; border-bottom: 2px solid #2c2842; box-sizing: border-box; }
+.etitle .ename { font-family: var(--font-display, monospace); letter-spacing: .18em; text-align: center; margin: 0; font-size: 15px; }
+.etitle .edesc { color: var(--muted); text-align: center; margin: -4px 0 0; font-size: 13px; }
+.etitle .eskin { align-self: center; display: flex; gap: 8px; align-items: center; background: var(--panel); border: 2px solid var(--line); color: var(--fg, #ece8f5); font-family: var(--font-display, monospace); font-size: 11px; letter-spacing: .1em; padding: 6px 12px; cursor: pointer; }
+.etitle .eskin small { color: var(--teal); }
+.etitle .emodes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.etitle .emodes #goBtn { grid-column: 1 / -1; }
+.etitle .emodes.off { opacity: .45; }
+.etitle .emodes > .mode { min-width: 0; width: 100%; box-sizing: border-box; margin: 0; }
+.etitle .mode.half { grid-template-columns: 22px 1fr auto; padding: 8px 8px; gap: 2px 6px; }
+.etitle .mode.half .mt { font-size: 12px; } .etitle .mode.half .mv { font-size: 10px; }
+.etitle .mode .mi canvas { margin: 0 auto; }
+.etitle .eicons { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.etitle .eicons button { width: 46px; height: 42px; display: grid; place-items: center; padding: 0; background: var(--panel); border: 2px solid var(--line); cursor: pointer; }
+.wardrobe { position: fixed; inset: 0; z-index: 125; background: rgba(12,10,20,.97); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: max(28px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom)); overflow: auto; box-sizing: border-box; }
+.wardrobe h2 { display: flex; align-items: center; gap: 8px; font-family: var(--font-display, monospace); color: var(--amber); font-size: 15px; letter-spacing: .12em; margin: 6px 0; }
+.wgrid { display: grid; grid-template-columns: repeat(4, 64px); gap: 8px; }
+.wtile { position: relative; width: 64px; height: 86px; background: var(--panel); border: 2px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; padding: 2px 0 4px; cursor: pointer; }
+.wtile.sel { box-shadow: inset 0 0 0 2px var(--teal); border-color: var(--teal); }
+.wtile canvas.pv { width: 32px; height: 52px; image-rendering: pixelated; }
+.wtile canvas.pxi { position: absolute; top: 3px; right: 3px; }
+.wtile span { font-family: var(--font-display, monospace); font-size: 8px; color: var(--muted); letter-spacing: .04em; }
+.wardrobe .winfo { color: var(--muted); text-align: center; max-width: 300px; font-size: 13px; margin: 0; min-height: 34px; }
+.wardrobe .wok { font-family: var(--font-display, monospace); background: var(--amber); color: #1a1426; border: 0; padding: 10px 36px; font-size: 14px; letter-spacing: .15em; cursor: pointer; }
+.splash canvas.hlogo, .boot canvas.hlogo { animation: spDrop .9s steps(6) both; margin-bottom: 8px; }
+.boot canvas.hlogo { animation-delay: .9s; }
+@keyframes spDrop { 0% { transform: translateY(-60px); opacity: 0; } 60% { transform: translateY(6px); opacity: 1; } 100% { transform: none; opacity: 1; } }
+
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -1808,6 +1845,13 @@ function genEscSegment() {
   // what each level is built from; harder tiers mix in more of the unusual pieces
   // v62: tricky platforms from the very start (the climb was too easy), and they take over as difficulty rises
   const pickKind = () => { const r = R(), hard = Math.min(1, 0.3 + tier / 3);
+    { const pr = R(), pq = R(); /* v71 (user): 5 new platforms, mostly in their own biome (spec /mnt/project-files/plataformas/plataformas-elegidas-spec.md) */
+      if (zone === 1 && pr < 0.16) return pq < 0.5 ? "root" : "shroom";
+      if (zone === 2 && pr < 0.14 && !slick) return "piston";
+      if (zone === 3 && pr < 0.12 && tier >= 1 && escWarm() >= 0.5) return "lightp";
+      if (zone === 4 && pr < 0.12 && tier >= 1 && !has("mirror") && !has("slow")) return "gstep";
+      if (zone !== 1 && pr > 0.97) return pq < 0.5 ? "root" : "shroom";
+      if (zone !== 2 && pr > 0.955 && pr <= 0.97 && !slick) return "piston"; }
     if (r < 0.08 + hard * 0.04) return "ladder";
     if (r < 0.22 + hard * 0.12 && !slick) return "move";
     if (r < 0.38 + hard * 0.18 && !shaky) { const q = R(); return q < 0.4 ? "crumble" : q < 0.75 ? "blink" : "flip"; }
@@ -1816,30 +1860,46 @@ function genEscSegment() {
   // ground enemies get nastier with the tier: archers and chargers early, knights and bombers later
   const groundFoe = () => { const pool = ["walker", "hopper", "rat"]; if (tier >= 1) pool.push("shooter", "charger", "shooter"); if (tier >= 2) pool.push("knight", "bomber"); return pool[Math.floor(R() * pool.length)]; };
   for (let attempt = 0; attempt < 14; attempt++) {
-    let row = startRow, prev = eg.prev, drift = eg.drift, main = eg.main;
+    let row = startRow, prev = eg.prev, drift = eg.drift, main = eg.main, boostCol = null;
     const simple = attempt >= 9; // late retries fall back to plain ledges
     while (row - 2 >= top) {
       let kind = simple ? "ledge" : pickKind();
+      const bc = boostCol; boostCol = null; // v71: the piece after a mushroom sits ~5 rows up, above it
+      if (kind === "gstep") { const n = rri(R, 3, 5); // v71: a diagonal run of ghost steps, one row apart
+        if (row - n - 2 < top || bc != null) kind = "ledge"; else {
+          const P = prev[0]; let x = rri(R, Math.max(1, P[0]), Math.min(LW - 2, P[1])), dir = drift; const grp = [];
+          for (let i = 0; i < n; i++) { let nx = x + dir * rri(R, 2, 3); if (nx < 1 || nx > LW - 2) { dir = -dir; nx = x + dir * rri(R, 2, 3); } x = clamp(nx, 1, LW - 2);
+            const m = { kind: "gstep", x: x * TS, y: (row - 1 - i) * TS, w: TS, h: TS / 2, solid: false, i, grp, off: 9, vis: 0, esc: true }; grp.push(m); S.movers.push(m); }
+          drift = dir; prev = [[x, x]]; main = [x, x]; row = row - n; continue; } }
+      if ((kind === "root" || kind === "piston") && bc != null) kind = "ledge";
       if (kind === "ladder" && row - 4 < top) kind = "ledge";
-      const rise = kind === "ladder" ? 4 : 2, nr = row - rise;
+      const rise = kind === "ladder" ? 4 : bc != null && row - 4 >= top ? 4 : 2, nr = row - rise;
       let len = kind === "stair" ? 2 : rri(R, slick ? 4 : 3, slick ? 6 : 5);
       if (kind === "move") len = 3;
       let x0 = 2, c = 2, placed = false;
       const gap = kind === "ladder" || nj ? 1 : kind === "stair" ? 1 : 2;
       for (let tr = 0; tr < 12 && !placed; tr++) {
         const P = prev[rri(R, 0, prev.length - 1)];
-        c = rri(R, Math.max(1, P[0]), Math.min(LW - 2, P[1]));
+        c = rri(R, Math.max(1, P[0]), Math.min(LW - 2, P[1])); if (bc != null) c = bc;
         if (R() < 0.35) drift = -drift;
         x0 = drift > 0 ? c + gap : c - len - gap + 1;
         if (x0 < 1) { x0 = c + gap; drift = 1; } if (x0 + len > LW - 1) { x0 = c - len - gap + 1; drift = -1; }
         if (x0 >= 1 && x0 + len <= LW - 1 && !occ(row, x0, x0 + len - 1) && (rise === 2 || !occ(row - 2, x0, x0 + len - 1))) placed = true;
       }
+      if (kind === "root" || kind === "piston") { len = 3; x0 = x0 + len / 2 < LW / 2 ? 1 : LW - 1 - len; } // v71: they grow out of a side wall
+      if (kind === "lightp") len = 2;
+      if (kind === "shroom") len = Math.min(len, 3);
       x0 = clamp(x0, 1, LW - 1 - len);
       const spans = [[x0, x0 + len - 1]];
       if (kind === "move") { // a platform that slides along the row; the next ledge is reached from its middle
         const span = rri(R, 2, 3), bx = clamp(x0 - span, 1, LW - 1 - len - span * 2);
         S.movers.push({ kind: "move", x: bx * TS, y: nr * TS, w: len * TS, h: TS / 2, bx: bx * TS, by: nr * TS, ax: span * 2 * TS, ay: 0, per: 3.2 + R(), ph: R() * 6, solid: true, esc: true });
         spans[0] = [bx, bx + len - 1 + span * 2];
+      } else if (kind === "root" || kind === "piston") {
+        const side = x0 === 1 ? 1 : -1, fx = x0 * TS, fw = len * TS;
+        S.movers.push({ kind, side, x: side > 0 ? fx : fx + fw - TS / 2, y: nr * TS, w: TS / 2, h: TS / 2, fx, fw, solid: false, st: "coil", t: 0, arm: true, clk: R() * 3.4, esc: true });
+      } else if (kind === "lightp") {
+        S.movers.push({ kind, x: x0 * TS, y: nr * TS, w: len * TS, h: TS / 2, solid: false, vis: 0, esc: true });
       } else if (kind === "crumble" || kind === "blink" || kind === "flip") {
         S.movers.push({ kind, x: x0 * TS, y: nr * TS, w: len * TS, h: TS / 2, solid: true, st: "ok", t: 0, per: 3, ph: R() * 3, esc: true });
       } else for (let k = 0; k < len; k++) g[nr][x0 + k] = 1;
@@ -1893,6 +1953,7 @@ function genEscSegment() {
       if (nj && kind !== "ladder") { for (let y = nr; y <= row - 1; y++) if (g[y][c] === 0 || (y === nr && g[y][c] === 1)) g[y][c] = 3; }
       const [m0, m1] = spans[0];
       prev = spans.slice(0, 1).concat(spans.slice(1).filter(([a, b]) => !nj && (a - m1 <= 4 && a > m1 || m0 - b <= 4 && b < m0)));
+      if (kind === "shroom") { const sc = clamp(x0 + rri(R, 0, len - 1), 2, LW - 3); if (g[nr][sc] === 1) { g[nr][sc] = 6; boostCol = sc; S.spikes = S.spikes.filter(sp => !(sp.tx === sc && sp.ty === nr - 1)); } }
       main = spans[0]; row = nr;
     }
     // flyers for this stretch: bats, and ghosts that drift through walls
@@ -2093,8 +2154,9 @@ function reachGraph() {
   const sol = new Uint8Array(N), ride = new Int32Array(N).fill(-1), spk = new Map(), rideList = new Map();
   for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) if (solidCode(g[y][x])) sol[y * LW + x] = 1;
   S.movers.forEach((m, mi) => {
-    if (m.kind === "plain" || m.kind === "crumble" || m.kind === "flip" || m.kind === "blink") {
-      for (let y = Math.floor(m.y / TS); y <= Math.floor((m.y + m.h - 1) / TS); y++) for (let x = Math.floor(m.x / TS); x <= Math.floor((m.x + m.w - 1) / TS); x++) if (y >= 0 && y < LH && x >= 0 && x < LW) sol[y * LW + x] = 1;
+    if (m.kind === "plain" || m.kind === "crumble" || m.kind === "flip" || m.kind === "blink" || m.kind === "root" || m.kind === "piston" || m.kind === "lightp" || m.kind === "gstep") {
+      const mx = m.fx != null ? m.fx : m.x, mw = m.fw != null ? m.fw : m.w; // v71: roots and pistons count at full reach
+      for (let y = Math.floor(m.y / TS); y <= Math.floor((m.y + m.h - 1) / TS); y++) for (let x = Math.floor(mx / TS); x <= Math.floor((mx + mw - 1) / TS); x++) if (y >= 0 && y < LH && x >= 0 && x < LW) sol[y * LW + x] = 1;
     } else if (m.kind === "move") {
       const n = Math.ceil(Math.max(Math.abs(m.ax), Math.abs(m.ay)) / TS) + 1;
       for (let s = 0; s <= n; s++) {
@@ -2158,8 +2220,8 @@ function reachGraph() {
     const sx = x * TS + (TS - pw) / 2, sy = (y + 1) * TS - ph - 0.01;
     const runs = [];
     if (standing && under === 6) {
-      for (const d of DIRS) runs.push([sx, sy, d * RUN, -880, 0.4, d * RUN]);
-      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1]]) runs.push([sx, sy, a * RUN, -880, 0.4, a * RUN, b2 * RUN]);
+      for (const d of DIRS) runs.push([sx, sy, d * RUN, S.escape ? -959 : -880, 0.4, d * RUN]);
+      for (const [a, b2] of [[0, 1], [0, -1], [0.5, -1], [-0.5, 1]]) runs.push([sx, sy, a * RUN, S.escape ? -959 : -880, 0.4, a * RUN, b2 * RUN]);
     }
     else if (standing && !nj) for (const h of HOLDS) {
       for (const d of DIRS) runs.push([sx, sy, d * RUN, -jv, h, d * RUN]);
@@ -2805,6 +2867,7 @@ function standingOn(e, m) {
   return S.gdir > 0 ? Math.abs(e.y + e.h - m.y) < 4 : Math.abs(e.y - (m.y + m.h)) < 4;
 }
 function updateMovers(dt, p) {
+  if (S.escape) platTick(dt, p);
   for (const m of S.movers) {
     const ox = m.x, oy = m.y;
     const riders = m.solid ? [p, ...S.enemies].filter(e => !e.dead && standingOn(e, m)) : [];
@@ -2977,7 +3040,8 @@ function update(dt) {
   move(p, dt);
   p.vx -= conv;
   holeAssist(p);
-  if (p.ground && tileAt(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h + 2 : p.y - 2) === 6) { achAdd("springs"); omfSfx("spring"); p.vy = -880 * S.gdir; p.ground = false; p.launchT = 0.12; puffC(p.x + p.w / 2, p.y + p.h, "#f2c14e", 6); noise(p.x, p.y); }
+  if (p.ground && tileAt(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h + 2 : p.y - 2) === 6) { achAdd("springs"); omfSfx("spring"); p.vy = -880 * S.gdir * (S.escape ? 1.09 * (input.jump ? 1.12 : 1) * (has("moon") ? 0.75 : 1) * (has("shrink") ? 0.9 : 1) : 1);
+    if (S.escape) { S.shroomHit = { tx: Math.floor((p.x + p.w / 2) / TS), ty: Math.floor((p.y + p.h + 2) / TS), t: S.t }; burst(p.x + p.w / 2, p.y + p.h, "#ff8ad8", 8); } p.ground = false; p.launchT = 0.12; puffC(p.x + p.w / 2, p.y + p.h, "#f2c14e", 6); noise(p.x, p.y); }
   if (has("bouncy") && !p.climb) {
     // Discoteca (Rebote + Ritmo): landing on the beat bounces higher, off the beat it barely bounces
     if (p.ground && !wasGround && Math.abs(pvy) > 170) { const k = has("rhythm") ? (onBeat() ? 1.0 : 0.45) : 0.82; p.vy = -pvy * k; p.ground = false; p.launchT = 0.05; if (has("rhythm") && k > 0.9) puffC(p.x + p.w / 2, p.y + p.h, "#ff8ad8", 6); }
@@ -3905,7 +3969,7 @@ function showTitle() {
     : `<button class="mode main" id="goBtn"><span class="mi">⚑</span><span class="mt">HISTORIA</span><span class="ms">50 pisos · la subida de Velo · ${(META.ecos || []).length}/25 ecos</span><span class="mv"><small>MEJOR</small>${META.best || 0}</span></button>
        <button class="mode" id="endlessBtn"><span class="mi">∞</span><span class="mt">INFINITO</span><span class="ms">Sin final: compite por llegar más alto</span><span class="mv"><small>MEJOR</small>${bestOf("endless")}</span></button>
        <button class="mode" id="dailyBtn"><span class="mi">☀</span><span class="mt">DESAFÍO DIARIO</span><span class="ms">La misma torre para todos hoy</span><span class="mv"><small>HOY</small>${db ? db : "—"}</span></button>`;
-  ov.innerHTML = `<div class="menu">
+  ov.innerHTML = ESCAPE && ESC_TITLE_READY ? escTitleHTML(ch, db) : `<div class="menu">
     <div class="logo"><span class="l1">ONE MORE</span><span class="l2">FLOOR</span>${ESCAPE ? '<span class="l3">ESCAPE</span>' : ""}</div>
     <p class="tagline">${ESCAPE ? "Sube sin parar. Si caes por debajo de la pantalla, se acabó." : "Cada piso impone una regla nueva. ¿Hasta dónde llegas?"}</p>
     <div class="mlabel">PERSONAJE</div>
@@ -3921,7 +3985,7 @@ function showTitle() {
       ${ESCAPE ? "" : `<div class="mlabel">HISTORIA</div><div class="tools"><label class="flsel">Piso <input id="stFloor" type="number" min="1" max="50" value="1"></label><button id="stGo">Ir al piso</button></div>
       <div class="tools">${STORY_VIGNETTES.map((v, z) => `<button data-sv="${z}">Viñeta ${z + 1}</button>`).join("")}</div>
       <div class="tools">${Object.entries(STORY_ENDINGS).map(([k, E]) => `<button data-se="${k}">Final: ${E.t}</button>`).join("")}</div>`}
-      ${ESCAPE ? `<div class="mlabel">${T("BIOMAS")}</div><div class="tools">${BIOMES.slice(0, 5).map((B, z) => `<button data-bz="${z}">${z + 1} · ${B.name}</button>`).join("")}</div>` : ""}
+      ${ESCAPE ? `<div class="mlabel">${T("BIOMAS")}</div><div class="tools">${BIOMES.slice(0, 5).map((B, z) => `<button data-bz="${z}">${z + 1} · ${B.name}</button>`).join("")}<button id="platBtn">${T("Plataformas")}</button></div>` : ""}
       ${ESCAPE ? `<div class="mlabel">SALAS SECRETAS</div><div class="tools">${ESC_ROOM_TYPES.map(([k]) => `<button data-rt="${k}">${T(ESC_ROOM_NAME[k])}</button>`).join("")}</div>` : ""}
       <p>Vas directo a la pelea o a una sala cerrada para sacar enemigos. No cuenta para los récords.</p>
     </details>`}
@@ -3941,6 +4005,7 @@ function showTitle() {
   on("hordeBtn", () => { newRun({ char: S.char.id, kind: "escape", horde: true }); startFloor(); });
   on("endlessBtn", () => { newRun({ char: S.char.id, kind: "endless" }); nextRuleStep(); });
   on("dailyBtn", () => { newRun({ char: S.char.id, kind: "daily" }); { const k = String(S.seed) + (S.easy ? "e" : ""); if (!(k in META.daily)) { META.daily[k] = 0; saveMeta(); } } nextRuleStep(); });
+  on("platBtn", testPlats);
   on("labBtn", mobLab); on("itemLabBtn", itemLab);
   { const c = document.getElementById("boxChk"); if (c) c.onchange = () => { window.OMF_SHOWBOXES = c.checked; }; }
   ov.querySelectorAll("[data-bt]").forEach(b => b.onclick = () => testBoss(+b.dataset.bt, +(b.dataset.ph || 1)));
@@ -3954,6 +4019,7 @@ function showTitle() {
   on("codexBtn", () => showCodex()); on("setBtn", showSettings); on("achBtn", () => showCodex("logros")); on("howBtn", showHow); on("pgsAch", () => pgsShow("achievements")); on("pgsLb", () => pgsShow("leaderboard"));
   on("langBtn", () => { try { localStorage.setItem("omf-lang", LANG === "en" ? "es" : "en"); } catch (_) {} location.reload(); });
   on("portBtn", () => { try { localStorage.setItem("omf-portrait", PORTRAIT ? "0" : "1"); } catch (_) {} location.reload(); });
+  if (ESCAPE && ESC_TITLE_READY) escTitleWire();
 }
 // ===================================================================
 // STORY MODE (Historia) · from /mnt/project-files/historia/modo-historia.md
@@ -4622,7 +4688,7 @@ const EN_TEXT = {
   "AIRE": "AIR", "ARRASTRA Y SUELTA PARA LANZARTE": "DRAG AND RELEASE TO LAUNCH", "ATRAPA TU SOMBRA": "CATCH YOUR SHADOW", "CALOR": "HEAT", "CERA": "WAX",
   "SALA OCULTA · TIEMPO DETENIDO": "HIDDEN ROOM · TIME STOPPED", "SALIDA": "EXIT", "CERRADA": "LOCKED", "SALTO DE PARED": "WALL JUMP", "TIEMPO DETENIDO": "TIME STOPPED",
   "ESCUDO GASTADO": "SHIELD USED", "ESCUDO LISTO": "SHIELD READY", "OÍDOS TAPADOS": "EARS COVERED", "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS": "SIRENS · HOLD ATTACK TO COVER YOUR EARS",
-  "PASADA LA MEDIANOCHE · DAÑO ½": "PAST MIDNIGHT · DAMAGE ½", "Sin reglas": "No rules", "PAUSA": "PAUSED", "Seguir": "Resume", "GIRA EL TELÉFONO": "TURN YOUR PHONE", "Escape se juega en vertical.": "Escape is played upright.", "Bolsa de oro": "Bag of gold", "Sin modificadores": "No modifiers", "MODIFICADORES": "MODIFIERS", "Ver cajas": "Show boxes", "Fácil": "Easy", "Media": "Medium", "Difícil": "Hard", "¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas": "Boss! Time and modifiers stop until you beat it", "Izquierda y derecha están invertidas al moverte. El ataque apunta normal.": "Left and right are swapped when moving. Attacks aim normally.", "BIOMAS": "BIOMES", "Bioma": "Biome", "NORMAL": "NORMAL", "FÁCIL": "EASY", "Dificultad": "Difficulty", "Escape · Fácil": "Escape · Easy", "Diario · Fácil": "Daily · Easy", "Mímico": "Mimic", "Fantasma: dos tajos lo matan": "Ghost: two slashes kill it", "El Espejo se acaba en 3 s": "Mirror ends in 3 s", "ESPEJO EN": "MIRROR IN", "EN": "IN", "NUEVO MODIFICADOR EN": "NEW MODIFIER IN", "PRÓXIMO MODIFICADOR EN": "NEXT MODIFIER IN", "OBJETOS": "ITEMS", "Sin descubrir": "Not found yet", "SONIDO": "SOUND", "MÚSICA": "MUSIC", "Te alcanzó la lava": "The lava got you", "Te alcanzó el ácido": "The acid got you", "Te alcanzó el aceite": "The burning oil got you", "Te alcanzó el éter": "The ether got you", "Te alcanzó la marea": "The tide got you", "HORDA": "HORDE", "Horda": "Horde", "Sin modificadores: solo muchos más enemigos": "No modifiers: just way more enemies", "CASI": "SO CLOSE", "ACTIVO": "ACTIVE", "LOGROS": "ACHIEVEMENTS", "LOGRO": "ACHIEVEMENT", "Todas las hazañas y cuánto te falta": "Every feat and how far you are", "Toca para cerrar": "Tap to close", "Aspecto de": "Look for", "100 metros": "100 metres", "250 metros": "250 metres", "Nivel 10": "Level 10", "Llega a 100 m en Escape.": "Reach 100 m in Escape.", "Llega a 250 m en Escape.": "Reach 250 m in Escape.", "Llega al nivel 10 en una partida de Escape.": "Reach level 10 in one Escape run.", "🧪 Sala de objetos": "🧪 Object room", "Corazón": "Heart", "Reliquia": "Relic", "Cobre ·1": "Copper ·1", "Plata ·2": "Silver ·2", "Oro ·5": "Gold ·5", "Gema ·10": "Gem ·10", "Pinchos": "Spikes", "Pinchos cíclicos": "Cycling spikes", "Trampa": "Trap", "Antorcha": "Torch", "Orbe de XP": "XP orb", "Reponer": "Refill", "Sala de objetos: tócalos para recogerlos": "Object room: touch them to pick them up", "Sube. No mires abajo.": "Climb. Don't look down.", "racha": "streak", "PERSONAJES": "HEROES", "ASPECTOS": "LOOKS", "Héroes y aspectos, y cómo conseguirlos": "Heroes and looks, and how to get them", "Llega a 150 m en una partida de Escape": "Reach 150 m in one Escape run", "Personaje desbloqueado: Nyx": "Hero unlocked: Nyx", "Desbloqueado": "Unlocked", "(en una partida)": "(in one run)", "Cómo se juega": "How to play", "Sube sin parar": "Keep climbing", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó.": "The tower builds itself upward forever and the camera only goes up. Fall below the screen and it's over.", "Golpea": "Attack", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño.": "Attack with HIT (3-hit combo). Jumping on an enemy also hurts it.", "Modificadores": "Modifiers", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una.": "Every 15 seconds a new rule joins and the oldest leaves. Each biome brings its own. The skulls tell how hard each one is.", "Sube de nivel": "Level up", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador.": "Enemies give experience. On level up you pick a bonus or remove a modifier.", "Salas secretas": "Secret rooms", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos.": "Hit cracked walls twice: inside, time stops and there are treasures, shops and pacts.", "Jefes": "Bosses", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo.": "In arenas the camera stops. Beat the boss to keep climbing.", "Hazañas": "Feats", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice.": "Complete challenges to unlock new modifiers and bonuses. See them in the Codex.", "IDIOMA": "LANGUAGE", "CÓDICE": "CODEX", "MODIFICADORES": "MODIFIERS", "MEJORAS": "BONUSES", "COMBINACIONES": "COMBOS", "Reglas malas que entran durante la subida": "Bad rules that join during the climb", "Modificadores buenos: los eliges al subir de nivel": "Good modifiers: you pick them when you level up", "Dos modificadores juntos dan un efecto nuevo": "Two modifiers together make a new effect", "TOCA PARA EMPEZAR": "TAP TO START", "PULSA PARA EMPEZAR": "PRESS TO START", "NUEVO RÉCORD": "NEW RECORD", "MODIFICADOR": "MODIFIER", "REGLA": "RULE", "MEJORA": "BONUS", "PERSONAJE": "HERO", "ASPECTO": "LOOK", "DESBLOQUEADO": "UNLOCKED", "y": "and", "más en el Códice": "more in the Codex", "AJUSTES": "SETTINGS", "Ajustes": "Settings", "APAGADO": "OFF", "CONTROLES": "CONTROLS", "Volver": "Back", "Sí": "On",
+  "PASADA LA MEDIANOCHE · DAÑO ½": "PAST MIDNIGHT · DAMAGE ½", "Sin reglas": "No rules", "PAUSA": "PAUSED", "Seguir": "Resume", "GIRA EL TELÉFONO": "TURN YOUR PHONE", "Escape se juega en vertical.": "Escape is played upright.", "Bolsa de oro": "Bag of gold", "Sin modificadores": "No modifiers", "MODIFICADORES": "MODIFIERS", "Ver cajas": "Show boxes", "Fácil": "Easy", "Media": "Medium", "Difícil": "Hard", "¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas": "Boss! Time and modifiers stop until you beat it", "Izquierda y derecha están invertidas al moverte. El ataque apunta normal.": "Left and right are swapped when moving. Attacks aim normally.", "BIOMAS": "BIOMES", "Bioma": "Biome", "NORMAL": "NORMAL", "FÁCIL": "EASY", "Dificultad": "Difficulty", "Escape · Fácil": "Escape · Easy", "Diario · Fácil": "Daily · Easy", "Mímico": "Mimic", "Fantasma: dos tajos lo matan": "Ghost: two slashes kill it", "El Espejo se acaba en 3 s": "Mirror ends in 3 s", "ESPEJO EN": "MIRROR IN", "EN": "IN", "NUEVO MODIFICADOR EN": "NEW MODIFIER IN", "PRÓXIMO MODIFICADOR EN": "NEXT MODIFIER IN", "OBJETOS": "ITEMS", "Sin descubrir": "Not found yet", "SONIDO": "SOUND", "MÚSICA": "MUSIC", "ASPECTOS": "SKINS", "Listo para usar": "Ready to wear", "Cambiar aspecto": "Change skin", "Anterior": "Previous", "Siguiente": "Next", "DIARIO": "DAILY", "Torre sin fin": "Endless tower", "Ajustes": "Settings", "Plataformas": "Platforms", "Te alcanzó la lava": "The lava got you", "Te alcanzó el ácido": "The acid got you", "Te alcanzó el aceite": "The burning oil got you", "Te alcanzó el éter": "The ether got you", "Te alcanzó la marea": "The tide got you", "HORDA": "HORDE", "Horda": "Horde", "Sin modificadores: solo muchos más enemigos": "No modifiers: just way more enemies", "CASI": "SO CLOSE", "ACTIVO": "ACTIVE", "LOGROS": "ACHIEVEMENTS", "LOGRO": "ACHIEVEMENT", "Todas las hazañas y cuánto te falta": "Every feat and how far you are", "Toca para cerrar": "Tap to close", "Aspecto de": "Look for", "100 metros": "100 metres", "250 metros": "250 metres", "Nivel 10": "Level 10", "Llega a 100 m en Escape.": "Reach 100 m in Escape.", "Llega a 250 m en Escape.": "Reach 250 m in Escape.", "Llega al nivel 10 en una partida de Escape.": "Reach level 10 in one Escape run.", "🧪 Sala de objetos": "🧪 Object room", "Corazón": "Heart", "Reliquia": "Relic", "Cobre ·1": "Copper ·1", "Plata ·2": "Silver ·2", "Oro ·5": "Gold ·5", "Gema ·10": "Gem ·10", "Pinchos": "Spikes", "Pinchos cíclicos": "Cycling spikes", "Trampa": "Trap", "Antorcha": "Torch", "Orbe de XP": "XP orb", "Reponer": "Refill", "Sala de objetos: tócalos para recogerlos": "Object room: touch them to pick them up", "Sube. No mires abajo.": "Climb. Don't look down.", "racha": "streak", "PERSONAJES": "HEROES", "ASPECTOS": "LOOKS", "Héroes y aspectos, y cómo conseguirlos": "Heroes and looks, and how to get them", "Llega a 150 m en una partida de Escape": "Reach 150 m in one Escape run", "Personaje desbloqueado: Nyx": "Hero unlocked: Nyx", "Desbloqueado": "Unlocked", "(en una partida)": "(in one run)", "Cómo se juega": "How to play", "Sube sin parar": "Keep climbing", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó.": "The tower builds itself upward forever and the camera only goes up. Fall below the screen and it's over.", "Golpea": "Attack", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño.": "Attack with HIT (3-hit combo). Jumping on an enemy also hurts it.", "Modificadores": "Modifiers", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una.": "Every 15 seconds a new rule joins and the oldest leaves. Each biome brings its own. The skulls tell how hard each one is.", "Sube de nivel": "Level up", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador.": "Enemies give experience. On level up you pick a bonus or remove a modifier.", "Salas secretas": "Secret rooms", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos.": "Hit cracked walls twice: inside, time stops and there are treasures, shops and pacts.", "Jefes": "Bosses", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo.": "In arenas the camera stops. Beat the boss to keep climbing.", "Hazañas": "Feats", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice.": "Complete challenges to unlock new modifiers and bonuses. See them in the Codex.", "IDIOMA": "LANGUAGE", "CÓDICE": "CODEX", "MODIFICADORES": "MODIFIERS", "MEJORAS": "BONUSES", "COMBINACIONES": "COMBOS", "Reglas malas que entran durante la subida": "Bad rules that join during the climb", "Modificadores buenos: los eliges al subir de nivel": "Good modifiers: you pick them when you level up", "Dos modificadores juntos dan un efecto nuevo": "Two modifiers together make a new effect", "TOCA PARA EMPEZAR": "TAP TO START", "PULSA PARA EMPEZAR": "PRESS TO START", "NUEVO RÉCORD": "NEW RECORD", "MODIFICADOR": "MODIFIER", "REGLA": "RULE", "MEJORA": "BONUS", "PERSONAJE": "HERO", "ASPECTO": "LOOK", "DESBLOQUEADO": "UNLOCKED", "y": "and", "más en el Códice": "more in the Codex", "AJUSTES": "SETTINGS", "Ajustes": "Settings", "APAGADO": "OFF", "CONTROLES": "CONTROLS", "Volver": "Back", "Sí": "On",
   "PISO": "FLOOR", "ORO": "GOLD", "REGLAS": "RULES", "LABORATORIO": "LAB", "Atacar": "Attack", "COMBO": "COMBO", "Combo roto": "Combo broken", "Saltar": "Jump", "Subir": "Climb", "Empujar": "Shove", "Parpadeo": "Blink",
   "Gira el teléfono para jugar en horizontal.": "Turn your phone sideways to play in landscape.",
   "Mover A/D · Saltar Espacio (también contra la pared) · Apuntar W/S o haz clic donde quieras golpear · Atacar J · Escaleras W/S · Honda: arrastra · Reiniciar R": "Move A/D · Jump Space (also off walls) · Aim W/S or click where you want to hit · Attack J · Ladders W/S · Slingshot: drag · Restart R",
@@ -6295,6 +6361,7 @@ function draw() {
       ctx.globalAlpha = 1;
     }
   }
+  if (S.escape) platDraw(cx, cy);
   // warm torchlight pooling on the walls around each flame
   ctx.save(); ctx.globalCompositeOperation = "lighter";
   for (const tch of S.torches) { if (tch.x < cx - 4 * TS || tch.x > cx + CW + 4 * TS || tch.y < cy - 4 * TS || tch.y > cy + CH + 4 * TS) continue; sprGlow(tch.x, tch.y - 4, 3.2 * TS, [255, 140, 60], 0.11 + 0.02 * Math.sin(S.t * 9 + tch.x)); }
@@ -9200,10 +9267,10 @@ function showSplash() {
   if (!ESCAPE || document.getElementById("splash")) return;
   const el = document.createElement("div"); el.id = "splash"; el.className = "splash";
   const ch = (S && S.char) || CHARS[0], tap = COARSE ? "TOCA PARA EMPEZAR" : "PULSA PARA EMPEZAR";
-  el.innerHTML = `<div class="spin"><div class="logo"><span class="l1">ONE MORE</span><span class="l2">FLOOR</span><span class="l3">ESCAPE</span></div>
+  el.innerHTML = `<div class="spin"><canvas class="hlogo" aria-label="One More Floor Escape" role="img"></canvas>
     <canvas class="pv sphero" width="48" height="78" data-cid="${ch.id}" data-lock="0" data-off="0"></canvas>
     <p class="sptap">${T(tap)}</p></div><p class="spfoot">${T("Sube. No mires abajo.")}</p>`;
-  document.body.appendChild(el); animPortraits();
+  document.body.appendChild(el); animPortraits(); hlogoAttach(el);
   let gone = false;
   const go = e => { if (gone) return; gone = true; if (e) { e.preventDefault(); e.stopPropagation(); }
     if (window.omfMusic) { omfMusic.unlock(); omfMusic.menu(); } omfSfx("pick"); el.classList.add("out"); setTimeout(() => el.remove(), 300);
@@ -9806,6 +9873,288 @@ sprDrawBackdrop = function (cx, cy) {
 };
 
 
+// One More Floor · Escape — LOGO I "HIEDRA" (mossy stone + ivy + wooden ESCAPE sign + fireflies)
+// Approved by the user 2026-11-03 for the classic title screen. Pixel art at native size 104x70.
+// Usage: const L = OMF_LOGO_I; L.attach(canvasEl, scale)  -> draws & animates (fireflies), integer scale.
+//        OMF_ICON_I() -> 32x32 canvas for the app icon (scale with nearest-neighbour).
+// Self-contained: no globals besides OMF_LOGO_I and OMF_ICON_I.
+(function () {
+const HC = {};
+function hex(c) { if (HC[c]) return HC[c]; const n = parseInt(c.slice(1), 16); return (HC[c] = [n >> 16 & 255, n >> 8 & 255, n & 255]); }
+function PX(w, h) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d"); const d = x.createImageData(w, h);
+  return { c, x, d, w, h,
+    set(px, py, col) { if (px < 0 || py < 0 || px >= w || py >= h || !col) return; const i = (py * w + px) * 4, v = hex(col); d.data[i] = v[0]; d.data[i + 1] = v[1]; d.data[i + 2] = v[2]; d.data[i + 3] = 255; },
+    rect(x0, y0, rw, rh, col) { for (let y = y0; y < y0 + rh; y++) for (let x = x0; x < x0 + rw; x++) this.set(x, y, col); },
+    flush() { x.putImageData(d, 0, 0); return c; } };
+}
+function hash(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+
+// fonts: BIG 6x7 bold, SM 5x5, DIG 3x5
+const BIG = {
+  F: ["######","######","##....","#####.","#####.","##....","##...."],
+  L: ["##....","##....","##....","##....","##....","######","######"],
+  O: [".####.","######","##..##","##..##","##..##","######",".####."],
+  R: ["#####.","######","##..##","######","#####.","##.###","##..##"],
+};
+const SM = {
+  O: [".###.","#...#","#...#","#...#",".###."], N: ["#...#","##..#","#.#.#","#..##","#...#"], E: ["#####","#....","####.","#....","#####"],
+  M: ["#...#","##.##","#.#.#","#...#","#...#"], R: ["####.","#...#","####.","#..#.","#...#"], S: [".####","#....",".###.","....#","####."],
+  C: [".####","#....","#....","#....",".####"], A: [".###.","#...#","#####","#...#","#...#"], P: ["####.","#...#","####.","#....","#...."],
+  F: ["#####","#....","####.","#....","#...."], L: ["#....","#....","#....","#....","#####"], " ": [".",".",".",".","."],
+};
+const DIG = { "+": ["...",".#.","###",".#.","..."], "1": [".#.","##.",".#.",".#.","###"], "0": ["###","#.#","#.#","#.#","###"], "8": ["###","#.#","###","#.#","###"] };
+function mask(str, font, s = 1, gap = 1) {
+  const gl = [...str].map(ch => font[ch] || font[" "] || font["O"]); const h = gl[0].length * s;
+  const w = gl.reduce((a, g) => a + g[0].length * s, 0) + gap * s * (gl.length - 1);
+  const a = new Uint8Array(w * h); let ox = 0;
+  for (const g of gl) { for (let y = 0; y < g.length; y++) for (let x = 0; x < g[0].length; x++) if (g[y][x] === "#") for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) a[(y * s + j) * w + ox + x * s + i] = 1; ox += g[0].length * s + gap * s; }
+  return { w, h, a, on(x, y) { return x >= 0 && y >= 0 && x < w && y < h && a[y * w + x] === 1; } };
+}
+function near(m, x, y, r) { for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (m.on(x + i, y + j)) return true; return false; }
+// draw mask with outline + optional shadow; fill(x,y) gets coords relative to mask
+function ink(P, m, ox, oy, { fill, outline, shadow, sdx = 1, sdy = 1, glow }) {
+  if (glow) for (let y = -3; y < m.h + 3; y++) for (let x = -3; x < m.w + 3; x++) { if (m.on(x, y)) continue; const c = glow(x, y); if (c) P.set(ox + x, oy + y, c); }
+  if (shadow) for (let y = -1; y < m.h + 1; y++) for (let x = -1; x < m.w + 1; x++) if (near(m, x, y, 1)) P.set(ox + x + sdx, oy + y + sdy, shadow);
+  if (outline) for (let y = -1; y < m.h + 1; y++) for (let x = -1; x < m.w + 1; x++) if (!m.on(x, y) && near(m, x, y, 1)) P.set(ox + x, oy + y, outline);
+  for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.on(x, y)) P.set(ox + x, oy + y, typeof fill === "function" ? fill(x, y) : fill);
+}
+
+const BIGX = { "+": ["..##..","..##..","######","######","..##..","..##..","......"], "1": ["..##..",".###..","####..","..##..","..##..","..##..","######"] };
+const goldFill = (h) => (x, y) => y < h * .15 ? "#ffe7a0" : y > h * .75 ? "#d98f2e" : "#f2c14e";
+const LOGO = {};
+LOGO.I = { w: 104, h: 70, build() {
+  const P = PX(this.w, this.h);
+  const one = mask("ONE MORE", SM); ink(P, one, (this.w - one.w) >> 1, 3, { fill: "#c8f0b0", shadow: "#0b0912", sdx: 0, sdy: 1 });
+  const big = mask("FLOOR", BIG, 3, 1); const bx = (this.w - big.w) >> 1, by = 13; this.bx = bx; this.by = by; this.big = big;
+  const top = (x, y) => big.on(x, y) && !big.on(x, y - 1);
+  ink(P, big, bx, by, { outline: "#0b0912", shadow: "#141024", sdx: 2, sdy: 2, fill: (x, y) => {
+    let up = 0; while (up < 3 && big.on(x, y - up - 1)) up++; const mossD = 1 + Math.floor(hash(x, 11) * 3);
+    if (up < mossD && hash(x, 5) > 0.15) return up === 0 ? "#9be07a" : "#5aa84a";
+    return y % 6 === 5 ? "#6a63a0" : y > 16 ? "#6a63a0" : (x + y) % 11 === 0 ? "#9a94c8" : "#8a83b8"; } });
+  // ivy vines hanging below letters
+  this.vines = [];
+  for (let v = 0; v < 7; v++) { const vx = Math.floor(hash(v, 21) * big.w); let ly = -1; for (let y = big.h - 1; y >= 0; y--) if (big.on(vx, y)) { ly = y; break; } if (ly < 0) continue; this.vines.push([bx + vx, by + ly + 1, 4 + Math.floor(hash(v, 22) * 9)]); }
+  for (const [vx, vy, len] of this.vines) for (let k = 0; k < len; k++) { P.set(vx + ((k >> 2) % 2), vy + k, "#3f8f4a"); if (k % 3 === 1) P.set(vx + ((k >> 2) % 2) + (k % 2 ? 1 : -1), vy + k, "#6cc06a"); }
+  P.set(bx + 30, by - 1, "#ff9aa8"); P.set(bx + 29, by, "#ff9aa8"); P.set(bx + 31, by, "#ff9aa8"); P.set(bx + 30, by, "#f2c14e");
+  P.set(bx + 70, by - 1, "#ffffff"); P.set(bx + 69, by, "#ffffff"); P.set(bx + 71, by, "#ffffff"); P.set(bx + 70, by, "#f2c14e");
+  // wooden sign
+  const esc = mask("ESCAPE", SM); const sx = (this.w - esc.w - 10) >> 1; P.rect(sx - 1, 54, esc.w + 12, 13, "#120a06"); P.rect(sx, 55, esc.w + 10, 11, "#8a5a32"); P.rect(sx, 55, esc.w + 10, 1, "#b07a46"); P.rect(sx, 60, esc.w + 10, 1, "#6a4424"); P.rect(sx, 65, esc.w + 10, 1, "#5a3a22");
+  ink(P, esc, sx + 5, 58, { fill: "#fff6ea", shadow: "#3a2414", sdx: 1, sdy: 1 });
+  for (let k = 0; k < 5; k++) { P.set(sx - 2 + k, 53 + (k % 2), "#3f8f4a"); P.set(sx + esc.w + 8 + k, 66 - (k % 2), "#6cc06a"); }
+  return P.flush(); },
+  over(x, t) { for (let i = 0; i < 5; i++) { const fx = Math.round(10 + (hash(i, 1) * 84 + Math.sin(t * .7 + i) * 8)), fy = Math.round(12 + hash(i, 2) * 46 + Math.cos(t * .9 + i * 2) * 5); if (Math.sin(t * 2.3 + i * 1.7) > 0) { x.fillStyle = i % 2 ? "#e8ff9a" : "#f2c14e"; x.fillRect(fx, fy, 1, 1); x.fillStyle = "rgba(232,255,154,.25)"; x.fillRect(fx - 1, fy - 1, 3, 3); } } } };
+
+function icon2(k) {
+  const P = PX(32, 32);
+  if (k === "E") { P.rect(0, 0, 32, 32, "#0c0a16"); for (let y = 8; y < 32; y++) for (let x = 4; x < 28; x++) { const row = Math.floor(y / 4), off = row % 2 ? 4 : 0; P.set(x, y, y % 4 === 3 || (x + off) % 8 === 7 ? "#211b35" : "#3b2d5c"); }
+    P.rect(2, 8, 28, 2, "#8a83b8"); P.rect(9, 12, 14, 17, "#5fd1c4"); P.rect(10, 13, 12, 16, "#0c0a16"); const f = mask("F", BIG, 2, 0); ink(P, f, 10, 14, { fill: goldFill(14), outline: "#1a0f0a" });
+    for (const sx of [5, 26]) for (let y = 1; y < 8; y++) P.set(sx, y, "#8a5a32"); P.rect(5, 1, 22, 1, "#8a5a32"); P.rect(8, 5, 8, 3, "#5a5486"); P.rect(18, 3, 6, 2, "#8a83b8"); }
+  if (k === "F") { P.rect(0, 0, 32, 32, "#0c0a14"); const f = mask("F", BIG, 3, 0); for (let y = 17; y < 21; y++) for (let x = 0; x < 18; x++) if (hash(x, y) < (y - 16) * .2) f.a[y * 18 + x] = 0;
+    ink(P, f, 7, 2, { outline: "#0b0912", fill: (x, y) => (x === 4 + (y >> 2) || x === 5 + (y >> 2)) && y < 14 ? "#e0566b" : y < 3 ? "#d6d0ee" : y > 15 ? "#5a5486" : "#9a94b8" });
+    P.set(10, 25, "#7a74a8"); P.set(16, 24, "#5a5486"); P.rect(20, 26, 2, 2, "#7a74a8"); for (let x = 0; x < 32; x++) for (let y = 28; y < 32; y++) P.set(x, y, Math.floor((x + y) / 4) % 2 ? "#e0566b" : "#1a0a10"); }
+  if (k === "G") { P.rect(0, 0, 32, 32, "#120a1e"); for (let i = 0; i < 10; i++) P.set(Math.floor(hash(i, 8) * 32), Math.floor(hash(i, 9) * 32), "#9a94b8"); const f = mask("F", BIG, 3, 0); const ext = ["#24123a", "#2e1848", "#3b1d5c", "#4a2470"];
+    for (let k2 = 4; k2 >= 1; k2--) for (let y = 0; y < 21; y++) for (let x = 0; x < 18; x++) if (f.on(x, y)) P.set(6 + x + k2, 4 + y + k2, ext[4 - k2]);
+    ink(P, f, 6, 4, { outline: "#14081f", fill: (x, y) => y % 5 === 4 && y > 3 ? "#2a1030" : y < 4 ? "#ffe7a0" : y < 9 ? "#f2c14e" : y < 14 ? "#ff8a3c" : y < 19 ? "#e0566b" : "#b33a6b" }); }
+  if (k === "H") { P.rect(0, 0, 32, 32, "#0c0a14"); for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const d = Math.hypot(x - 15.5, y - 15.5); if (d < 15.5) P.set(x, y, y < 8 ? "#f0d27a" : y > 24 ? "#7a5418" : "#c99a3a"); if (d < 12.5) P.set(x, y, "#1a1208"); if (d < 11.5) P.set(x, y, "#1b1829"); }
+    const pl = mask("+1", BIGX, 2, 0); ink(P, pl, 16 - (pl.w >> 1), 9, { fill: goldFill(14), outline: "#1a0f0a" }); }
+  if (k === "I") { P.rect(0, 0, 32, 32, "#0c0a16"); const f = mask("F", BIG, 3, 0);
+    ink(P, f, 7, 5, { outline: "#0b0912", fill: (x, y) => { let up = 0; while (up < 3 && f.on(x, y - up - 1)) up++; if (up < 1 + Math.floor(hash(x, 11) * 2)) return up === 0 ? "#9be07a" : "#5aa84a"; return y % 5 === 4 ? "#4a4470" : "#8a83b8"; } });
+    for (let k2 = 0; k2 < 9; k2++) P.set(9 + ((k2 >> 2) % 2), 26 + k2 > 31 ? 31 : 26 + k2, "#3f8f4a"); for (let k2 = 0; k2 < 7; k2++) P.set(20 + (k2 % 2), 12 + k2, "#3f8f4a"); P.set(21, 14, "#6cc06a"); P.set(19, 16, "#6cc06a"); P.set(14, 4, "#ff9aa8"); }
+  return P.flush();
+}
+
+const L = LOGO.I; L.img = L.build();
+L.attach = function (cv, s) { cv.width = L.w; cv.height = L.h; cv.style.width = L.w * s + "px"; cv.style.height = L.h * s + "px"; cv.style.imageRendering = "pixelated";
+  const x = cv.getContext("2d"); const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tick = (ms) => { if (!cv.isConnected) return; x.imageSmoothingEnabled = false; x.clearRect(0, 0, L.w, L.h); x.drawImage(L.img, 0, 0); L.over(x, ms / 1000); if (!rm) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick); };
+window.OMF_LOGO_I = L; window.OMF_ICON_I = () => icon2("I");
+})();
+
+
+// ===== v71 (user, title thread spec /mnt/project-files/arte/portada/portada-clasica-hiedra.md): CLASSIC title screen with
+// logo I "Hiedra" (canvas, OMF_LOGO_I), a hero carousel on a stone pedestal (arrows change the hero, tapping the hero
+// cycles your owned skins), a hanger button that opens the wardrobe, CLIMB full width, DAILY + HORDE half width, and a
+// row of 5 pixel icon buttons. The old rows of hero and skin tiles are gone.
+var ESC_PI = {
+  trophy: ["##.....##","#.#####.#","#.#####.#",".#.###.#.","...###...","....#....","....#....","..#####..","..#####.."],
+  book: [".###.###.","#...#...#","#.#.#.#.#","#...#...#","#.#.#.#.#","#...#...#","#.#.#.#.#",".###.###.","....#...."],
+  gear: ["...#.#...",".#.###.#.","..#####..","####.####","###...###","####.####","..#####..",".#.###.#.","...#.#..."],
+  star: ["....#....","....#....","...###...","#########",".#######.","..#####..","..##.##..",".##...##.",".#.....#."],
+  q: ["..#####..",".##...##.",".##...##.",".....##..","....##...","....##...",".........","....##...","....##..."],
+  sun: ["#...#...#",".#.....#.","...###...","..#####..","#.#####.#","..#####..","...###...",".#.....#.","#...#...#"],
+  swords: ["#.......#",".#.....#.","..#...#..","...#.#...","....#....","...#.#...","..#...#..","##.....##","##.....##"],
+  up: ["....#....","...###...","..#####..",".#######.","#########","...###...","...###...","...###...","...###..."],
+  left: ["....##...","...##....","..##.....",".##......","##.......",".##......","..##.....","...##....","....##..."],
+  right: ["...##....","....##...",".....##..","......##.",".......##","......##.",".....##..","....##...","...##...."],
+  hanger: ["....#....","...#.#...",".....#...","....#....","...###...","..#...#..",".#.....#.","#########","........."],
+  lock: ["..#####..",".#.....#.",".#.....#.","#########","####.####","###...###","####.####","#########","........."],
+  flask: ["...###...","....#....","....#....","...#.#...","..#...#..",".#.###.#.","#.#####.#","#########","........."],
+};
+function pxi(n, c, k) { return `<canvas class="pxi" width="9" height="9" data-pi="${n}" data-pc="${c}" style="width:${9 * (k || 2)}px;height:${9 * (k || 2)}px" aria-hidden="true"></canvas>`; }
+function paintPxi(root) { (root || document).querySelectorAll("canvas[data-pi]").forEach(cv => { const g = ESC_PI && ESC_PI[cv.dataset.pi], x = cv.getContext("2d"); if (!g) return; x.clearRect(0, 0, 9, 9); x.fillStyle = cv.dataset.pc; for (let y = 0; y < 9; y++) for (let i = 0; i < 9; i++) if (g[y][i] === "#") x.fillRect(i, y, 1, 1); }); }
+function hlogoAttach(root, maxScale) { (root || document).querySelectorAll("canvas.hlogo").forEach(cv => { if (!window.OMF_LOGO_I) return; const k = Math.max(1, Math.min(maxScale || 3, Math.floor((Math.min(innerWidth, 460) - 28) / 104), Math.floor(186 / 70))); OMF_LOGO_I.attach(cv, k); }); }
+function heroSkinsOf(cid) { return Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].ch === cid); }
+function skinOwned(id) { const k = HERO_SKINS[id]; return k && (!k.unlock || (META.skins || []).includes(id)); }
+function escTitleHTML(ch0, db) {
+  const view = CHARS.find(c => c.id === S.titleView) || ch0, ok = META.chars.includes(view.id), cur = heroesOn() ? heroSkinOf(view.id) : view.id;
+  const ids = heroesOn() ? heroSkinsOf(view.id) : [], own = ids.filter(skinOwned).length, curK = HERO_SKINS[cur];
+  const store = !!window.OMF_STORE, ach = PGS ? `<button id="pgsAch" title="${T("Logros")}" aria-label="${T("Logros")}">${pxi("star", "#5fd1c4")}</button>` : `<button id="achBtn" title="${T("Logros")}" aria-label="${T("Logros")}">${pxi("star", "#5fd1c4")}</button>`;
+  return `<div class="menu etitle">
+    <div class="lslot"><canvas class="hlogo" aria-label="One More Floor Escape" role="img"></canvas></div>
+    <div class="ehero"><button class="arr" id="heroPrev" aria-label="${T("Anterior")}">${pxi("left", "#9a94b8", 3)}</button>
+      <div class="ped"><button class="pedhero" id="heroTap" aria-label="${T("Cambiar aspecto")}"><canvas class="pv" width="48" height="78" data-cid="${view.id}" data-skin="${ok ? cur : view.id}" data-lock="${ok ? 0 : 1}" data-off="0"></canvas></button><i class="slab"></i></div>
+      <button class="arr" id="heroNext" aria-label="${T("Siguiente")}">${pxi("right", "#9a94b8", 3)}</button></div>
+    <p class="ename" style="color:${ok ? view.color : "var(--muted)"}">${ok ? view.name.toUpperCase() : "🔒 " + view.name.toUpperCase()}</p>
+    <p class="edesc">${ok ? view.desc : lockHTML(view.name, lockInfo("char", view.id))}</p>
+    ${ok && ids.length > 1 ? `<button class="eskin" id="wardBtn">${pxi("hanger", "#5fd1c4")}<span>${T(curK ? curK.name : view.name).toUpperCase()}</span><small>${own}/${ids.length}</small></button>` : ""}
+    <div class="difsel" role="group" aria-label="${T("Dificultad")}"><button data-dif="0" class="${META.easy ? "" : "on"}">${T("NORMAL")}</button><button data-dif="1" class="${META.easy ? "on" : ""}">${T("FÁCIL")}</button></div>
+    <div class="emodes${ok ? "" : " off"}">
+      <button class="mode main" id="goBtn"><span class="mi">${pxi("up", "#f2c14e")}</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin</span><span class="mv"><small>MEJOR</small>${bestOf(META.easy ? "escape-easy" : "escape")} m</span></button>
+      <button class="mode half" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e")}</span><span class="mt">DIARIO</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
+      <button class="mode half" id="hordeBtn"><span class="mi">${pxi("swords", "#e0566b")}</span><span class="mt">HORDA</span><span class="mv"><small>MEJOR</small>${bestOf("escape-horde")} m</span></button>
+    </div>
+    <div class="eicons"><button id="lbBtn" title="${T("Récords")}" aria-label="${T("Récords")}">${pxi("trophy", "#f2c14e")}</button><button id="codexBtn" title="${T("Códice")}" aria-label="${T("Códice")}">${pxi("book", "#c9c3e6")}</button>${ach}<button id="setBtn" title="${T("Ajustes")}" aria-label="${T("Ajustes")}">${pxi("gear", "#c9c3e6")}</button><button id="howBtn" title="${T("Cómo se juega")}" aria-label="${T("Cómo se juega")}">${pxi("q", "#e0566b")}</button>${store ? "" : `<button id="testsBtn" title="PRUEBAS" aria-label="PRUEBAS">${pxi("flask", "#9a94b8")}</button>`}</div>
+    ${store ? "" : `<details class="how bt" id="testsBox"><summary>PRUEBAS</summary>
+      <div class="bossrows">${BOSS_TEST.map((n, i) => `<div class="brow"><button data-bt="${i}">${n}</button>${[1, 2, 3].map(ph => `<button class="ph" data-bt="${i}" data-ph="${ph}">F${ph}</button>`).join("")}</div>`).join("")}</div>
+      <div class="tools"><button id="labBtn">🧪 Sala de mobs</button><button id="itemLabBtn">🧪 Sala de objetos</button><label class="flsel"><input id="boxChk" type="checkbox" ${window.OMF_SHOWBOXES ? "checked" : ""}> ${T("Ver cajas")}</label></div>
+      <div class="mlabel">${T("BIOMAS")}</div><div class="tools">${BIOMES.slice(0, 5).map((B, z) => `<button data-bz="${z}">${z + 1} · ${B.name}</button>`).join("")}<button id="platBtn">${T("Plataformas")}</button></div>
+      <div class="mlabel">SALAS SECRETAS</div><div class="tools">${ESC_ROOM_TYPES.map(([k]) => `<button data-rt="${k}">${T(ESC_ROOM_NAME[k])}</button>`).join("")}</div>
+      <p>Vas directo a la pelea o a una sala cerrada para sacar enemigos. No cuenta para los récords.</p>
+    </details>`}</div>`;
+}
+function escTitleWire() {
+  paintPxi(ov); hlogoAttach(ov);
+  const view = CHARS.find(c => c.id === S.titleView) || S.char, i0 = CHARS.indexOf(view);
+  const go = d => { const n = CHARS[(i0 + d + CHARS.length) % CHARS.length]; S.titleView = n.id; if (META.chars.includes(n.id)) S.char = n; omfSfx("click"); showTitle(); };
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  on("heroPrev", () => go(-1)); on("heroNext", () => go(1));
+  on("heroTap", () => { if (!META.chars.includes(view.id) || !heroesOn()) return; const ids = heroSkinsOf(view.id).filter(skinOwned); if (ids.length < 2) return;
+    const cur = heroSkinOf(view.id); META.skin[view.id] = ids[(ids.indexOf(cur) + 1) % ids.length]; saveMeta(); omfSfx("pick"); showTitle(); });
+  on("wardBtn", () => escWardrobe(view));
+  on("testsBtn", () => { const d = document.getElementById("testsBox"); if (d) { d.open = !d.open; if (d.open) d.scrollIntoView({ block: "nearest" }); } });
+  if (!META.chars.includes(view.id)) ov.querySelectorAll(".emodes button").forEach(b => b.disabled = true);
+}
+var ESC_TITLE_READY = true; // the classic title needs the hero add-ons above; earlier title draws use the old layout
+function escWardrobe(ch) {
+  const ids = heroSkinsOf(ch.id), cur = heroSkinOf(ch.id);
+  const el = document.createElement("div"); el.className = "wardrobe"; el.id = "wardrobe";
+  el.innerHTML = `<h2>${pxi("hanger", "#5fd1c4")} ${ch.name.toUpperCase()} · ${T("ASPECTOS")}</h2>
+    <div class="wgrid">${ids.map((id, i) => { const ok = skinOwned(id), k = HERO_SKINS[id]; return `<button class="wtile${id === cur ? " sel" : ""}" data-w="${id}"><canvas class="pv" width="32" height="52" data-cid="${ch.id}" data-skin="${id}" data-lock="${ok ? 0 : 1}" data-off="${i * 0.6}"></canvas>${ok ? "" : pxi("lock", "#9a94b8", 1)}<span>${ok ? T(k.name).slice(0, 9) : "???"}</span></button>`; }).join("")}</div>
+    <p class="winfo" id="wInfo">${T("Listo para usar")}: ${T(HERO_SKINS[cur] ? HERO_SKINS[cur].name : ch.name)}</p>
+    <button class="wok" id="backBtn">OK</button>`;
+  document.body.appendChild(el); paintPxi(el); animPortraits();
+  el.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { const id = b.dataset.w, k = HERO_SKINS[id], info = el.querySelector("#wInfo");
+    if (skinOwned(id)) { META.skin[ch.id] = id; saveMeta(); omfSfx("pick"); el.querySelectorAll(".wtile").forEach(t => t.classList.toggle("sel", t === b)); info.textContent = T("Listo para usar") + ": " + T(k.name); }
+    else info.innerHTML = lockHTML(T(k.name), lockInfo("skin", id)); });
+  el.querySelector("#backBtn").onclick = () => { el.remove(); omfSfx("click"); showTitle(); };
+}
+
+// ===== v71 (user, platforms thread spec /mnt/project-files/plataformas/plataformas-elegidas-spec.md): 5 new Escape platforms.
+// root (Living Depths): a curled root on a side wall that wakes when you come close, grows 3 tiles, holds 4 s, curls back.
+// shroom (Living Depths): a bouncy mushroom (spring tile 6) that throws you ~5 rows up; hold JUMP for a bit more.
+// piston (Machine Kingdom): a steam piston from a side wall on a 3.4 s beat (0.4 s steam warning, out 0.2 s, holds 1.8 s).
+// lightp (Void): glass slabs you only see (and stand on) within 44 px of you (34 with Oscuridad) or near a torch.
+// gstep (Unknown): a diagonal run of violet steps; each lights up as you reach the one before and fades 0.5 s after you leave.
+// The path checker treats all of them as solid at full size, so every segment stays climbable.
+function platTick(dt, p) {
+  const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2, rad = has("dark") ? 34 : 44;
+  const near = (m, d) => { const nx = clamp(pcx, m.x, m.x + m.w), ny = clamp(pcy, m.y, m.y + m.h); return Math.hypot(pcx - nx, pcy - ny) <= d; };
+  for (const m of S.movers) {
+    if (m.kind === "root") {
+      const sx0 = m.fx, sx1 = m.fx + m.fw, dxh = pcx < sx0 ? sx0 - pcx : pcx > sx1 ? pcx - sx1 : 0, rows = (p.y + p.h - m.y) / TS, close = dxh <= 3 * TS && rows >= -1 && rows <= 4.5;
+      const on = m.solid && standingOn(p, m); m.t -= dt;
+      if (!close) m.arm = true;
+      if (m.st === "coil" && close && m.arm) { m.st = "glow"; m.t = 0.3; }
+      else if (m.st === "glow" && m.t <= 0) { m.st = "grow"; m.t = 0.4; omfSfx("crack"); }
+      else if (m.st === "grow") { const k = 1 - Math.max(0, m.t) / 0.4; m.w = TS / 2 + (m.fw - TS / 2) * k; m.solid = true; if (m.t <= 0) { m.st = "hold"; m.t = 4; m.w = m.fw; } }
+      else if (m.st === "hold" && m.t <= 0 && !on) { m.st = "shrink"; m.t = 0.4; }
+      else if (m.st === "shrink") { const k = Math.max(0, m.t) / 0.4; m.w = TS / 2 + (m.fw - TS / 2) * k; if (m.t <= 0) { m.st = "coil"; m.solid = false; m.w = TS / 2; m.arm = false; m.cool = 1; } }
+      if (m.cool > 0) { m.cool -= dt; m.arm = false; }
+      m.x = m.side > 0 ? m.fx : m.fx + m.fw - m.w;
+    } else if (m.kind === "piston") {
+      const at = c => { c = ((c % 3.4) + 3.4) % 3.4; return c < 0.4 ? 0 : c < 0.6 ? (c - 0.4) / 0.2 : c < 2.4 ? 1 : c < 2.6 ? 1 - (c - 2.4) / 0.2 : 0; };
+      const k1 = at(m.clk + dt), w1 = TS / 2 + (m.fw - TS / 2) * k1, x1 = m.side > 0 ? m.fx : m.fx + m.fw - w1;
+      const blocked = k1 > at(m.clk) && [p, ...S.enemies].some(e => !e.dead && e !== p ? false : !standingOn(e, m) && x1 < e.x + e.w && x1 + w1 > e.x && m.y < e.y + e.h && m.y + m.h > e.y && !(m.x < e.x + e.w && m.x + m.w > e.x && m.y < e.y + e.h && m.y + m.h > e.y));
+      if (!blocked) { m.clk += dt; m.w = w1; m.x = x1; }
+      const c = ((m.clk % 3.4) + 3.4) % 3.4; m.warn = c < 0.4; m.solid = m.w > TS * 0.75;
+      if (m.warn && !m.puffed && Math.abs(m.y - p.y) < CH) { m.puffed = true; omfSfx("click"); } if (!m.warn) m.puffed = false;
+    } else if (m.kind === "lightp") {
+      let lit = near(m, rad); if (!lit) for (const tc of S.torches) if (Math.abs(tc.x - (m.x + m.w / 2)) < 3 * TS && Math.abs(tc.y - (m.y + m.h / 2)) < 3 * TS) { lit = true; break; }
+      if (!lit && m.solid && standingOn(p, m)) lit = true; // never vanishes under your feet
+      m.vis = clamp(m.vis + (lit ? 1 : -1) * dt / 0.15, 0, 1); m.solid = lit;
+    } else if (m.kind === "gstep") {
+      const prv = m.i > 0 ? m.grp[m.i - 1] : null, onMe = m.solid && standingOn(p, m);
+      const trig = onMe || (prv ? (prv.solid && standingOn(p, prv)) || (prv.vis > 0.5 && near(prv, 2 * TS)) : near(m, 3 * TS));
+      if (trig) { m.off = 0; m.vis = Math.min(1, m.vis + dt / 0.2); } else { m.off += dt; if (m.off > 0.5) m.vis = Math.max(0, m.vis - dt / 0.3); }
+      m.solid = m.vis > 0.5 && m.off < 0.5 || onMe; m.warn = m.off > 0.15 && m.off < 0.5;
+    }
+  }
+}
+function platDraw(cx, cy) {
+  const vis = (x, y, w, h) => !(x + w < cx - 10 || x > cx + CW + 10 || y + h < cy - 10 || y > cy + CH + 10);
+  for (const m of S.movers) {
+    if (!vis(m.fx != null ? m.fx : m.x, m.y - TS, (m.fw || m.w), TS * 2)) continue;
+    if (m.kind === "root") {
+      const glow = m.st === "glow" ? 1 : 0.5 + 0.5 * Math.sin(S.t * 5), tipX = m.side > 0 ? m.x + m.w : m.x;
+      if (m.st === "coil" || m.w <= TS / 2 + 1) { const bx = m.side > 0 ? m.fx : m.fx + m.fw - 12, by = m.y - 1;
+        ctx.fillStyle = "#3a2414"; ctx.fillRect(bx, by, 12, 12); ctx.fillStyle = "#7a5230"; ctx.fillRect(bx + 1, by + 1, 10, 10); ctx.fillStyle = "#3a2414"; ctx.fillRect(bx + 3, by + 3, 6, 6); ctx.fillStyle = "#9a6a3e"; ctx.fillRect(bx + 4, by + 4, 3, 3);
+        ctx.fillStyle = "#5aa04a"; ctx.fillRect(bx + 1, by, 4, 2); ctx.fillStyle = m.st === "glow" ? "#ffd0f2" : "#ff7ac8"; ctx.fillRect(m.side > 0 ? bx + 9 : bx + 1, by + 4, 2, 2);
+        if (m.st === "glow") { ctx.globalAlpha = 0.35; ctx.fillStyle = "#ff7ac8"; ctx.fillRect(bx - 3, by - 3, 18, 18); ctx.globalAlpha = 1; }
+        continue; }
+      ctx.fillStyle = "#3a2414"; ctx.fillRect(m.x, m.y, m.w, m.h); ctx.fillStyle = "#7a5230"; ctx.fillRect(m.x, m.y + 2, m.w, m.h - 4); ctx.fillStyle = "#9a6a3e"; ctx.fillRect(m.x, m.y + 3, m.w, 2);
+      ctx.fillStyle = "#5aa04a"; ctx.fillRect(m.x, m.y, m.w, 2); ctx.fillStyle = "#3f7a3a"; for (let k = 4; k < m.w - 4; k += 8) { ctx.fillRect(m.x + k, m.y - 2, 3, 2); ctx.fillRect(m.x + k + 1, m.y - 3, 1, 1); }
+      ctx.fillStyle = "#2a180c"; for (let k = 6; k < m.w; k += 9) ctx.fillRect(m.x + k, m.y + 6, 1, 4);
+      ctx.fillStyle = Math.floor(S.t * 3) % 2 ? "#ff7ac8" : "#ffd0f2"; ctx.fillRect(m.side > 0 ? tipX - 4 : tipX, m.y + 3, 4, 5);
+      if (has("dark")) { ctx.save(); ctx.globalCompositeOperation = "lighter"; sprGlow && sprGlow(m.side > 0 ? tipX - 2 : tipX + 2, m.y + 5, 26, [255, 120, 200], 0.18 * glow); ctx.restore(); }
+    } else if (m.kind === "piston") {
+      const base = m.side > 0 ? m.fx : m.fx + m.fw - 6;
+      ctx.fillStyle = "#24262e"; ctx.fillRect(base, m.y - 6, 6, TS); ctx.fillStyle = "#6a6e7a"; ctx.fillRect(base + 1, m.y - 5, 4, TS - 2); ctx.fillStyle = "#e8b84a"; ctx.fillRect(base + 2, m.y - 3, 2, 2); ctx.fillRect(base + 2, m.y + 12, 2, 2);
+      const head = 10, rodL = Math.max(0, m.w - head), hx = m.side > 0 ? m.x + m.w - head : m.x;
+      if (rodL > 0) { const rx = m.side > 0 ? m.x : m.x + head; ctx.fillStyle = "#2c2e36"; ctx.fillRect(rx, m.y + 3, rodL, 6); ctx.fillStyle = "#8a8f9c"; ctx.fillRect(rx, m.y + 4, rodL, 1); }
+      ctx.fillStyle = "#1a1c22"; ctx.fillRect(hx, m.y - 1, head, m.h + 2); ctx.fillStyle = "#b8bdc8"; ctx.fillRect(hx + 1, m.y, head - 2, m.h); ctx.fillStyle = "#d6dae2"; ctx.fillRect(hx + 1, m.y, head - 2, 2); ctx.fillStyle = "#e8b84a"; ctx.fillRect(hx + head / 2 - 1, m.y + 5, 2, 2);
+      if (m.warn) { const k = (S.t * 6) % 1; ctx.globalAlpha = 0.8 * (1 - k); ctx.fillStyle = "#f2f2f8"; for (let q = 0; q < 3; q++) ctx.fillRect(base + (m.side > 0 ? 6 + q * 4 : -4 - q * 4), m.y - 4 - k * 10 - q * 3, 3 + q, 3 + q); ctx.globalAlpha = 1; }
+    } else if (m.kind === "lightp") {
+      if (m.vis <= 0.02) { if (Math.floor(S.t * 2 + m.x) % 5 === 0) { ctx.fillStyle = "rgba(140,230,255,.25)"; ctx.fillRect(m.x + (m.x * 7 % m.w), m.y + 3, 2, 2); } continue; }
+      ctx.globalAlpha = m.vis; ctx.fillStyle = "rgba(95,214,240,.45)"; ctx.fillRect(m.x, m.y, m.w, m.h); ctx.fillStyle = "#c8f6ff"; ctx.fillRect(m.x, m.y, m.w, 2); ctx.fillRect(m.x, m.y, 1, m.h); ctx.fillRect(m.x + m.w - 1, m.y, 1, m.h);
+      ctx.fillStyle = "#2a8ab0"; ctx.fillRect(m.x, m.y + m.h - 1, m.w, 1); ctx.fillStyle = "rgba(255,255,255,.75)"; const gx = (S.t * 30) % (m.w + 20) - 10; if (gx > 0 && gx < m.w - 4) { ctx.fillRect(m.x + gx, m.y + 3, 2, 2); ctx.fillRect(m.x + gx + 3, m.y + 5, 2, 2); }
+      ctx.globalAlpha = 1;
+    } else if (m.kind === "gstep") {
+      if (m.vis <= 0.02) continue; const bl = m.warn && Math.floor(S.t * 12) % 2;
+      ctx.globalAlpha = m.vis * (bl ? 0.35 : 0.85); ctx.fillStyle = "#7d5ad6"; ctx.fillRect(m.x + 1, m.y, m.w - 2, m.h); ctx.fillStyle = "#d4c0ff"; ctx.fillRect(m.x + 1, m.y, m.w - 2, 2); ctx.fillRect(m.x, m.y + 1, 1, m.h - 2); ctx.fillRect(m.x + m.w - 1, m.y + 1, 1, m.h - 2);
+      ctx.fillStyle = "#3a2470"; ctx.fillRect(m.x + 1, m.y + m.h - 1, m.w - 2, 1); ctx.fillStyle = "#ffffff"; ctx.fillRect(m.x + 2 + ((S.t * 20 + m.i * 5) % (m.w - 6)), m.y + 4, 2, 2); ctx.globalAlpha = 1;
+    }
+  }
+  // mushrooms: drawn over spring tiles (code 6) in Escape
+  const g = S.grid, y0 = Math.max(0, Math.floor(cy / TS) - 1), y1 = Math.min(S.LH - 1, Math.floor((cy + CH) / TS) + 1);
+  for (let y = y0; y <= y1; y++) for (let x = 0; x < S.LW; x++) if (g[y][x] === 6) {
+    const px = x * TS, py = y * TS, h = S.shroomHit, sq = h && h.tx === x && h.ty === y && S.t - h.t < 0.15 ? 1 : 0;
+    ctx.fillStyle = "#f2e6c8"; ctx.fillRect(px + 8, py - 2, 8, TS + 2); ctx.fillStyle = "#c9b48a"; ctx.fillRect(px + 14, py - 2, 2, TS + 2);
+    const cw = TS + 4 + sq * 6, ch = 9 - sq * 3, cx0 = px + TS / 2 - cw / 2, cy0 = py - ch + 1;
+    ctx.fillStyle = "#4a1238"; ctx.fillRect(cx0, cy0, cw, ch); ctx.fillStyle = "#d04aa8"; ctx.fillRect(cx0 + 1, cy0 + 1, cw - 2, ch - 2); ctx.fillStyle = "#ff8ad8"; ctx.fillRect(cx0 + 2, cy0 + 1, cw - 4, 2);
+    ctx.fillStyle = "#ffe0f4"; ctx.fillRect(cx0 + 4, cy0 + 3, 3, 2); ctx.fillRect(cx0 + cw - 9, cy0 + 2, 3, 2); if (!sq) ctx.fillRect(cx0 + cw / 2 - 1, cy0 + 4, 2, 2);
+  }
+}
+// PRUEBAS · Plataformas: the five new pieces in one short climb over the start floor
+function testPlats() {
+  newRun({ char: S.char.id, kind: "escape" }); S.test = true; startFloor(); S.test = true; S.roomTest = true; S.escNextMod = 1e9; S.rules = []; S.escMods = [];
+  const g = S.grid, LH = S.LH, LW = S.LW, F0 = LH - 2, top = F0 - 24;
+  for (let y = top; y < F0; y++) for (let x = 1; x < LW - 1; x++) g[y][x] = 0;
+  S.movers = S.movers.filter(m => m.y < top * TS || m.y > F0 * TS); S.enemies = []; S.spikes = S.spikes.filter(k => k.ty < top || k.ty > F0); S.items = []; S.coinsL = [];
+  for (let x = 1; x < LW - 1; x++) g[F0][x] = 1; g[F0][3] = 6;
+  for (let x = 1; x <= 3; x++) g[F0 - 6][x] = 1;
+  const mk = (kind, x0, row) => { const side = x0 === 1 ? 1 : -1, fx = x0 * TS, fw = 3 * TS; S.movers.push({ kind, side, x: side > 0 ? fx : fx + fw - TS / 2, y: row * TS, w: TS / 2, h: TS / 2, fx, fw, solid: false, st: "coil", t: 0, arm: true, clk: 0, esc: true }); };
+  mk("root", 1, F0 - 8);
+  for (let x = 5; x <= 7; x++) g[F0 - 10][x] = 1;
+  mk("piston", LW - 4, F0 - 12);
+  S.movers.push({ kind: "lightp", x: 6 * TS, y: (F0 - 14) * TS, w: 2 * TS, h: TS / 2, solid: false, vis: 0, esc: true });
+  const grp = []; [[4, 15], [2, 16], [4, 17], [6, 18]].forEach(([x, r], i) => { const m = { kind: "gstep", x: x * TS, y: (F0 - r) * TS, w: TS, h: TS / 2, solid: false, i, grp, off: 9, vis: 0, esc: true }; grp.push(m); S.movers.push(m); });
+  for (let x = 7; x <= 10; x++) g[F0 - 20][x] = 1;
+  S.player.x = 2 * TS; S.player.y = F0 * TS - 23; S.camY = F0 * TS - CH + DEV_RISE + 2 * TS;
+  toast("Plataformas: hongo · raíz · pistón · luz · peldaños");
+}
+
 // ===== v70 (user: "monstruo es malo, la lava que no ocupe mucho espacio"): THE RISING TIDE replaces the Devourer.
 // A thin strip of liquid at the bottom of the view (lava in the castle; acid, burning oil, ether and pink goo in the
 // next biomes) with a wavy hot crust, bubbles that pop and sparks that float up. You die when you touch it (honest), and
@@ -9888,9 +10237,9 @@ if (ESCAPE) { let sw = null; const tip = document.createElement("div"); tip.clas
 function showBoot(next) {
   if (!ESCAPE || document.getElementById("boot")) { next(); return; }
   const el = document.createElement("div"); el.id = "boot"; el.className = "boot";
-  el.innerHTML = `<canvas width="64" height="96"></canvas><div class="logo"><span class="l1">ONE MORE</span><span class="l2">FLOOR</span><span class="l3">ESCAPE</span></div><div class="bbar"><i></i></div>`;
-  document.body.appendChild(el);
-  const cv = el.querySelector("canvas"), g = cv.getContext("2d"), bar = el.querySelector(".bbar i"), T0 = performance.now(), DUR = 2200;
+  el.innerHTML = `<canvas width="64" height="96"></canvas><canvas class="hlogo" aria-label="One More Floor Escape" role="img"></canvas><div class="bbar"><i></i></div>`;
+  document.body.appendChild(el); hlogoAttach(el, 2);
+  const cv = el.querySelector("canvas:not(.hlogo)"), g = cv.getContext("2d"), bar = el.querySelector(".bbar i"), T0 = performance.now(), DUR = 2200;
   const st = ["#3b3552", "#4a4466", "#5a5478", "#2c2840"], mort = "#1b1828", ivy = ["#3f7a3a", "#5aa04a"], lit = "#ffcf5a";
   const H = (a, b) => ((a * 73856093) ^ (b * 19349663)) >>> 0;
   let done = false, raf = 0;
