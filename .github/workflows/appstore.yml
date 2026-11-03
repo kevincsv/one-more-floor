@@ -13,6 +13,13 @@ on:
         description: "Subir capturas y vídeos"
         type: boolean
         default: true
+      build:
+        description: "Número de build exacto (vacío = la más nueva válida)"
+        default: ""
+      check:
+        description: "Solo revisar (no cambia nada)"
+        type: boolean
+        default: false
       submit:
         description: "Enviar a revisión de Apple"
         type: boolean
@@ -35,5 +42,6 @@ jobs:
           REVIEW_PHONE: ${{ secrets.REVIEW_PHONE }}
           REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
         run: |
-          python store/ios/scripts/asc_publish.py --version "${{ inputs.version }}" \
-            ${{ inputs.media && '' || '--no-media' }} ${{ inputs.submit && '--submit' || '' }}
+          if [ "${{ format('{0}', inputs.check) }}" = "true" ]; then python store/ios/scripts/asc_check.py; exit 0; fi
+          python store/ios/scripts/asc_publish.py --version "${{ inputs.version }}" --build "${{ inputs.build }}" \
+            ${{ format('{0}', inputs.media) == 'false' && '--no-media' || '' }} ${{ format('{0}', inputs.submit) == 'true' && '--submit' || '' }}

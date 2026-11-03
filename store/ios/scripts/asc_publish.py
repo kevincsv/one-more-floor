@@ -18,6 +18,7 @@ BUNDLE_ID = "com.onemorefloor.escape"
 LOCALES = {"en-US": "en-US", "es-ES": "es-ES", "es-MX": "es-MX"}
 SHOT_TYPES = {"iphone": "APP_IPHONE_67", "ipad": "APP_IPAD_PRO_3GEN_129"}
 MEDIA_FROM = {"es-MX": "es-ES"}  # Mexico uses the Spain screenshots and previews
+IAP_ID = "com.onemorefloor.escape.full"  # non-consumable "Escape completo", created by the TestFlight workflow
 PREVIEW_TYPES = {"iphone": "IPHONE_67", "ipad": "IPAD_PRO_3GEN_129"}
 
 
@@ -125,6 +126,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", default="1.0.0")
     ap.add_argument("--no-media", action="store_true")
+    ap.add_argument("--build", default="", help="exact build number to attach (default: newest valid)")
     ap.add_argument("--submit", action="store_true", help="send the version to App Review at the end")
     o = ap.parse_args()
     a = ASC()
@@ -136,14 +138,18 @@ def main():
     # app info: categories, name, subtitle, privacy URL per locale
     infos = a.all(f"/v1/apps/{aid}/appInfos")
     info = next((i for i in infos if i["attributes"].get("appStoreState") not in ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO")), infos[0])
-    try:
-        a.call("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": {
-            "primaryCategory": {"data": {"type": "appCategories", "id": "GAMES"}},
-            "primarySubcategoryOne": {"data": {"type": "appCategories", "id": "GAMES_ACTION"}},
-            "primarySubcategoryTwo": {"data": {"type": "appCategories", "id": "GAMES_ARCADE"}}}}})
-        print("Categories: Games > Action, Arcade")
-    except RuntimeError as e:
-        print("WARN categories:", e)
+    def cats(*subs):
+        rel = {"primaryCategory": {"data": {"type": "appCategories", "id": "GAMES"}}}
+        for n, c in zip(("primarySubcategoryOne", "primarySubcategoryTwo"), subs):
+            rel[n] = {"data": {"type": "appCategories", "id": c}}
+        a.call("PATCH", f"/v1/appInfos/{info['id']}", {"data": {"type": "appInfos", "id": info["id"], "relationships": rel}})
+    for subs in (("GAMES_ACTION", "GAMES_ARCADE"), ("GAMES_ACTION",), ()):
+        try:
+            cats(*subs)
+            print("Categories: Games", subs)
+            break
+        except RuntimeError as e:
+            print("WARN categories", subs, str(e)[:200])
     ilocs = {l["attributes"]["locale"]: l for l in a.all(f"/v1/appInfos/{info['id']}/appInfoLocalizations")}
     for folder, loc in LOCALES.items():
         attrs = {k: v for k, v in {"name": read(folder, "name"), "subtitle": read(folder, "subtitle"),
@@ -155,20 +161,62 @@ def main():
                 "relationships": {"appInfo": {"data": {"type": "appInfos", "id": info["id"]}}}}})
         print("App info", loc, "ok")
 
+    # content rights: uses third-party art (CC0 pack) with the rights to it
+    try:
+        a.call("PATCH", f"/v1/apps/{aid}", {"data": {"type": "apps", "id": aid, "attributes": {"contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT"}}})
+        print("Content rights declared")
+    except RuntimeError as e:
+        print("WARN content rights:", str(e)[:300])
+    # price: free (the full game is the in-app purchase)
+    try:
+        pts = a.get(f"/v1/apps/{aid}/appPricePoints", **{"filter[territory]": "USA", "limit": 200})["data"]
+        free = next(p for p in pts if float(p["attributes"]["customerPrice"]) == 0)
+        a.call("POST", "/v1/appPriceSchedules", {"data": {"type": "appPriceSchedules", "relationships": {
+            "app": {"data": {"type": "apps", "id": aid}},
+            "baseTerritory": {"data": {"type": "territories", "id": "USA"}},
+            "manualPrices": {"data": [{"type": "appPrices", "id": "${free}"}]}}},
+            "included": [{"type": "appPrices", "id": "${free}", "attributes": {"startDate": None},
+                          "relationships": {"appPricePoint": {"data": {"type": "appPricePoints", "id": free["id"]}}}}]})
+        print("Price: Free")
+    except (RuntimeError, StopIteration, KeyError) as e:
+        print("WARN price:", str(e)[:300])
+
+    # availability: every territory (app and in-app purchase)
+    terrs = None
+    try:
+        terrs = [t["id"] for t in a.all("/v1/territories", limit=200)]
+        if not a.call("GET", f"/v1/apps/{aid}/appAvailabilityV2", ok=(200, 404)).get("data"):
+            a.call("POST", "/v2/appAvailabilities", {"data": {"type": "appAvailabilities", "attributes": {"availableInNewTerritories": True},
+                "relationships": {"app": {"data": {"type": "apps", "id": aid}},
+                                  "territoryAvailabilities": {"data": [{"type": "territoryAvailabilities", "id": "${" + t + "}"} for t in terrs]}}},
+                "included": [{"type": "territoryAvailabilities", "id": "${" + t + "}", "attributes": {"available": True},
+                              "relationships": {"territory": {"data": {"type": "territories", "id": t}}}} for t in terrs]})
+            print("App availability: all", len(terrs), "territories")
+        else:
+            print("App availability already set")
+    except RuntimeError as e:
+        print("WARN app availability:", str(e)[:400])
+
     # age rating: only mild cartoon/fantasy violence
     try:
         ar = a.get(f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
         attrs = {}
+        LEVELS = ("alcoholTobaccoOrDrugUseOrReferences", "contests", "gamblingSimulated", "gunsOrOtherWeapons",
+                  "horrorOrFearThemes", "matureOrSuggestiveThemes", "medicalOrTreatmentInformation",
+                  "profanityOrCrudeHumor", "sexualContentGraphicAndNudity", "sexualContentOrNudity",
+                  "violenceCartoonOrFantasy", "violenceRealistic", "violenceRealisticProlongedGraphicOrSadistic")
+        SKIP = ("kidsAgeBand", "ageRatingOverride", "ageRatingOverrideV2", "koreaAgeRatingOverride", "developerAgeRatingInfoUrl")
+        BOOLS = ("gambling", "lootBox", "unrestrictedWebAccess", "messagingAndChat", "userGeneratedContent", "advertising",
+                 "parentalControls", "ageAssurance", "healthOrWellnessTopics", "socialMedia", "socialMediaAgeRestricted")
         for k, v in ar["attributes"].items():
-            if isinstance(v, bool) or k in ("gambling", "lootBox", "unrestrictedWebAccess", "messagingAndChat", "userGeneratedContent",
-                                            "advertising", "parentalControls", "ageAssurance", "healthOrWellnessTopics"):
-                attrs[k] = False
+            if k in SKIP:
+                continue
             elif k == "violenceCartoonOrFantasy":
                 attrs[k] = "INFREQUENT_OR_MILD"
-            elif k in ("kidsAgeBand", "ageRatingOverride", "ageRatingOverrideV2", "koreaAgeRatingOverride", "developerAgeRatingInfoUrl"):
-                continue
-            else:
+            elif k in LEVELS:
                 attrs[k] = "NONE"
+            elif isinstance(v, bool) or k in BOOLS:
+                attrs[k] = False
         a.call("PATCH", f"/v1/ageRatingDeclarations/{ar['id']}", {"data": {"type": "ageRatingDeclarations", "id": ar["id"], "attributes": attrs}})
         print("Age rating set (mild fantasy violence only)")
     except RuntimeError as e:
@@ -221,9 +269,78 @@ def main():
     except RuntimeError as e:
         print("WARN review details:", e)
 
+    # in-app purchase "Escape completo": review screenshot (the paywall) and review note
+    iap = None
+    try:
+        iaps = a.get(f"/v1/apps/{aid}/inAppPurchasesV2", **{"filter[productId]": IAP_ID})["data"]
+        iap = iaps[0] if iaps else None
+        if not iap:
+            print("WARN in-app purchase", IAP_ID, "not found in App Store Connect")
+        else:
+            print("In-app purchase", IAP_ID, iap["attributes"].get("state"))
+            a.call("PATCH", f"/v2/inAppPurchases/{iap['id']}", {"data": {"type": "inAppPurchases", "id": iap["id"], "attributes": {
+                "reviewNote": "Non-consumable. Opens from the title screen (FULL ESCAPE) and from Settings. Unlocks Horde mode, the heroes Kai and Nyx and all wardrobe looks. RESTORE PURCHASE is on the same screen."}}})
+            try:
+                if not a.call("GET", f"/v2/inAppPurchases/{iap['id']}/inAppPurchaseAvailability", ok=(200, 404)).get("data"):
+                    tl = terrs or [t["id"] for t in a.all("/v1/territories", limit=200)]
+                    a.call("POST", "/v1/inAppPurchaseAvailabilities", {"data": {"type": "inAppPurchaseAvailabilities",
+                        "attributes": {"availableInNewTerritories": True}, "relationships": {
+                            "inAppPurchase": {"data": {"type": "inAppPurchases", "id": iap["id"]}},
+                            "availableTerritories": {"data": [{"type": "territories", "id": t} for t in tl]}}}})
+                    print("In-app purchase availability: all territories")
+            except RuntimeError as e:
+                print("WARN in-app purchase availability:", str(e)[:400])
+            shotf = os.path.join(ROOT, "iap", "review-screenshot.png")
+            cur = a.call("GET", f"/v2/inAppPurchases/{iap['id']}/appStoreReviewScreenshot")
+            if cur and cur.get("data"):
+                a.call("DELETE", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{cur['data']['id']}")
+            data = open(shotf, "rb").read()
+            obj = a.call("POST", "/v1/inAppPurchaseAppStoreReviewScreenshots", {"data": {"type": "inAppPurchaseAppStoreReviewScreenshots",
+                "attributes": {"fileName": "review-screenshot.png", "fileSize": len(data)},
+                "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iap["id"]}}}}})["data"]
+            for op in obj["attributes"]["uploadOperations"]:
+                h = {x["name"]: x["value"] for x in op.get("requestHeaders", [])}
+                r = requests.request(op["method"], op["url"], headers=h, data=data[op["offset"]: op["offset"] + op["length"]], timeout=300)
+                if r.status_code >= 300:
+                    raise RuntimeError(f"upload part failed {r.status_code} {r.text[:300]}")
+            a.call("PATCH", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{obj['id']}", {"data": {"type": "inAppPurchaseAppStoreReviewScreenshots",
+                "id": obj["id"], "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
+            print("In-app purchase review screenshot uploaded")
+    except RuntimeError as e:
+        print("WARN in-app purchase:", str(e)[:600])
+
+    # Game Center achievement images (8-bit medals in store/ios/gamecenter/<id>.png), only where missing
+    try:
+        gcd = a.call("GET", f"/v1/apps/{aid}/gameCenterDetail", ok=(200, 404)).get("data")
+        if gcd:
+            done = 0
+            for ach in a.all(f"/v1/gameCenterDetails/{gcd['id']}/gameCenterAchievements", limit=200):
+                vid_ = (ach["attributes"].get("vendorIdentifier") or "").removeprefix("omf_")
+                imgf = os.path.join(ROOT, "gamecenter", vid_ + ".png")
+                if not os.path.exists(imgf):
+                    continue
+                data = open(imgf, "rb").read()
+                for loc in a.all(f"/v1/gameCenterAchievements/{ach['id']}/localizations", limit=50):
+                    if a.call("GET", f"/v1/gameCenterAchievementLocalizations/{loc['id']}/gameCenterAchievementImage", ok=(200, 404)).get("data"):
+                        continue
+                    obj = a.call("POST", "/v1/gameCenterAchievementImages", {"data": {"type": "gameCenterAchievementImages",
+                        "attributes": {"fileName": vid_ + ".png", "fileSize": len(data)},
+                        "relationships": {"gameCenterAchievementLocalization": {"data": {"type": "gameCenterAchievementLocalizations", "id": loc["id"]}}}}})["data"]
+                    for op in obj["attributes"]["uploadOperations"]:
+                        h = {x["name"]: x["value"] for x in op.get("requestHeaders", [])}
+                        r = requests.request(op["method"], op["url"], headers=h, data=data[op["offset"]: op["offset"] + op["length"]], timeout=300)
+                        if r.status_code >= 300:
+                            raise RuntimeError(f"upload part failed {r.status_code} {r.text[:300]}")
+                    a.call("PATCH", f"/v1/gameCenterAchievementImages/{obj['id']}", {"data": {"type": "gameCenterAchievementImages", "id": obj["id"], "attributes": {"uploaded": True}}})
+                    done += 1
+            print("Game Center achievement images uploaded:", done)
+    except RuntimeError as e:
+        print("WARN Game Center images:", str(e)[:400])
+
     # newest valid build with this version
-    builds = a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
-                                    "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1})["data"]
+    builds = [] if o.build == "skip" else a.get("/v1/builds", **{"filter[app]": aid, "filter[preReleaseVersion.version]": o.version,
+                                    "filter[processingState]": "VALID", "sort": "-uploadedDate", "limit": 1,
+                                    **({"filter[version]": o.build} if o.build else {})})["data"]
     if builds:
         b = builds[0]
         a.call("PATCH", f"/v1/appStoreVersions/{vid}/relationships/build", {"data": {"type": "builds", "id": b["id"]}})
@@ -234,6 +351,13 @@ def main():
     if o.submit:
         if not builds:
             sys.exit("Not submitting: no build attached")
+        if iap and iap["attributes"].get("state") in ("READY_TO_SUBMIT", "MISSING_METADATA", "DEVELOPER_ACTION_NEEDED", "REJECTED"):
+            try:
+                a.call("POST", "/v1/inAppPurchaseSubmissions", {"data": {"type": "inAppPurchaseSubmissions",
+                    "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iap["id"]}}}}})
+                print("In-app purchase added to the review")
+            except RuntimeError as e:
+                print("WARN in-app purchase submission (add it on the version page in App Store Connect):", str(e)[:400])
         sub = a.call("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"},
             "relationships": {"app": {"data": {"type": "apps", "id": aid}}}}})["data"]
         a.call("POST", "/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
