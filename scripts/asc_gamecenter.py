@@ -125,8 +125,26 @@ def game_center():
         except Exception as e:
             print("!! marcador", vid, e); problems.append("marcador " + vid)
 
-    have_ach = {a["attributes"]["vendorIdentifier"]
+    ach_recs = {a["attributes"]["vendorIdentifier"]: a["id"]
                 for a in all_pages(f"/v1/gameCenterDetails/{det_id}/gameCenterAchievements?limit=200")}
+    have_ach = set(ach_recs)
+    # Actualizar textos de logros existentes si cambiaron en gamecenter.json
+    changed = 0
+    for a in data["achievements"]:
+        aid = ach_recs.get(pre + a["id"])
+        if not aid:
+            continue
+        try:
+            for loc in all_pages(f"/v1/gameCenterAchievements/{aid}/localizations?limit=50"):
+                lang = "es" if loc["attributes"]["locale"].startswith("es") else "en"
+                want = {"name": a[lang][:30], "beforeEarnedDescription": a["cond_" + lang][:200], "afterEarnedDescription": a["cond_" + lang][:200]}
+                if any(loc["attributes"].get(k) != v for k, v in want.items()):
+                    call("PATCH", f"/v1/gameCenterAchievementLocalizations/{loc['id']}", {"data": {
+                         "type": "gameCenterAchievementLocalizations", "id": loc["id"], "attributes": want}})
+                    changed += 1
+        except Exception as e:
+            print("!! textos logro", a["id"], str(e)[:300]); problems.append("textos " + a["id"])
+    print(f"Textos de logros actualizados: {changed}")
     created = 0
     for a in data["achievements"]:
         vid = pre + a["id"]

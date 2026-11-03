@@ -75,8 +75,8 @@
    "id": "onehit",
    "es": "Un golpe",
    "en": "One hit",
-   "cond_es": "Vence a La Campana sin recibir daño",
-   "cond_en": "Defeat the Bell without taking damage",
+   "cond_es": "Aguanta 60 s sin recibir daño en una partida",
+   "cond_en": "Go 60 s without damage in one run",
    "points": 40,
    "hidden": false
   },
@@ -84,7 +84,7 @@
    "id": "echo",
    "es": "Eco",
    "en": "Echo",
-   "cond_es": "Llega a nivel 7 con Nyx",
+   "cond_es": "Llega al nivel 7 con Nyx",
    "cond_en": "Reach level 7 as Nyx",
    "points": 20,
    "hidden": false
@@ -102,8 +102,8 @@
    "id": "tide",
    "es": "Marea",
    "en": "Tide",
-   "cond_es": "Vence a la Bestia de raíces con Kai",
-   "cond_en": "Defeat the Root beast as Kai",
+   "cond_es": "Llega a 200 m con Kai",
+   "cond_en": "Reach 200 m as Kai",
    "points": 30,
    "hidden": false
   },
@@ -111,8 +111,8 @@
    "id": "clone",
    "es": "División",
    "en": "Split",
-   "cond_es": "Vence a la Bestia de raíces con Nyx",
-   "cond_en": "Defeat the Root beast as Nyx",
+   "cond_es": "Llega a 200 m con Nyx",
+   "cond_en": "Reach 200 m as Nyx",
    "points": 30,
    "hidden": false
   },
@@ -120,8 +120,8 @@
    "id": "magnet",
    "es": "Magnetismo",
    "en": "Magnetism",
-   "cond_es": "Vence al Robot fuelle con Kai",
-   "cond_en": "Defeat the Bellows robot as Kai",
+   "cond_es": "Aguanta 3:45 con Kai",
+   "cond_en": "Survive 3:45 as Kai",
    "points": 30,
    "hidden": false
   },
@@ -129,7 +129,7 @@
    "id": "quake",
    "es": "Terremoto",
    "en": "Quake",
-   "cond_es": "Sobrevive 3:45 con Nyx",
+   "cond_es": "Aguanta 3:45 con Nyx",
    "cond_en": "Survive 3:45 as Nyx",
    "points": 30,
    "hidden": false
@@ -138,8 +138,8 @@
    "id": "liar",
    "es": "Mentiroso",
    "en": "Liar",
-   "cond_es": "Vence al Notario",
-   "cond_en": "Defeat the Notary",
+   "cond_es": "Llega a El vacío",
+   "cond_en": "Reach the Void",
    "points": 40,
    "hidden": false
   },
@@ -147,8 +147,8 @@
    "id": "maze",
    "es": "Laberinto",
    "en": "Labyrinth",
-   "cond_es": "Vence a El Sello",
-   "cond_en": "Defeat the Seal",
+   "cond_es": "Llega a Lo desconocido",
+   "cond_en": "Reach the Unknown",
    "points": 50,
    "hidden": false
   },
@@ -156,7 +156,7 @@
    "id": "midnight",
    "es": "Medianoche",
    "en": "Midnight",
-   "cond_es": "Vence 10 enemigos en los primeros 30 s",
+   "cond_es": "Vence a 10 enemigos en los primeros 30 s",
    "cond_en": "Defeat 10 enemies in the first 30 s",
    "points": 20,
    "hidden": false
