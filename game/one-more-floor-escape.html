@@ -612,6 +612,7 @@ body.esc .overlay .codex .lk b { color: #9a94b8; }
 .hurew .card.hupact { border-color: #ff5a6a; } .hurew .card.hupact .tag { color: #ff5a6a; } .hurew .card.hupact .hudown, .hurew .card.hupact .hudn { display: none; }
 .hurew .card.hupact.arm .hudown { display: block; font-size: 11px; color: #ff9aa4; margin-top: 4px; } .hurew .card.hupact.arm .hudn { display: inline-block; margin-top: 6px; padding: 6px 12px; background: #ff5a6a; color: #1b1829; font-family: var(--font-display); box-shadow: 0 0 0 2px #0a0812, 0 3px 0 2px #0a0812; }
 #fullMsg small.sterr { display: block; margin-top: 4px; font-size: 10px; color: #ff9aa4; word-break: break-word; }
+.dlyintro .dlygoal, .menu .dlygoal { text-align: center; color: #f2c14e; margin: 8px 0 12px; } .dlyintro .dlycards { display: flex; flex-direction: column; gap: 8px; margin: 0 auto 10px; max-width: 420px; } .dlyintro .dlycards .card { cursor: default; width: auto; min-height: 0; padding: 8px 10px; } .dlyintro .dlycards .card .ds { margin-top: 2px; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -4642,9 +4643,9 @@ function showDead() {
     ${S.relics.length ? `<div class="mlabel">RELIQUIAS</div><div class="chips">${S.relics.map(id => `<span>${RELIC[id].name}</span>`).join("")}</div>` : ""}
     <div id="lbBox"></div>
     <div class="rowbig"><button class="go" id="goBtn">${S.escape ? "Otra vez" : "Un piso más"}</button></div>
-    <div class="tools"><button id="recBtn"><span aria-hidden="true">🏆</span> <span>Récords</span></button><button id="menuBtn">Menú</button></div></div>`;
+    <div class="tools"><button id="recBtn"><span aria-hidden="true">🏆</span> <span>${PGS ? "Ranking" : "Récords"}</span></button><button id="menuBtn">Menú</button></div></div>`;
   document.getElementById("goBtn").onclick = () => { const h = S.horde; newRun({ char: S.char.id, kind: S.run, horde: h }); if (h) startFloor(); else nextRuleStep(); };
-  document.getElementById("recBtn").onclick = () => showRecords(S.run);
+  document.getElementById("recBtn").onclick = () => PGS ? pgsShow("leaderboard") : showRecords(S.run); // v96 (user): with Game Center / Play Games the rankings live only there
   document.getElementById("menuBtn").onclick = showTitle;
 }
 
@@ -9452,6 +9453,7 @@ function lockInfo(kind, id) {
   const run = SKIN_RUN.includes(id), txt = T(k.unlock) + (run ? " " + T("(en una partida)") : /total/i.test(T(k.unlock)) ? "" : " " + T("(en total)"));
   return p ? { t: txt, v: Math.min(p[1], Math.floor(p[0]())), n: p[1], u: p[2] || "" } : { t: txt };
 }
+function lockBody(L) { const h = lockHTML("", L), k = h.indexOf("<span class=\"lktxt\">"); return k >= 0 ? h.slice(k) : h; } // v96 (user): on the title the lock is only on the name
 function lockHTML(name, L) { return `<span class="lkline">${pxi("lock", "#f2c14e", 1)}<b>${name}</b></span><span class="lktxt">${L.t}${L.n ? ` · ${L.v}/${L.n}${L.u}` : ""}</span>${L.n ? pxBar(L.v / L.n) : ""}`; } // v73 (user): 8-bit lock + segmented bar
 function pxBar(f, n) { n = n || 10; const k = Math.max(0, Math.min(n, Math.floor((f || 0) * n + 1e-6))); return `<span class="pxbar" role="img" aria-label="${Math.round((f || 0) * 100)}%">${Array.from({ length: n }, (_, i) => `<i class="${i < k ? "on" : ""}"></i>`).join("")}</span>`; }
 if (ESCAPE) setInterval(() => { if (!S || !S.escape || S.test || S.mode !== "play") return; for (const [id, m, nm] of [["kai", 75, "Kai"], ["nyx", 150, "Nyx"]]) if ((S.escBest || 0) >= m && !META.chars.includes(id)) { META.chars.push(id); saveMeta(); toast(T("Personaje desbloqueado: " + nm)); } }, 1000);
@@ -10243,7 +10245,7 @@ function escTitleHTML(ch0, db) {
       <div class="ped"><button class="pedhero" id="heroTap" aria-label="${T("Cambiar aspecto")}"><canvas class="pv" width="48" height="78" data-cid="${view.id}" data-skin="${ok ? cur : view.id}" data-lock="${ok ? 0 : 1}" data-off="0"></canvas></button><i class="slab"></i></div>
       <button class="arr" id="heroNext" aria-label="${T("Siguiente")}">${pxi("right", "#9a94b8", 3)}</button></div>
     <p class="ename" style="color:${ok ? view.color : "var(--muted)"}">${ok ? view.name.toUpperCase() : pxi("lock", "#9a94b8", 1) + " " + view.name.toUpperCase()}</p>
-    <p class="edesc">${ok ? view.desc : lockHTML(T("PARA DESBLOQUEAR"), lockInfo("char", view.id)) + (paid ? `<span class="lkor">${Lx("o", "or")}</span><button class="fullcta" id="fullBtn">${pxi("lock", "#f2c14e", 1)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</button>` : "")}</p>
+    <p class="edesc">${ok ? view.desc : lockBody(lockInfo("char", view.id)) + (paid ? `<span class="lkor">${Lx("o", "or")}</span><button class="fullcta" id="fullBtn">${pxi("lock", "#f2c14e", 1)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</button>` : "")}</p>
     ${ok && ids.length > 1 ? `<button class="eskin" id="wardBtn">${pxi("hanger", "#5fd1c4")}<span>${T(curK ? curK.name : view.name).toUpperCase()}</span><small>${own}/${ids.length}</small></button>` : ""}
     ${escDifHTML()}
     <div class="emodes${ok ? "" : " off"}">
@@ -10251,7 +10253,7 @@ function escTitleHTML(ch0, db) {
       <button class="mode half" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e")}</span><span class="mt">DIARIO</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
       <button class="mode half${fullOwned() ? "" : " paid"}" id="hordeBtn"><span class="mi">${pxi(fullOwned() ? "swords" : "lock", fullOwned() ? "#e0566b" : "#f2c14e")}</span><span class="mt">HORDA</span><span class="mv">${fullOwned() ? `<small>MEJOR</small>${bestOf("escape-horde")} m` : ""}</span></button>
     </div>
-    <div class="eicons"><button id="lbBtn" title="${T("Récords")}" aria-label="${T("Récords")}">${pxi("trophy", "#f2c14e")}</button><button id="codexBtn" title="${T("Códice")}" aria-label="${T("Códice")}">${pxi("book", "#c9c3e6")}</button>${ach}${PGS ? `<button id="pgsLb" title="${T("Ranking")}" aria-label="${T("Ranking")}">${pxi("chart", "#f2c14e")}</button>` : ""}<button id="retoBtn" title="${T("Retos")}" aria-label="${T("Retos")}">${pxi("target", "#e0566b")}${retoBadge()}</button><button id="setBtn" title="${T("Ajustes")}" aria-label="${T("Ajustes")}">${pxi("gear", "#c9c3e6")}</button><button id="howBtn" title="${T("Cómo se juega")}" aria-label="${T("Cómo se juega")}">${pxi("q", "#e0566b")}</button>${store ? "" : `<button id="testsBtn" title="PRUEBAS" aria-label="PRUEBAS">${pxi("flask", "#9a94b8")}</button>`}</div>
+    <div class="eicons">${PGS ? "" : `<button id="lbBtn" title="${T("Récords")}" aria-label="${T("Récords")}">${pxi("trophy", "#f2c14e")}</button>`}<button id="codexBtn" title="${T("Códice")}" aria-label="${T("Códice")}">${pxi("book", "#c9c3e6")}</button>${ach}${PGS ? `<button id="pgsLb" title="${T("Ranking")}" aria-label="${T("Ranking")}">${pxi("trophy", "#f2c14e")}</button>` : ""}<button id="retoBtn" title="${T("Retos")}" aria-label="${T("Retos")}">${pxi("target", "#e0566b")}${retoBadge()}</button><button id="setBtn" title="${T("Ajustes")}" aria-label="${T("Ajustes")}">${pxi("gear", "#c9c3e6")}</button><button id="howBtn" title="${T("Cómo se juega")}" aria-label="${T("Cómo se juega")}">${pxi("q", "#e0566b")}</button>${store ? "" : `<button id="testsBtn" title="PRUEBAS" aria-label="PRUEBAS">${pxi("flask", "#9a94b8")}</button>`}</div>
     ${store ? "" : `<details class="how bt" id="testsBox"><summary>PRUEBAS</summary>
       <div class="bossrows">${BOSS_TEST.map((n, i) => `<div class="brow"><button data-bt="${i}">${n}</button>${[1, 2, 3].map(ph => `<button class="ph" data-bt="${i}" data-ph="${ph}">F${ph}</button>`).join("")}</div>`).join("")}</div>
       <div class="tools"><button id="labBtn">🧪 Sala de mobs</button><button id="itemLabBtn">🧪 Sala de objetos</button><label class="flsel"><input id="boxChk" type="checkbox" ${window.OMF_SHOWBOXES ? "checked" : ""}> ${T("Ver cajas")}</label></div>
@@ -10546,7 +10548,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v95";
+var OMF_VER = "Escape v96";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10558,7 +10560,7 @@ function errLog(msg, where) {
     while (a.length > 20) a.shift(); localStorage.setItem(ERRLOG_KEY, JSON.stringify(a)); } catch (_) {}
 }
 addEventListener("error", e => { if (e && e.message) errLog(e.message, (e.filename ? String(e.filename).split("/").pop() : "") + ":" + (e.lineno || 0) + ":" + (e.colno || 0)); });
-addEventListener("unhandledrejection", e => { const r = e && e.reason; errLog("promise: " + (r && r.message ? r.message : String(r)), r && r.stack ? String(r.stack).split("\n")[1] || "" : ""); });
+addEventListener("unhandledrejection", e => { const r = e && e.reason; if (/audio device|NotAllowedError|play\(\) (request|failed)/i.test(String(r && r.message || r))) { try { e.preventDefault(); } catch (_) {} return; } /* v96: iOS refuses audio before the first touch; harmless */ errLog("promise: " + (r && r.message ? r.message : String(r)), r && r.stack ? String(r.stack).split("\n")[1] || "" : ""); });
 // store build: nothing from PRUEBAS (lab panel, speed, hitboxes, test keys); TestFlight builds keep PRUEBAS
 if (window.OMF_STORE) { const lb = document.getElementById("lab"); if (lb) lb.remove(); GAME_SPEED = 0.62; window.OMF_SHOWBOXES = false; showGraph = false; }
 
@@ -10664,14 +10666,14 @@ showSettings = function () {
     <div class="ctlsel"><button data-hq="0" aria-pressed="${!META.hq}">${Lx("FLUIDO", "SMOOTH")}</button><button data-hq="1" aria-pressed="${!!META.hq}">${Lx("NÍTIDO", "SHARP")}</button></div>
     <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p>
     <div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
-    ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}${cloudDbgHTML()}` : ""}
+    ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}${window.OMF_STORE ? "" : cloudDbgHTML()}` : ""}
     <p class="ctldesc">${Lx("Exporta un código para pasar tu progreso a otro aparato. Al importar se suma lo de los dos, nunca se borra nada.", "Export a code to move your progress to another device. Importing joins both, nothing is ever erased.")}</p>
     <div class="ctlsel"><button id="expBtn">${Lx("EXPORTAR", "EXPORT")}</button><button id="impBtn">${Lx("IMPORTAR", "IMPORT")}</button></div>
     <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
       <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button><button id="bkApply" hidden>${Lx("APLICAR", "APPLY")}</button></div><p class="bkmsg" id="bkMsg"></p></div>
-    <div class="mlabel">INFO</div>
+    ${window.OMF_STORE ? "" : `<div class="mlabel">INFO</div>
     <p class="infoln">${OMF_VER} · ${Lx("Errores", "Errors")}: <b>${errs.length}</b></p>
-    ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`;
+    ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`}`; // v96 (user): no debug lines in the store build
   pg.insertBefore(box, row); paintPxi(box);
   box.querySelectorAll("[data-hq]").forEach(b => b.onclick = () => { META.hq = b.dataset.hq === "1"; saveMeta(); omfSfx("click"); box.querySelectorAll("[data-hq]").forEach(o => o.setAttribute("aria-pressed", String(o === b))); fitView(true); });
   const $b = id => box.querySelector("#" + id), bk = $b("bkBox"), ta = $b("bkCode"), msg = $b("bkMsg");
@@ -11636,6 +11638,51 @@ Object.assign(EN_TEXT, { "Campanero": "Bell-ringer", "Consigue el final BAJAR en
   "Vence a": "Beat", "en La Huida.": "in La Huida.", "Eco": "Echo", "Sala secreta (Eco de Velo) en": "Secret room (Velo's Echo) in", "FINALES": "ENDINGS",
   "Vence a El Sello.": "Beat The Seal.", "Vence a El Sello con los 15 Ecos.": "Beat The Seal with all 15 Echoes.", "uno por jefe": "one per boss", "3 por bioma, en salas secretas": "3 per biome, in secret rooms",
   "La Huida: recuerdos, Ecos y finales": "La Huida: memories, Echoes and endings", "Maldito": "Cursed", "Mantén ABAJO o toca ↓ para firmar": "Hold DOWN or tap ↓ to sign", "FIRMAR": "SIGN", "El Sello firma:": "The Seal signs:" });
+
+// ===== v96 (user): DAILY CHALLENGE = a fixed set of modifiers, generated from the date (no server), active the whole
+// climb (nothing rotates, no biome clauses); the challenge is reaching 200 m with them. Easy 2 mods, Normal 3, Hardcore 4.
+const DAILY_GOAL = 200;
+const DAILY_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", "crumbs", "quake", "shields", "recoil", "decoy", "midnight", "inertia", "slow"];
+function dailyMods(seed, easy, hard) { const R = mulberry(seed * 13 + 4099), pool = DAILY_POOL.filter(id => RULE[id] && escModOk(id)), out = [];
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const n = easy ? 2 : hard ? 4 : 3;
+  for (const id of pool) { if (out.length >= n) break; if (!out.some(x => RULE[x].cat === RULE[id].cat && !comboPair(x, id))) out.push(id); }
+  return out; }
+function dailyKey() { return String(S.seed) + (S.easy ? "e" : S.hard ? "h" : ""); }
+function dailyDone(k) { return !!(META.dailyDone && META.dailyDone[k]); }
+function dailyIntro() {
+  const ids = dailyMods(S.seed, S.easy, S.hard), d = new Date(), day = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0"), k = dailyKey();
+  S.mode = "menu"; ov.hidden = false; ov.classList.remove("dead");
+  ov.innerHTML = `<div class="menu dlyintro"><h2>${pxi("sun", "#f2c14e", 2)} ${T("DESAFÍO DIARIO")}</h2><p class="tagline">${day} · ${T(S.easy ? "Fácil" : S.hard ? "Hardcore" : "Normal")}</p>
+    <p class="dlygoal">${T("Llega a")} <b>${DAILY_GOAL} m</b> ${T("con estos modificadores. No cambian en toda la subida.")}</p>
+    <div class="dlycards">${ids.map(id => { const r = RULE[id]; return `<div class="card"><span class="ic">${r.icon}</span><span class="nm">${T(r.name)}</span><span class="tag">${T(CATS[r.cat])}</span>${skullsHTML(r.cost, true)}<span class="ds">${T(r.desc)}</span></div>`; }).join("")}</div>
+    <p class="hust">${T("Hoy")}: ${(META.daily[k] || 0)} m${dailyDone(k) ? " · ✓ " + T("superado") : ""} · ${T("Mañana, otro reto")}</p>
+    <div class="rowbig"><button class="go" id="dlyGo">${T("EMPEZAR")}</button></div><div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
+  paintPxi(ov);
+  document.getElementById("backBtn").onclick = () => { omfSfx("click"); showTitle(); };
+  document.getElementById("dlyGo").onclick = () => { omfSfx("click"); S.dailyFix = ids.slice(); for (const id of ids) if (!S.rules.includes(id)) S.rules.push(id); startFloor();
+    S.escMods = ids.map(id => ({ id, until: 1e9 })); S.escNextMod = 1e9; S.escNextId = null; lastHud = ""; try { updateHud(true); } catch (_) {} };
+}
+var dlyNext0 = nextRuleStep; nextRuleStep = function () { if (ESCAPE && S && S.daily && !S.test && !S.dailyFix) return dailyIntro(); return dlyNext0.apply(this, arguments); };
+// keep the set: nothing new arrives, nothing expires, nothing gets struck out
+var dlyAdd0 = escAddMod; escAddMod = function (id, el) { if (S && S.dailyFix) return; return dlyAdd0(id, el); };
+var dlyTick0 = escapeTick; escapeTick = function (p, dt) {
+  if (S.dailyFix) { S.escNextMod = 1e9; S.escNextId = null; for (const id of S.dailyFix) { if (!S.rules.includes(id)) S.rules.push(id); const m = S.escMods.find(x => x.id === id); if (m) m.until = 1e9; else S.escMods.push({ id, until: 1e9 }); } }
+  const r = dlyTick0(p, dt);
+  if (S.dailyFix && !S.test && !S.dailyWin && (S.escBest || 0) >= DAILY_GOAL) { S.dailyWin = true; const k = dailyKey(); META.dailyDone = META.dailyDone || {}; const first = !META.dailyDone[k]; META.dailyDone[k] = 1; achAdd && first && achAdd("dailyWins"); saveMeta();
+    omfSfx("levelup"); S.shake = Math.max(S.shake || 0, 0.3); toast("☀ " + T("¡DESAFÍO SUPERADO!") + " " + DAILY_GOAL + " m"); }
+  return r; };
+var dlyLvl0 = escLevelCards; escLevelCards = function () { dlyLvl0.apply(this, arguments); if (!S.dailyFix) return;
+  const cs = [...ov.querySelectorAll(".card")], rm = cs.filter(c => { const n = c.querySelector(".nm"); return n && /^(✖|)/.test(n.textContent) && (n.textContent.startsWith(T("Quitar")) || n.textContent.startsWith(T("TACHAR:"))); });
+  if (rm.length && cs.length > rm.length) rm.forEach(c => c.remove()); };
+// the death screen says whether today's challenge is done
+var dlyDead0 = showDead; showDead = function () { const r = dlyDead0.apply(this, arguments); if (!S.dailyFix) return r;
+  const st = ov.querySelector(".stats"); if (st) st.insertAdjacentHTML("beforebegin", `<p class="dlygoal">${dailyDone(dailyKey()) ? "☀ " + T("¡DESAFÍO SUPERADO!") : T("Desafío") + ": " + (S.escBest || 0) + " / " + DAILY_GOAL + " m"}</p>`); return r; };
+// title button: ✓ when today's challenge is done
+var dlyTH0 = escTitleHTML; escTitleHTML = function () { let h = dlyTH0.apply(this, arguments); try { const k = String(todayKey()) + (META.easy ? "e" : META.hard ? "h" : "");
+  if (dailyDone(k)) h = h.replace(/(<button class="mode half" id="dailyBtn"[\s\S]*?<small>)([^<]*)(<\/small>)/, "$1✓ $2$3"); } catch (_) {} return h; };
+Object.assign(EN_TEXT, { "DESAFÍO DIARIO": "DAILY CHALLENGE", "Llega a": "Reach", "con estos modificadores. No cambian en toda la subida.": "with these modifiers. They stay the whole climb.",
+  "Hoy": "Today", "superado": "done", "Mañana, otro reto": "A new one tomorrow", "EMPEZAR": "START", "¡DESAFÍO SUPERADO!": "CHALLENGE DONE!", "Desafío": "Challenge" });
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
