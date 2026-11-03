@@ -51,6 +51,12 @@ if (fontLink) {
   }
 }
 
+// Build de tienda (OMF_STORE=1): el juego oculta el menú PRUEBAS, como en Android.
+if (process.env.OMF_STORE === "1" && !/window\.OMF_STORE\s*=\s*true/.test(html)) {
+  html = html.replace("<script>", "<script>window.OMF_STORE = true;</script>\n<script>");
+  console.log("Build de tienda: window.OMF_STORE = true");
+}
+
 await mkdir(path.join(root, "www"), { recursive: true });
 await writeFile(path.join(root, "www", "index.html"), html);
 console.log(`Juego copiado desde ${src} -> www/index.html`);

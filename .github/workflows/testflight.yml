@@ -8,6 +8,10 @@ on:
       version:
         description: "Versión visible (ej. 0.1.0)"
         default: "0.1.0"
+      store:
+        description: "Build de tienda (oculta el menú PRUEBAS)"
+        type: boolean
+        default: true
 env:
   BUNDLE_ID: com.onemorefloor.escape
   APP_NAME: OMF Escape
@@ -25,7 +29,7 @@ jobs:
       - name: Preparar Escape
         run: |
           node -e "const f='capacitor.config.json',c=require('./'+f);c.appId=process.env.BUNDLE_ID;c.appName=process.env.APP_NAME;require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
-          node scripts/sync-game.mjs game/one-more-floor-escape.html
+          OMF_STORE=${{ inputs.store && '1' || '0' }} node scripts/sync-game.mjs game/one-more-floor-escape.html
           npx cap add ios
           # iOS 15 mínimo (Apple lo exige desde abril de 2027)
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 1[34].0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
