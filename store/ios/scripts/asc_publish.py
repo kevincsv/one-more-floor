@@ -160,6 +160,26 @@ def main():
                 "relationships": {"appInfo": {"data": {"type": "appInfos", "id": info["id"]}}}}})
         print("App info", loc, "ok")
 
+    # content rights: uses third-party art (CC0 pack) with the rights to it
+    try:
+        a.call("PATCH", f"/v1/apps/{aid}", {"data": {"type": "apps", "id": aid, "attributes": {"contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT"}}})
+        print("Content rights declared")
+    except RuntimeError as e:
+        print("WARN content rights:", str(e)[:300])
+    # price: free (the full game is the in-app purchase)
+    try:
+        pts = a.get(f"/v1/apps/{aid}/appPricePoints", **{"filter[territory]": "USA", "limit": 200})["data"]
+        free = next(p for p in pts if float(p["attributes"]["customerPrice"]) == 0)
+        a.call("POST", "/v1/appPriceSchedules", {"data": {"type": "appPriceSchedules", "relationships": {
+            "app": {"data": {"type": "apps", "id": aid}},
+            "baseTerritory": {"data": {"type": "territories", "id": "USA"}},
+            "manualPrices": {"data": [{"type": "appPrices", "id": "${free}"}]}}},
+            "included": [{"type": "appPrices", "id": "${free}", "attributes": {"startDate": None},
+                          "relationships": {"appPricePoint": {"data": {"type": "appPricePoints", "id": free["id"]}}}}]})
+        print("Price: Free")
+    except (RuntimeError, StopIteration, KeyError) as e:
+        print("WARN price:", str(e)[:300])
+
     # age rating: only mild cartoon/fantasy violence
     try:
         ar = a.get(f"/v1/appInfos/{info['id']}/ageRatingDeclaration")["data"]
