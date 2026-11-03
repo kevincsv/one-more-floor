@@ -120,6 +120,8 @@ jobs:
         run: |
           python3 -m pip install --quiet --break-system-packages pyjwt cryptography requests || python3 -m pip install --quiet pyjwt cryptography requests
           python3 scripts/asc_gamecenter.py
+          # Liberar huecos: revocar certificados de desarrollo que dejó CI en ejecuciones anteriores
+          python3 scripts/asc_certs.py --revoke
       - name: Archivar (firmado)
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
@@ -155,5 +157,11 @@ jobs:
             echo "Intento $i falló; reintento en 60 s"; sleep 60
           done
           exit 1
+      - name: Revocar el certificado de desarrollo de esta ejecución
+        if: always()
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: python3 scripts/asc_certs.py --revoke || true
       - if: always()
         run: rm -f ~/keys/AuthKey.p8 ~/.appstoreconnect/private_keys/*.p8
