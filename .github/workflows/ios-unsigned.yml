@@ -3,8 +3,6 @@
 name: iOS IPA (sin firmar)
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 permissions: { contents: write }
 jobs:
   build:

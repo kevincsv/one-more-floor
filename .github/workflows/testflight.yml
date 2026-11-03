@@ -1,0 +1,53 @@
+# Compila One More Floor Escape firmado y lo sube a TestFlight.
+# Secrets necesarios (Settings → Secrets and variables → Actions):
+#   APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (contenido completo del archivo AuthKey_XXXX.p8)
+name: TestFlight (Escape)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión visible (ej. 0.1.0)"
+        default: "0.1.0"
+env:
+  BUNDLE_ID: com.onemorefloor.escape
+  APP_NAME: OMF Escape
+jobs:
+  testflight:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - name: Preparar Escape
+        run: |
+          node -e "const f='capacitor.config.json',c=require('./'+f);c.appId=process.env.BUNDLE_ID;c.appName=process.env.APP_NAME;require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+          node scripts/sync-game.mjs game/one-more-floor-escape.html
+          npx cap add ios
+          npx cap sync ios
+          cp pwa-assets/icon-1024.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" ios/App/App/Info.plist
+      - name: Clave de App Store Connect
+        env: { ASC_KEY_P8: "${{ secrets.ASC_KEY_P8 }}" }
+        run: |
+          mkdir -p ~/keys && printf '%s\n' "$ASC_KEY_P8" > ~/keys/AuthKey.p8
+          echo "AUTH=-allowProvisioningUpdates -authenticationKeyPath $HOME/keys/AuthKey.p8 -authenticationKeyID ${{ secrets.ASC_KEY_ID }} -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}" >> $GITHUB_ENV
+      - name: Archivar (firmado)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+            -archivePath build/App.xcarchive -destination 'generic/platform=iOS' $AUTH \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION=${{ inputs.version }} CURRENT_PROJECT_VERSION=${{ github.run_number }} archive
+      - name: Subir a TestFlight
+        run: |
+          P=build/ExportOptions.plist; PB=/usr/libexec/PlistBuddy
+          $PB -c "Add :method string app-store-connect" $P
+          $PB -c "Add :destination string upload" $P
+          $PB -c "Add :teamID string ${{ secrets.APPLE_TEAM_ID }}" $P
+          $PB -c "Add :signingStyle string automatic" $P
+          $PB -c "Add :manageAppVersionAndBuildNumber bool false" $P
+          xcodebuild -exportArchive -archivePath build/App.xcarchive -exportPath build \
+            -exportOptionsPlist build/ExportOptions.plist $AUTH
+      - if: always()
+        run: rm -f ~/keys/AuthKey.p8
