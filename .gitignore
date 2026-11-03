@@ -2,3 +2,4 @@ node_modules/
 build/
 ios/App/App/public/
 pwa/
+__pycache__/
