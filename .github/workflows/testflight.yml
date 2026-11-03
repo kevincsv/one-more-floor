@@ -8,6 +8,11 @@ on:
       version:
         description: "Versión visible (ej. 0.1.0)"
         default: "0.1.0"
+      runner:
+        description: "Mac de GitHub (si uno no tiene hueco, prueba el otro)"
+        type: choice
+        options: [macos-15, macos-26]
+        default: macos-15
       placeholder_device:
         description: "Registrar un dispositivo de relleno si no hay ninguno (hace falta para firmar con iCloud/Game Center)"
         type: boolean
@@ -21,12 +26,12 @@ env:
   APP_NAME: OMF Escape
 jobs:
   testflight:
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner || 'macos-15' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: maxim-lobanov/setup-xcode@v1
-        with: { xcode-version: latest-stable }
+        with: { xcode-version: '26' }
       - run: xcodebuild -version
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
