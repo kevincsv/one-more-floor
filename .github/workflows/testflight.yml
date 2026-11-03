@@ -73,6 +73,12 @@ jobs:
               s = s.replace("launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {",
                             "launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {\n        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])\n        try? AVAudioSession.sharedInstance().setActive(true)", 1)
               assert "AVAudioSession" in s, "No encontré didFinishLaunching en AppDelegate.swift"
+              # Reactivar el audio al volver a primer plano y tras interrupciones (llamadas, Siri...)
+              s = s.replace("func applicationDidBecomeActive(_ application: UIApplication) {",
+                            "func applicationDidBecomeActive(_ application: UIApplication) {\n        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])\n        try? AVAudioSession.sharedInstance().setActive(true)", 1)
+              s = s.replace("try? AVAudioSession.sharedInstance().setActive(true)\n        // Override point",
+                            "try? AVAudioSession.sharedInstance().setActive(true)\n        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { n in\n            if let t = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt, t == AVAudioSession.InterruptionType.ended.rawValue {\n                try? AVAudioSession.sharedInstance().setActive(true)\n            }\n        }\n        // Override point", 1)
+              assert s.count("setActive(true)") >= 3, "No pude añadir la reactivación de audio"
               open(p, "w").write(s)
           print("AppDelegate con AVAudioSession .ambient")
           PY
