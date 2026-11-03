@@ -565,6 +565,8 @@ canvas.pxi { vertical-align: middle; display: inline-block; }
 
 .gt b .gsub { display: block; font-size: 8px; color: #9a94c0; font-weight: normal; margin-top: 2px; }
 .achgrp .mlabel { margin-top: 14px; } .achgrp > .pxbar { display: flex; justify-content: center; margin: 4px auto 8px; }
+.eh .trks { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 3px; } .eh .trks img { width: 20px; height: 20px; image-rendering: pixelated; filter: drop-shadow(1px 1px 0 rgba(0,0,0,.7)); }
+img.trki { width: 1.5em; height: 1.5em; image-rendering: pixelated; vertical-align: middle; } img.trki.lk { filter: grayscale(1) brightness(.7); } .gi img.trki, .ai img.trki { width: 26px; height: 26px; } .card .ic img.trki { width: 40px; height: 40px; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -980,7 +982,7 @@ function achDie() { if (!achOn()) return; achAdd("deaths"); if (S.escape) pgsRun
 function unlockCheck() {
   if (!achOn()) return;
   for (const id in UNLOCKS) if (RULE[id] && !META.unlocked.includes(id) && achProg(UNLOCKS[id]) >= 1) { META.unlocked.push(id); pgsUnlock(id); achDirty = true; achBanner(RULE[id].icon, RULE[id].name, UNLOCKS[id]); }
-  for (const id in GOOD_UNLOCKS) if (!META.goods.includes(id) && achProg(GOOD_UNLOCKS[id]) >= 1) { META.goods.push(id); pgsUnlock(id); achDirty = true; achBanner(goodIcon(id), goodName(id), GOOD_UNLOCKS[id], true); }
+  for (const id in GOOD_UNLOCKS) if (!META.goods.includes(id) && achProg(GOOD_UNLOCKS[id]) >= 1) { META.goods.push(id); pgsUnlock(id); achDirty = true; achBanner(goodIcon(id), goodName(id), GOOD_UNLOCKS[id], String(id).startsWith("o_") ? "obj" : true); }
   if (achDirty) { achDirty = false; saveMeta(); }
 }
 // the closest feat for the death screen ("Casi: Hielo (80%)"), only ones this mode can do; secret ones only once started
@@ -998,7 +1000,7 @@ function achNext() {
   const a = achQ.shift(); if (!a) { achBusy = false; return; } achBusy = true;
   const el = document.createElement("div"); el.className = "achban" + (a.good ? " good" : "");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  el.innerHTML = `<span class="ai">${esc(a.icon)}</span><span class="at"><b>${LANG === "en" ? "ACHIEVEMENT!" : "¡LOGRO!"}</b><span class="an">${esc(a.name)} · ${LANG === "en" ? (a.good ? "new upgrade" : "new rule in your deck") : (a.good ? "nueva mejora" : "nueva regla en tu mazo")}</span><span class="ac">${esc(a.txt)}</span></span>`;
+  el.innerHTML = `<span class="ai">${String(a.icon).startsWith("<img") ? a.icon : esc(a.icon)}</span><span class="at"><b>${LANG === "en" ? "ACHIEVEMENT!" : "¡LOGRO!"}</b><span class="an">${esc(a.name)} · ${LANG === "en" ? (a.good === "obj" ? "new item" : a.good ? "new upgrade" : "new rule in your deck") : (a.good === "obj" ? "nuevo objeto" : a.good ? "nueva mejora" : "nueva regla en tu mazo")}</span><span class="ac">${esc(a.txt)}</span></span>`;
   if (!ov.hidden) el.classList.add("low");
   document.body.appendChild(el); achSfx();
   // 4 s on screen (2.5 was too quick to read); a tap dismisses it early, the next one in the queue follows
@@ -1649,7 +1651,7 @@ const ESC_TIER_M = 60;
 const escD = () => Math.max(0, (S.t - S.escT0) / ESC_TIER_T + (S.escBest || 0) / ESC_TIER_M);
 const escTier = () => Math.min(ESC_TIERS.length - 1, Math.floor(escD()));
 const escModLife = (el = 0) => el + ESC_MOD_LAST + 15 * escTier(); // 60 s, +15 s per difficulty tier, so late climbs stack up to 4
-const escMaxMods = () => Math.min(S.easy ? 2 : 4, 1 + Math.floor(escD() / (S.easy ? 2.5 : 1.5))); // was 0 for the first ~70 s, so nothing happened
+const escMaxMods = () => Math.min(S.easy ? 2 : 4, 1 + Math.floor(escD() / (S.easy ? 2.5 : 1.5))) + (trk("pacto") ? 1 : 0); // v86: Pacto en blanco // was 0 for the first ~70 s, so nothing happened
 function escBiomeAt(t) { let z = 0; for (const b of ESC_BIOME_T) if (t >= b) z++; return Math.min(4, Math.max(z, S.testBiome || 0)); } // S.testBiome: PRUEBAS · Biomas
 function buildEscape() {
   let rows = 24; const r0 = document.getElementById("stage").getBoundingClientRect(); if (r0.width > 50 && r0.height > 50) rows = Math.round(13 * r0.height / r0.width);
@@ -1731,7 +1733,7 @@ function escHitCrack(pcx, pcy, ang) {
     if (!S.grid[ty] || S.grid[ty][tx] !== 7 || (tx !== 0 && tx !== S.LW - 1)) continue;
     const k = tx + ":" + ty; S.crackHits[k] = (S.crackHits[k] || 0) + 1; omfSfx("crack");
     burst(tx * TS + 12, ty * TS + 12, "#8a7a6a", 8); S.shake = Math.max(S.shake || 0, 0.15);
-    if (S.crackHits[k] >= 2) {
+    if (S.crackHits[k] >= (trk("llave") ? 1 : 2)) {
       let y0 = ty, y1 = ty; while (S.grid[y0 - 1][tx] === 7) y0--; while (S.grid[y1 + 1][tx] === 7) y1++;
       for (let y = y0; y <= y1; y++) { S.grid[y][tx] = 0; burst(tx * TS + 12, y * TS + 12, "#b8a890", 10); }
       S.doors.push({ tx, y0, y1, used: false, kind: S.forceRoom || null }); achAdd("cracks"); S.forceRoom = null; toast("¡Un pasadizo! Entra en el hueco");
@@ -1812,7 +1814,7 @@ function escSecretTick(p, dt) {
   if (!near(o, 26)) R.away = true;
   switch (R.kind) {
     case "treasure":
-      if (o.k === "chest" && !o.st && near(o)) { o.st = 1; achAdd("treasure"); escRoomCoins(8, 2, 6, o.x); burst(o.x, Q.F * TS - 12, "#f2c14e", 16); toast("¡Tesoro!"); }
+      if (o.k === "chest" && !o.st && near(o)) { o.st = 1; achAdd("treasure"); escRoomCoins(8, 2, 6, o.x); trkDrop("rare", o.x + 22, (Q.F - 1) * TS + 8); burst(o.x, Q.F * TS - 12, "#f2c14e", 16); toast("¡Tesoro!"); }
       if (o.k === "mimic" && !o.st && near(o, 40)) { o.st = 1; o.k = null; const e = mkEnemy("charger", o.x - 14, Q.F * TS - 22.01); Object.assign(e, { mimic: true, w: 28, h: 22, hp: 10 + 2 * escTier(), mst: "idle", mcd: 0.5, face: Math.sign(p.x - o.x) || 1 }); e.maxhp = e.hp; e.room = true; e.alert = 99; S.enemies.push(e); R.mimic = e; S.shake = 0.4; toast("¡Era un mímico!"); }
       if (R.mimic && R.mimic.dead && !R.paid) { R.paid = true; escRoomCoins(14, 3, 7, o.x); toast("El mímico suelta el doble"); }
       break;
@@ -1829,9 +1831,11 @@ function escSecretTick(p, dt) {
         } else {
           // the shop always opens and lists everything it sells, so you learn what gold is for
           const poor = c => S.coins < c ? "No te llega el oro" : null;
-          opts.push({ icon: "✚", name: "Curar 1 corazón", desc: "Recuperas 1 corazón.", price: 10, off: S.hp >= S.maxhp ? "Ya tienes la vida llena" : poor(10), fn: () => { S.coins -= 10; S.hp++; } });
-          opts.push({ icon: "✖", name: bad ? T("Quitar") + " " + RULE[bad].name : "Quitar un modificador", desc: "Quita un modificador malo", price: 25, off: !bad ? "No tienes modificadores" : poor(25), fn: () => { S.coins -= 25; escRemoveMod(bad); } });
-          opts.push({ icon: "🎁", name: "Mejora al azar", desc: "Una mejora como las de subir de nivel.", price: 35, off: !escPerkPool().length ? "Ya lo tienes todo" : poor(35), fn: () => { S.coins -= 35; const k = escRandomPerk(); toast(k ? T(k.name) : "Ya lo tienes todo"); } });
+          opts.push({ icon: "✚", name: "Curar 1 corazón", desc: "Recuperas 1 corazón.", price: trkPz(10), off: S.hp >= S.maxhp ? "Ya tienes la vida llena" : poor(trkPz(10)), fn: () => { S.coins -= trkPz(10); S.hp++; } });
+          opts.push({ icon: "✖", name: bad ? T("Quitar") + " " + RULE[bad].name : "Quitar un modificador", desc: "Quita un modificador malo", price: trkPz(25), off: !bad ? "No tienes modificadores" : poor(trkPz(25)), fn: () => { S.coins -= trkPz(25); escRemoveMod(bad); } });
+          opts.push({ icon: "🎁", name: "Mejora al azar", desc: "Una mejora como las de subir de nivel.", price: trkPz(35), off: !escPerkPool().length ? "Ya lo tienes todo" : poor(trkPz(35)), fn: () => { S.coins -= trkPz(35); const k = escRandomPerk(); toast(k ? T(k.name) : "Ya lo tienes todo"); } });
+          if (R.trkOffer === undefined) R.trkOffer = trkPick("shop"); // v86: the merchant sells one tower item
+          if (R.trkOffer) { const tid = R.trkOffer, pr = trkPrice(tid); opts.push({ icon: trkImg(tid), name: TRK[tid].n, desc: TRK[tid].d, price: pr, off: poor(pr), fn: () => { S.coins -= pr; trkGive(tid); R.trkOffer = null; } }); }
           opts.forEach(o => { const f = o.fn; o.fn = () => { const c0 = S.coins; f(); omfSfx("buy"); skinCount("buys"); achAdd("spent", c0 - S.coins); unlockCheck(); }; });
           escChoice("MERCADER", opts, T("Tienda · compra con el oro que recoges") + " · " + T("Tienes") + " 🪙 " + S.coins);
         } }
@@ -1877,7 +1881,7 @@ function escArenaTick(p, dt) { // true while the fight holds the camera and the 
     A.boss = mkEnemy("boss", bx, A.F * TS - 46); A.boss.alert = 99;
     S.enemies = S.enemies.filter(e => e.y < A.C * TS - TS || e.y > A.F * TS + TS); S.enemies.push(A.boss);
     S.rules = []; A.held = true; // v59 (user): modifiers pause in the boss arena (no effects, no rotation; their timers hold with the clock)
-    bpStart(A.boss, { x0: 0, C: A.C, F: A.F, restore: true });
+    bpStart(A.boss, { x0: 0, C: A.C, F: A.F, restore: true }); S.trkFog = trk("niebla");
     toast("¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas"); S.shake = Math.max(S.shake || 0, 0.5); lastHud = "";
   }
   S.escT0 += dt; // time stops: difficulty, biome clock and modifier timers all hold
@@ -1886,7 +1890,7 @@ function escArenaTick(p, dt) { // true while the fight holds the camera and the 
     A.state = "done";
     if (A.held) { A.held = false; S.rules = [...new Set(S.escMods.map(m => m.id).concat(S.rules))]; lastHud = ""; } // the paused modifiers come back
     for (let x = A.open[0]; x <= A.open[1]; x++) { S.grid[A.C][x] = 0; burst(x * TS + 12, A.C * TS + 12, "#9aa0b8", 8); }
-    S.items.push({ kind: "ruby", x: 6 * TS + 5, y: (A.F - 1) * TS + 8, w: 14, h: 14 }); addGold(20);
+    S.items.push({ kind: "ruby", x: 6 * TS + 5, y: (A.F - 1) * TS + 8, w: 14, h: 14 }); addGold(20); S.trkFog = false; trkDrop("rare", 3 * TS + 5, (A.F - 1) * TS + 8);
     toast("El techo se abre: ¡sigue subiendo!"); S.shake = Math.max(S.shake || 0, 0.4);
     return false;
   }
@@ -2175,10 +2179,10 @@ function escLevelCards() {
   S.lvlUp--; S.mode = "menu"; S.pauseAt = S.t; ov.hidden = false; ov.classList.remove("dead");
   const pool = ESC_PERKS.filter(k => perk(k.id) < k.max && !(k.id === "curar" && S.hp >= S.maxhp) && goodOk(k.id) && escPerkUseful(k));
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  const opts = pool.slice(0, 2).map(k => ({ kind: "perk", k }));
+  const opts = pool.slice(0, trk("dado") ? 3 : 2).map(k => ({ kind: "perk", k }));
   const bad = S.escMods.slice().sort((a, b) => b.until - a.until)[0] || (S.rules[0] && { id: S.rules[0] });
   if (bad) opts.push({ kind: "remove", id: bad.id });
-  else if (pool[2]) opts.push({ kind: "perk", k: pool[2] });
+  else if (pool[opts.length]) opts.push({ kind: "perk", k: pool[opts.length] });
   if (!opts.length) opts.push({ kind: "gold" }); // everything maxed: never an empty deal (it was a softlock)
   ov.innerHTML = `<h2 class="lvl">${T("¡NIVEL")} ${S.lvl}!</h2><p>${T("Elige solo una.")}</p>
     <div class="cards deal lock">${opts.map((o, i) => o.kind === "gold" ? `<button class="card" data-i="${i}"><span class="ic">🪙</span><span class="nm">${T("Bolsa de oro")}</span><span class="tag">${T("Ya lo tienes todo")}</span><span class="ds">+25 ${T("de oro")}</span></button>` : o.kind === "perk"
@@ -2204,7 +2208,7 @@ function escTakeLevel(o) {
 function escAddMod(id, el) { if (S.horde) return;
   if (has(id)) return; omfSfx("mod");
   S.rules.push(id); S.escMods.push({ id, until: id === "mirror" ? Math.min(escModLife(el), el + 30) : id === "echo" ? Math.min(escModLife(el), el + 20) : escModLife(el) }); // v65 (user): Eco lasts 20 s // Mirror lasts 30 s at most
-  toast("+ " + RULE[id].icon + " " + RULE[id].name); /* v70: short toast */ lastHud = ""; updateHud(true);
+  trkClock(id, el); toast("+ " + RULE[id].icon + " " + RULE[id].name); /* v70: short toast */ lastHud = ""; updateHud(true);
 }
 /* ---------- level analysis ----------
    1. Simulate the player's real jump physics from every reachable standing spot (many jump strengths and air-steering choices).
@@ -3036,7 +3040,7 @@ function update(dt) {
   const pc = p.y + p.h / 2, water = inWater(pc);
   let dirIn = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   // QA batch 7: in Escape the Mirror only kicks in once you are standing (never flips you mid-jump) and the arrows show it
-  if (ESCAPE) { const g = p.ground || p.climb, on = has("mirror") ? (S.mirLive || g) : (!!S.mirLive && !g); /* switches on AND off only when you touch ground */ if (on !== !!S.mirLive) { S.mirLive = on; document.body.classList.toggle("mirrored", on); } }
+  if (ESCAPE) { const g = p.ground || p.climb, on = has("mirror") && !trk("brujula") ? (S.mirLive || g) : (!!S.mirLive && !g); /* switches on AND off only when you touch ground */ if (on !== !!S.mirLive) { S.mirLive = on; document.body.classList.toggle("mirrored", on); } }
   if (mirOn()) dirIn = -dirIn;
   if (has("frozen")) dirIn = 0;
   if (has("inertia")) { if (dirIn) p.lock = dirIn; dirIn = p.lock; }
@@ -3044,7 +3048,7 @@ function update(dt) {
   if (has("gold")) sp *= Math.max(0.5, 1 - S.carry * (rel("bolsa") ? 0.015 : 0.03));
   if (water) sp *= 0.6;
   if (has("charge") && (p.charge || 0) > 0) sp *= 0.35;
-  const target = dirIn * sp + (has("wind") ? S.wind * 85 : 0) + (S.sirenPull || 0) * 120;
+  const target = dirIn * sp + (has("wind") && !trk("ancla") ? S.wind * 85 : 0) + (S.sirenPull || 0) * 120;
   const gk = has("glutton") ? S.grow || 1 : 1;
   const sw = Math.round((has("shrink") ? 10 : 16) * gk), sh = Math.round((has("shrink") ? 13 : 22) * gk);
   if (p.w !== sw) { if (S.gdir > 0) p.y += p.h - sh; p.x += (p.w - sw) / 2; p.w = sw; p.h = sh; }
@@ -3119,7 +3123,7 @@ function update(dt) {
     if (p.buf > 0 && canJump && (p.coyote > 0 || water || knockJump)) {
       if (knockJump) { p.knockJ = false; p.knockT = 0; p.launchT = 0; }
       if (S.mem) S.mem.jumps++; achJump(); omfSfx("jump");
-      p.vy = (water ? -330 : -JUMP_V) * (has("shrink") ? 0.9 : 1) * (has("moon") ? 0.75 : 1) * S.gdir; p.buf = 0; p.coyote = 0;
+      p.vy = (water ? -330 : -JUMP_V) * (has("shrink") ? 0.9 : 1) * (has("moon") ? 0.75 : 1) * (trk("ancla") ? 0.95 : 1) * S.gdir; p.buf = 0; p.coyote = 0;
       puff(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h : p.y, 4); noise(p.x, p.y);
     } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && ((p.wjCd || 0) <= 0 || p.stuck) && !(S.escape && p.wjUsed)) {
       p.wjSide = p.wallDir; p.wjUsed = true; // Escape: one wall kick per jump (no slide, no grab), so walls can't be climbed
@@ -3141,7 +3145,7 @@ function update(dt) {
   const conv = under === 4 ? 280 : under === 5 ? -280 : 0;
   p.vx += conv;
   const wasGround = p.ground, pvy = p.vy, pvx = p.vx;
-  if (has("wind") && !p.ground) p.vx += S.wind * 140 * dt;
+  if (has("wind") && !p.ground && !trk("ancla")) p.vx += S.wind * 140 * dt;
   move(p, dt);
   p.vx -= conv;
   holeAssist(p);
@@ -3215,7 +3219,7 @@ function update(dt) {
     // 3-hit chain: two quick slashes, then a heavy finisher with a longer recovery
     p.combo = p.comboT > 0 ? (p.combo || 0) % 3 + 1 : 1;
     const fin = p.combo === 3;
-    const W = wpn(); p.cd = (fin ? 0.5 : 0.27) * W.cd; p.atk = p.atkDur = (fin ? 0.2 : 0.13) * W.dur; p.comboT = p.cd + 0.32;
+    const W = wpn(); p.cd = (fin ? 0.5 : 0.27) * W.cd * (trk("guante") ? 1.2 : 1); p.atk = p.atkDur = (fin ? 0.2 : 0.13) * W.dur; p.comboT = p.cd + 0.32;
     noise(p.x, p.y);
     if (has("ammo")) S.ammo--;
     const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
@@ -3244,6 +3248,7 @@ function update(dt) {
     S.swing = null;
     if (S.mem) S.mem.attacks++; achAttack(); omfSfx("swing");
     if (rel("ecohoja")) { S.echoN = (S.echoN || 0) + 1; if (S.echoN % 3 === 0) S.echoes = (S.echoes || []).concat([{ x: pcx, y: pcy, ang, t: 0.22, face: p.face, fin }]); }
+    if (trk("sombra")) S.echoes = (S.echoes || []).concat([{ x: pcx, y: pcy, ang, t: 0.5, face: p.face, fin }]);
     // cracked blocks break when struck, opening the way into hidden rooms (main game only: Escape's cracked walls
     // take two hits in escHitCrack and open a door; turning them into a ladder here left a ladder and no way in)
     if (!S.escape) for (let k = 0; k <= 4; k++) {
@@ -3265,7 +3270,7 @@ function update(dt) {
       else if (s.st === "up" && s.t <= 0) { s.st = "cool"; s.t = 1.5; }
       else if (s.st === "cool" && s.t <= 0) s.st = "hidden";
     }
-    if (Math.abs(s.tx * TS - p.x) < 40 && spikeOn(s) && overlap(p, spikeBox(s))) hurt(p.x < s.tx * TS + 12 ? -1 : 1);
+    if (Math.abs(s.tx * TS - p.x) < 40 && spikeOn(s) && overlap(p, spikeBox(s)) && !trkCrown()) hurt(p.x < s.tx * TS + 12 ? -1 : 1);
   }
   for (const d of S.drops) {
     if (d.st === "hang" && S.gdir > 0 && Math.abs(p.x + p.w / 2 - (d.x + 6)) < 34 && p.y > d.y) { d.st = "fall"; d.vy = 0; }
@@ -3301,10 +3306,10 @@ function update(dt) {
       // stomp: falling onto an enemy from above hits it and bounces you
       const feet = S.gdir > 0 ? p.y + p.h : p.y, mid = hb.y + hb.h / 2;
       if (p.vy * S.gdir > 60 && (S.gdir > 0 ? feet < mid : feet > mid) && e.type !== "spider" && !e.spiky) {
-        p.vy = -JUMP_V * 0.8 * S.gdir; p.inv = Math.max(p.inv, 0.12); S.mem && S.mem.stomps++;
+        p.vy = -JUMP_V * 0.8 * (trk("raiz") ? 1.3 : 1) * S.gdir; p.inv = Math.max(p.inv, 0.12); S.mem && S.mem.stomps++; if (trk("raiz")) trkRootHit(e);
         if (has("noatk")) { e.vy = 200 * S.gdir; e.stun = 0.8; if (rel("pacifista")) damage(e, 1, "hit"); }
         else damage(e, rel("cristal") ? 2 : 1, "hit");
-        e.flash = 0.4; puff(e.x + e.w / 2, S.gdir > 0 ? e.y : e.y + e.h, 6);
+        if (e.dead) achAdd("stompK"); e.flash = 0.4; puff(e.x + e.w / 2, S.gdir > 0 ? e.y : e.y + e.h, 6);
         if (e.dead && rel("sangre") && S.bloodN < 2 && S.hp < S.maxhp) { S.bloodN++; S.hp++; burst(p.x + p.w / 2, p.y + p.h / 2, "#e0566b", 10); toast("Salto de sangre"); updateHud(true); }
         continue;
       }
@@ -3325,6 +3330,7 @@ function update(dt) {
   S.coinsL = S.coinsL.filter(c => !c.taken);
   for (const it of S.items || []) {
     if (it.taken || !overlap({ x: p.x - 8, y: p.y - 8, w: p.w + 16, h: p.h + 16 }, it)) continue;
+    if (it.kind === "trk" || it.kind === "tchest") { if (trkTake(it)) it.taken = true; continue; } // v86 tower items
     it.taken = true;
     if (it.kind === "eco") { storyTakeEco(it); continue; }
     // v75 (user): Escape splits the heart in two. The potion heals 1 (gold when you're full); the cut ruby is an
@@ -3829,7 +3835,7 @@ function damage(e, n, src) {
   if (e.dead) return;
   if (e.bp) { const b = e.bp; if (b.roar > 0 || b.hidden || src === "spike") return; if (b.punish > 0 && src === "hit") { const p = S.player, behind = Math.sign(p.x + p.w / 2 - (e.x + e.w / 2)) !== (b.face || 1); if (b.kind !== "bellows" || behind) n *= 2; } }
   if (e.boss) { if (e.inv > 0) return; e.inv = src === "spike" ? 1 : 0.12; }
-  if (src === "hit" && n < 50) n += perk("filo");
+  if (src === "hit" && n < 50) n += perk("filo") + (trk("guante") ? 1 : 0) + (trk("pacto") ? 2 : 0);
   e.hp -= n; e.flash = 0.5;
   if (e.hp <= 0) kill(e, src);
 }
@@ -4429,7 +4435,7 @@ const CODEX_CATS = [["rules", 0, "MODIFICADORES", "Reglas malas que entran duran
 function showCodex(cat) {
   if (!ESCAPE || cat) return codexPage(cat);
   ov.hidden = false; ov.classList.remove("dead");
-  const n = { rules: [META.unlocked.length, RULES.length], goods: ESCAPE ? [ESC_PERKS.filter(escPerkOk).length, ESC_PERKS.length] : [Object.keys(GOOD_UNLOCKS).filter(id => META.goods.includes(id)).length, Object.keys(GOOD_UNLOCKS).length], combos: [COMBOS.filter(c => META.combos.includes(c.key || c.name)).length, COMBOS.length], heroes: [CHARS.filter(c => META.chars.includes(c.id)).length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock && META.skins.includes(id)).length, CHARS.length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).length], logros: [achList().filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length, achList().length + PGS_FEATS.length] };
+  const n = { rules: [META.unlocked.length, RULES.length], goods: ESCAPE ? [ESC_PERKS.filter(escPerkOk).length + Object.keys(TRK).filter(trkOk).length, ESC_PERKS.length + Object.keys(TRK).length] : [Object.keys(GOOD_UNLOCKS).filter(id => META.goods.includes(id)).length, Object.keys(GOOD_UNLOCKS).length], combos: [COMBOS.filter(c => META.combos.includes(c.key || c.name)).length, COMBOS.length], heroes: [CHARS.filter(c => META.chars.includes(c.id)).length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock && META.skins.includes(id)).length, CHARS.length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).length], logros: [achList().filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length, achList().length + PGS_FEATS.length] };
   ov.innerHTML = `<div class="menu"><h2>📖 ${T("CÓDICE")}</h2><div class="cxcats">${CODEX_CATS.map(([k, , t, d]) => `<button class="mode cxb" data-cx="${k}"><span class="mi">${CODEX_IC[k]}</span><span class="mt">${T(t)}</span><span class="ms">${T(d)}</span><span class="mv"><small>${n[k][0]}/${n[k][1]}</small><span class="pbar"><u style="width:${Math.round(n[k][0] / Math.max(1, n[k][1]) * 100)}%"></u></span></span></button>`).join("")}</div>
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
   ov.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => showCodex(b.dataset.cx));
@@ -4441,6 +4447,7 @@ const ESC_PICKUPS = [["🧪", "Poción", "Cura 1 corazón. Con la vida llena da 
   ["♦", "Rubí", "Corazón extra: +1 de vida máxima (hasta +2, +3 en Fácil). Si ya estás al tope, cura o da oro.", "Muy rara: 1 de cada 570 plataformas · siempre 1 al vencer a un jefe"],
   ["●", "Monedas", "Cobre 1 · Plata 2 a 4 · Oro 5. Las gastas en el Mercader y en los altares.", "Comunes: 1 de cada 8 plataformas, más en cofres y salas"],
   ["✦", "Orbe de XP", "Experiencia para subir de nivel y elegir mejora.", "Lo suelta cada enemigo"],
+  ["▣", "Cofre de objeto", "Trae un objeto pasivo que dura toda la partida (si ya lo desbloqueaste).", "Uno cada ~150 m, en un saliente"],
   ["▣", "Cofre", "Un puñado de monedas. Cuidado: puede ser un Mímico (si lo vences, suelta el doble).", "En las salas secretas de Tesoro"]];
 function escPerkOk(k) { return !GOOD_UNLOCKS[k.id] || META.goods.includes(k.id); }
 function codexGoods() {
@@ -4448,6 +4455,7 @@ function codexGoods() {
   ov.innerHTML = `<h2>${T("OBJETOS")}</h2>
     <h3>${T("MEJORAS")} ${nOk}/${P.length} · ${T("las eliges al subir de nivel")}</h3>
     <div class="codex">${P.map(k => escPerkOk(k) ? `<div><b>${k.icon} ${T(k.name)}${k.max > 1 && k.max < 99 ? ` <small>x${k.max}</small>` : ""}</b>${T(k.desc)}</div>` : achRow(k.icon, T(k.name), GOOD_UNLOCKS[k.id], false).replace("???", T(k.name))).join("")}</div>
+    ${trkCodexHTML()}
     <h3>${T("EN LA TORRE")} · ${T("lo que recoges al subir")}</h3>
     <div class="codex">${ESC_PICKUPS.map(([ic, n, d, r]) => `<div><b>${ic} ${T(n)}</b>${T(d)}<span class="prog">${T(r)}</span></div>`).join("")}</div>
     <button class="go" id="backBtn">${T("Volver")}</button>`;
@@ -6978,14 +6986,14 @@ function escHudSync() {
   for (const ab of document.querySelectorAll(".achban")) ab.classList.toggle("low", !ov.hidden); // a banner that came up before the death screen moves down too
   if (v && S.escape) {
     const el = Math.max(0, S.t - S.escT0), D = escD(), tier = escTier(), lv = S.lvl || 1, fr = lv >= ESC_LVL_MAX ? 1 : (S.xp || 0) / escNeed(lv);
-    const key = [Math.floor(el), S.escBest, tier, Math.round((D - tier) * 20), lv, Math.round(fr * 30), LANG, S.xpPopT > 0, !!S.lvlFxT].join("|");
+    const key = [Math.floor(el), S.escBest, tier, Math.round((D - tier) * 20), lv, Math.round(fr * 30), LANG, S.xpPopT > 0, !!S.lvlFxT, (S.trk || []).join()].join("|");
     if (key !== escHudKey) {
       escHudKey = key;
       document.getElementById("eHud").innerHTML =
         `<span class="st"><i class="k">${T("TIEMPO")} </i><b>${Math.floor(el / 60)}:${String(Math.floor(el % 60)).padStart(2, "0")}</b></span><span class="st"><i class="k">${T("ALTURA")} </i><b${S.recHit ? ' style="color:#f2c14e"' : ""}>${S.escBest} m</b></span>` +
         `<div class="bars"><div class="bar"><div class="seg">${ESC_TIERS.map(([, c], i) => `<i><u style="width:${i < tier ? 100 : i === tier ? Math.round(Math.min(1, D - i) * 100) : 0}%;background:${c}"></u></i>`).join("")}</div>` +
         `<span class="lbl" style="color:${ESC_TIERS[tier][1]}">${T(ESC_TIERS[tier][0]).toUpperCase()}</span></div>` +
-        `<div class="xp${S.xpPopT > 0 || S.lvlFxT ? " pop" : ""}"><u style="width:${Math.round(fr * 100)}%"></u></div><span class="lbl" style="color:var(--teal)">${lv >= ESC_LVL_MAX ? T("NV MÁX") : T("NV") + " " + lv}</span></div>`;
+        `<div class="xp${S.xpPopT > 0 || S.lvlFxT ? " pop" : ""}"><u style="width:${Math.round(fr * 100)}%"></u></div><span class="lbl" style="color:var(--teal)">${lv >= ESC_LVL_MAX ? T("NV MÁX") : T("NV") + " " + lv}</span></div>` + trkHudHTML();
     }
   }
   if (v && S.escape && CTL === "franja" && S.padZone !== S.camZone && BIOMES[S.camZone]) { S.padZone = S.camZone; gpadBox.style.setProperty("--padC", BIOMES[S.camZone].stone); }
@@ -9322,7 +9330,7 @@ function runGains() {
   const h = S.escape ? (S.escBest || 0) : S.floor, el = Math.max(0, S.t - (S.escT0 || 0));
   if (h > 0 && h > sn.best) tiles.push({ ic: "🏆", k: T("NUEVO RÉCORD"), n: S.escape ? h + " m" : T("Piso") + " " + h, c: "rec" });
   for (const id of META.unlocked) if (!sn.u.includes(id) && RULE[id]) tiles.push({ ic: RULE[id].icon, k: S.escape ? T("MODIFICADOR") : T("REGLA"), n: RULE[id].name, c: "bad", ik: "rule", id });
-  for (const id of META.goods || []) if (!sn.g.includes(id)) tiles.push({ ic: goodIcon(id), k: T("MEJORA"), n: goodName(id), c: "good", ik: "good", id });
+  for (const id of META.goods || []) if (!sn.g.includes(id)) tiles.push({ ic: goodIcon(id), k: String(id).startsWith("o_") ? T("OBJETO") : T("MEJORA"), n: goodName(id), c: "good", ik: "good", id });
   for (const id of META.chars) if (!sn.ch.includes(id)) { const c = CHARS.find(x => x.id === id); tiles.push({ ic: "★", k: T("PERSONAJE"), n: c ? c.name : id, c: "char", ik: "char", id }); }
   for (const id of META.skins || []) if (!sn.sk.includes(id)) tiles.push({ ic: "✦", k: T("ASPECTO"), n: (typeof HERO_SKINS !== "undefined" && HERO_SKINS[id]) ? T(HERO_SKINS[id].name) : id, c: "skin", ik: "skin", id });
   if (!tiles.length) return "";
@@ -9511,11 +9519,11 @@ function codexAch() {
   ov.hidden = false; ov.classList.remove("dead");
   const L = achList(), done = L.filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length;
   const tiles = [...PGS_FEATS.map(f => { const v = Math.min(1, f[3]()); return { ic: "🏆", k: v >= 1 ? T("LOGRO") : Math.floor(v * 100) + "%", n: T(f[1]), c: v >= 1 ? "rec" : "", lock: v < 1, ik: "feat", id: f[0], v: v < 1 ? v : null }; }),
-    ...L.map(a => { const v = achProg(a[4]); return { ic: a[2], k: a[5] ? (a[0] === "rule" ? T("MODIFICADOR") : T("MEJORA")) : Math.floor(v * 100) + "%", n: a[3], c: a[5] ? (a[0] === "rule" ? "bad" : "good") : "", lock: !a[5], ik: a[0], id: a[1], v: a[5] ? null : v }; })];
+    ...L.map(a => { const v = achProg(a[4]); return { ic: a[2], k: a[5] ? (a[0] === "rule" ? T("MODIFICADOR") : String(a[1]).startsWith("o_") ? T("OBJETO") : T("MEJORA")) : Math.floor(v * 100) + "%", n: a[3], c: a[5] ? (a[0] === "rule" ? "bad" : "good") : "", lock: !a[5], ik: a[0], id: a[1], v: a[5] ? null : v }; })];
   // v84 (user): grouped by theme, each group with its own counter; inside, done first, then the closest ones
-  const grp = t => { if (t.ik === "feat") return 0; const u = (t.ik === "rule" ? UNLOCKS : GOOD_UNLOCKS)[t.id], f = u ? String(u.prog) : "";
-    return /"b_|bossFast|boss1hp/.test(f) ? 1 : /kills|"k_|pogo|comboBest|killWin|finBest|earlyBest|mimics/.test(f) ? 2 : /escM|escT|escNoHit|escMove|esc1hp|escAmmo|airBest|"e_|floors|ndStreak|h1Streak/.test(f) ? 3 : /runRooms|"gem"|cursed|fountain|cracks|treasure|ladder/.test(f) ? 4 : /spent|goldBest|coins/.test(f) ? 5 : 6; };
-  const GN = ["HITOS DE ESCAPE", "JEFES", "COMBATE", "ALTURA Y SUPERVIVENCIA", "EXPLORACIÓN", "ORO", "OTROS"];
+  const grp = t => { if (t.ik === "feat") return 0; if (String(t.id).startsWith("o_")) return 6; const u = (t.ik === "rule" ? UNLOCKS : GOOD_UNLOCKS)[t.id], f = u ? String(u.prog) : "";
+    return /"b_|bossFast|boss1hp/.test(f) ? 1 : /kills|"k_|pogo|comboBest|killWin|finBest|earlyBest|mimics/.test(f) ? 2 : /escM|escT|escNoHit|escMove|esc1hp|escAmmo|airBest|"e_|floors|ndStreak|h1Streak/.test(f) ? 3 : /runRooms|"gem"|cursed|fountain|cracks|treasure|ladder/.test(f) ? 4 : /spent|goldBest|coins/.test(f) ? 5 : 7; };
+  const GN = ["HITOS DE ESCAPE", "JEFES", "COMBATE", "ALTURA Y SUPERVIVENCIA", "EXPLORACIÓN", "ORO", "OBJETOS", "OTROS"];
   const ord = (a, b) => (a.lock ? 1 : 0) - (b.lock ? 1 : 0) || (b.v || 0) - (a.v || 0);
   const secs = GN.map((g, i) => { const ts = tiles.filter(t => grp(t) === i).sort(ord); if (!ts.length) return ""; const d = ts.filter(t => !t.lock).length;
     return `<div class="mlabel">${T(g)} · ${d}/${ts.length}</div>${pxBar(d / ts.length, 12)}<div class="gains">${ts.map(t => gTile(t)).join("")}</div>`; }).join("");
@@ -10457,7 +10465,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v85";
+var OMF_VER = "Escape v86";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10885,6 +10893,269 @@ Object.assign(EN_TEXT, { "MEJORAS": "BONUSES", "las eliges al subir de nivel": "
   "10 de oro de golpe.": "10 gold at once.", "En el Reto de la gema y en cofres": "In the Gem Trial and in chests", "Experiencia para subir de nivel y elegir mejora.": "Experience to level up and pick a bonus.", "Lo suelta cada enemigo": "Every enemy drops one",
   "Un puñado de monedas. Cuidado: puede ser un Mímico (si lo vences, suelta el doble).": "A handful of coins. Careful: it may be a Mimic (beat it for double).", "En las salas secretas de Tesoro": "In Treasure secret rooms", "Corazón extra": "Extra heart" });
 Object.assign(EN_TEXT, { "ASPECTOS": "SKINS", "ASPECTO": "SKIN", "Aspecto de": "Skin for", "Aspecto desbloqueado:": "Skin unlocked:", "Héroes y aspectos, y cómo conseguirlos": "Heroes and skins, and how to get them", "(en total)": "(in total)", "HITOS DE ESCAPE": "ESCAPE MILESTONES", "JEFES": "BOSSES", "COMBATE": "COMBAT", "ALTURA Y SUPERVIVENCIA": "HEIGHT & SURVIVAL", "EXPLORACIÓN": "EXPLORATION", "ORO": "GOLD", "OTROS": "OTHER" });
+// ===================================================================
+// v86 (user) · TOWER ITEMS: 19 passive objects for Escape (original art, from the "Objetos de la torre" proposal; the
+// Glass eye was left out). They last the whole run and stack. Every one is locked until its feat (GOOD_UNLOCKS, id o_*),
+// like the modifiers. Where they show up: a chest on a ledge every ~150 m (commons and cursed), the treasure room and
+// every boss (rares), and the merchant sells one. Cursed ones (red) are only taken by pressing DOWN on them.
+// ===================================================================
+var TRK_PAL = { o: "#0a0812", w: "#fff6ea", g: "#a59cbd", d: "#5a5478", y: "#ffcf5a", Y: "#c98a2a", r: "#ff5a6a", R: "#a8243a", t: "#5fd6c4", T: "#2f8a7e", p: "#b58fc4", P: "#6b4a86", b: "#8b5a2b", B: "#5a3a1a", e: "#5aa04a", E: "#2f6a2a", s: "#c7d0e0", k: "#3b3552" };
+var TRK = {
+  o_diente: { n: "Diente de leche", r: "comun", d: "Cada 10 enemigos que vences sueltan una poción.", rows: ["............", "..oooooooo..", ".owwwwwwwwo.", ".owwwwwwwgo.", ".owwwwwwwgo.", "..owwwwwgo..", "..owwoowgo..", "..owwo.owo..", "..owo..owo..", "..owo...oo..", "...o........", "............"] },
+  o_campanilla: { n: "Campanilla rota", r: "raro", d: "Cuando te dan, los enemigos de la pantalla quedan aturdidos 1 s.", rows: [".....oo.....", "....oyyo....", "...oyyyyo...", "..oyyYyyyo..", "..oyyYyyyo..", "..oyyyYyyo..", ".oyyyyYyyyo.", ".oyyyyyYyyo.", "oooooooooooo", "....oyyo....", ".....oo.....", "............"] },
+  o_raiz: { n: "Raíz enrollada", r: "comun", d: "Tus pisotones te lanzan más alto y dañan a los enemigos de al lado.", rows: ["............", ".....ooo....", "....obbbo...", "...obBoobo..", "...obo..obo.", "...obo.obbo.", "....obbbBo..", ".....oobo...", "..oo..obo...", ".oeeo.obo...", ".oEeeobbo...", "..oooooo...."] },
+  o_moneda: { n: "Moneda partida", r: "maldito", d: "Todo el oro vale el doble, pero la tienda cuesta un 50% más.", rows: ["............", "...oooo.....", "..oyyyyo....", ".oyyYYyyo...", ".oyYyy.o....", ".oyYy.o.....", ".oyyy.o.oo..", "..oyy.oyyyo.", "...ooo.oYyyo", "......oyYyyo", "......oyyyo.", ".......ooo.."] },
+  o_llave: { n: "Llave oxidada", r: "comun", d: "Las paredes agrietadas se rompen de un golpe y brillan cuando estás cerca.", rows: ["............", "..oooo......", ".obbbbo.....", "obBooBbo....", "obo..obo....", "obBooBbo....", ".obbbbbbo...", "..ooooobbo..", "......obbbo.", "......obobo.", ".......o.o..", "............"] },
+  o_corona: { n: "Corona de latón", r: "raro", d: "Las púas no te hacen daño la primera vez en cada bioma.", rows: ["............", "............", "o...o..o...o", "oy.oyooyo.yo", "oyyoyyyyoyyo", "oyyyyyyyyyyo", "oyrryyyyrryo", "oyyyytyyyyyo", "oYYYYYYYYYYo", "oooooooooooo", "............", "............"] },
+  o_reloj: { n: "Reloj de arena roto", r: "raro", d: "El siguiente modificador malo dura la mitad. Se recarga cada 2 minutos.", rows: ["............", ".oooooooooo.", ".obbbbbbbbo.", "..osyyyyso..", "...osyyso...", "....osso....", "....os.o....", "...os..so...", "..os.yy.so..", ".obbbbbbbbo.", ".oooooooooo.", "............"] },
+  o_polvora: { n: "Saco de pólvora", r: "comun", d: "Los enemigos que vences explotan y dañan a los que estén cerca.", rows: [".......o.y..", "......o.yry.", "......o..y..", ".....ooo....", "....obbbo...", "...obbBbbo..", "..obbbbbbbo.", "..obbooobbo.", "..obbbbbbbo.", "..oBbbbbbBo.", "...ooooooo..", "............"] },
+  o_guante: { n: "Guante de herrero", r: "comun", d: "Tu ataque hace +1 de daño, pero atacas un poco más lento.", rows: ["............", "...o.o.o....", "..odododo...", "..odgdgdgo..", "..odgdgdgo..", "..odddddgoo.", "..oddddddgdo", "..odddddddo.", "...oddddddo.", "...osssssso.", "...oooooooo.", "............"] },
+  o_luciernagas: { n: "Luciérnagas", r: "raro", d: "Tres luciérnagas giran a tu alrededor y dañan a murciélagos, fantasmas y fuegos fatuos.", rows: ["............", ".....yy.....", "....yYYy....", ".....yy.....", "..yy....yy..", ".yYYy..yYYy.", "..yy....yy..", "............", ".....yy.....", "....yYYy....", ".....yy.....", "............"] },
+  o_hueso: { n: "Hueso de la suerte", r: "raro", d: "Una vez por partida, si mueres vuelves con 1 corazón en el saliente más alto. Luego se rompe.", rows: ["............", ".oo......oo.", "owwo....owwo", "owwwo..owwwo", ".owwwoowwwo.", "..owwwwwwo..", "...owwwwo...", "...owwwwo...", "...owgwwo...", "...owwgwo...", "....oooo....", "............"] },
+  o_capa: { n: "Capa de murciélago", r: "comun", d: "Si mantienes SALTO mientras caes, planeas despacio.", rows: ["............", "....o..o....", "...oPooPo...", "..oPPPPPPo..", ".oPPpPPpPPo.", "oPPPPPPPPPPo", "oPPPPPPPPPPo", "oPo.oPPo.oPo", "oo...oo...oo", "............", "............", "............"] },
+  o_brujula: { n: "Brújula al revés", r: "raro", d: "El Espejo no te afecta mientras la lleves.", rows: ["............", "...oooooo...", "..osssssso..", ".osswwwwsso.", ".oswwrwwwso.", ".oswwrrwwso.", ".oswwwttwso.", ".oswwwtwwso.", ".osswwwwsso.", "..osssssso..", "...oooooo...", "............"] },
+  o_ancla: { n: "Ancla de plomo", r: "maldito", d: "No te empuja el viento y los golpes casi no te mueven, pero saltas un 10% menos.", rows: [".....oo.....", "....oddo....", "....odo.....", "...oooooo...", "....oddo....", "....oddo....", "....oddo....", "o...oddo...o", "od..oddo..do", "odd.oddo.ddo", ".oddddddddo.", "..oooooooo.."] },
+  o_engranaje: { n: "Corazón de engranaje", r: "raro", d: "Si pasas 90 s sin recibir daño, recuperas un corazón.", rows: ["............", ".oo..oo..oo.", "odroorrooro.", ".orrrrrrrro.", "orrrrRRrrrro", "orrrRddRrrro", "orrrRddRrrro", ".orrrRRrrro.", "..orrrrrro..", "...orrrro...", "....orro....", ".....oo....."] },
+  o_sombra: { n: "Sombra cosida", r: "raro", d: "Una sombra tuya repite cada ataque medio segundo después.", rows: ["............", "....oooo....", "...okkkko...", "...okpkpk...", "...okkkko...", "....okko....", "..okkkkkko..", ".okkkkkkkko.", "..okkkkkko..", "...oko.oko..", "...oko.oko..", "...oo...oo.."] },
+  o_niebla: { n: "Frasco de niebla", r: "comun", d: "Empiezas cada pelea contra un jefe con un escudo que aguanta un golpe.", rows: ["............", "....oooo....", "....obbo....", ".....oo.....", "....osso....", "...osggso...", "..osgtgtgso.", "..ogtgtgtgo.", "..otgtgtgto.", "..ottttttto.", "...ooooooo..", "............"] },
+  o_dado: { n: "Dado de hueso", r: "comun", d: "Al subir de nivel las cartas ofrecen una opción más.", rows: ["............", "..oooooooo..", ".owwwwwwwwo.", ".owoowwoowo.", ".owoowwoowo.", ".owwwwwwwwo.", ".owwwoowwwo.", ".owoowwoowo.", ".owoowwoowo.", ".owwwwwwwgo.", "..oooooooo..", "............"] },
+  o_pacto: { n: "Pacto en blanco", r: "maldito", d: "Tu ataque hace +2 de daño, pero siempre cargas con un modificador malo más.", rows: ["............", ".oooooooooo.", ".owwwwwwwwo.", ".owggggggwo.", ".owwwwwwwwo.", ".owggggwwwo.", ".owwwwwwwwo.", ".owwwwwrrwo.", ".owwwwrRrwo.", ".owwwwwrrwo.", ".oooooooooo.", "............"] },
+};
+var TRK_CHEST = [".oooooooooo.", "obbbbbbbbbbo", "obBBBBBBBBbo", "oyyyyyyyyyyo", "obbbboobbbbo", "obbbboyobbbo", "obbbbbbbbbbo", "oBbbbbbbbbBo", "oyyyyyyyyyyo", ".oooooooooo."];
+var TRK_RAR = { comun: ["COMÚN", "#5fd6c4", "95,214,196"], raro: ["RARO", "#ffcf5a", "255,207,90"], maldito: ["MALDITO", "#ff5a6a", "255,90,106"] };
+// the feat that unlocks each one (same system as the modifiers: META.goods, banner, Codex, death-screen "so close")
+Object.assign(GOOD_UNLOCKS, {
+  o_diente: { es: "Vence 50 enemigos en total", en: "Defeat 50 enemies in total", goal: 50, m: "E", prog: () => AC("kills") },
+  o_raiz: { es: "Vence 10 enemigos con pisotones", en: "Defeat 10 enemies by stomping", goal: 10, m: "E", prog: () => AC("stompK") },
+  o_llave: { es: "Rompe 3 paredes agrietadas", en: "Break 3 cracked walls", goal: 3, m: "E", prog: () => AC("cracks") },
+  o_polvora: { es: "Vence 6 enemigos en 5 s", en: "Defeat 6 enemies within 5 s", goal: 6, m: "E", prog: () => AC("killWin") },
+  o_guante: { es: "Llega a combo x10", en: "Reach a x10 combo", goal: 10, m: "E", prog: () => AC("comboBest") },
+  o_capa: { es: "Pasa 1,5 s seguidos en el aire", en: "Stay in the air for 1.5 s straight", goal: 1, m: "E", prog: () => AC("airBest") / 1.5 },
+  o_niebla: { es: "Entra en 5 salas secretas", en: "Enter 5 secret rooms", goal: 5, m: "E", prog: () => AC("rooms") },
+  o_dado: { es: "Llega al nivel 5 en una partida", en: "Reach level 5 in one run", goal: 4, m: "E", prog: () => Math.max(0, AC("lvlBest") - 1) },
+  o_campanilla: { es: "Vence a La Campana", en: "Defeat the Bell", goal: 1, m: "E", prog: () => AF("b_bell") },
+  o_corona: { es: "Vence a la Bestia de raíces", en: "Defeat the Root beast", goal: 1, m: "E", prog: () => AF("b_root") },
+  o_reloj: { es: "Aguanta 2:00 en una partida", en: "Survive 2:00 in one run", goal: 1, m: "E", prog: () => AC("escT") / 120 },
+  o_luciernagas: { es: "Vence 20 murciélagos, fantasmas o fuegos fatuos", en: "Defeat 20 bats, ghosts or wisps", goal: 20, m: "E", prog: () => AC("kFly") },
+  o_hueso: { es: "Muere 5 veces", en: "Die 5 times", goal: 5, m: "E", prog: () => AC("deaths") },
+  o_brujula: { es: "Supera el Espejo 3 veces", en: "Outlast the Mirror 3 times", goal: 3, m: "E", prog: () => (META.survive && META.survive.mirror) || 0 },
+  o_engranaje: { es: "Aguanta 90 s sin daño en una partida", en: "Go 90 s without damage in one run", goal: 1, m: "E", prog: () => AC("escNoHit") / 90 },
+  o_sombra: { es: "Llega al nivel 8 en una partida", en: "Reach level 8 in one run", goal: 7, m: "E", prog: () => Math.max(0, AC("lvlBest") - 1) },
+  o_moneda: { es: "Gasta 100 de oro en la tienda", en: "Spend 100 gold in the shop", goal: 100, m: "E", prog: () => AC("spent") },
+  o_ancla: { es: "Llega a 200 m en una partida", en: "Reach 200 m in one run", goal: 1, m: "E", prog: () => AC("escM") / 200 },
+  o_pacto: { es: "Vence al Robot fuelle", en: "Defeat the Bellows robot", goal: 1, m: "E", prog: () => AF("b_bellows") },
+});
+if (typeof RUN_KEYS !== "undefined") RUN_KEYS.push("lvlBest");
+function trk(k) { return !!(S && S.trk && S.trk.includes("o_" + k)); }
+var trkCv = {};
+function trkCanvas(key, rows) { if (trkCv[key]) return trkCv[key]; const c = document.createElement("canvas"); c.width = rows[0].length; c.height = rows.length; const g = c.getContext("2d");
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { const col = TRK_PAL[ch]; if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } })); return (trkCv[key] = c); }
+var trkUrl = {};
+function trkImg(id, cls) { if (!TRK[id]) return ""; if (!trkUrl[id]) { try { trkUrl[id] = trkCanvas(id, TRK[id].rows).toDataURL(); } catch (_) { trkUrl[id] = ""; } } return `<img class="trki${cls ? " " + cls : ""}" src="${trkUrl[id]}" alt="">`; }
+function trkOk(id) { return META.goods.includes(id); }
+function trkPick(src) {
+  const held = (S.trk || []).concat((S.items || []).filter(it => it.kind === "trk" && !it.taken).map(it => it.id));
+  const all = Object.keys(TRK).filter(id => trkOk(id) && !held.includes(id));
+  if (!all.length) return null;
+  const by = r => all.filter(id => TRK[id].r === r), pickOf = L => L[Math.floor(Math.random() * L.length)];
+  let L = src === "rare" ? by("raro") : src === "chest" ? (Math.random() < 0.25 ? by("maldito") : by("comun")) : all;
+  if (!L.length) L = all;
+  return pickOf(L);
+}
+function trkDrop(src, x, y) {
+  const id = trkPick(src);
+  if (!id) { for (let i = 0; i < 4; i++) S.coinsL.push({ x: x + 2, y, w: 10, h: 12, v: 2, vx: rnd(-120, 120), vy: rnd(-300, -150) * S.gdir }); return null; }
+  S.items.push({ kind: "trk", id, x, y, w: 14, h: 14 }); return id;
+}
+function trkGive(id) {
+  S.trk = S.trk || []; if (S.trk.includes(id)) return; S.trk.push(id);
+  if (id === "o_engranaje") S.trkGear = 0;
+  const p = S.player; burst(p.x + p.w / 2, p.y + p.h / 2, "#" + "ffcf5a", 16); omfSfx("levelup");
+  toast(T(TRK[id].n) + ": " + T(TRK[id].d)); escHudKey = ""; lastHud = "";
+}
+// touching a tower item: commons and rares are taken at once, cursed ones only with DOWN (so you can leave them)
+function trkTake(it) {
+  const p = S.player;
+  if (it.kind === "tchest") {
+    achAdd("treasure"); omfSfx("coin"); burst(it.x + 10, it.y + 8, "#ffcf5a", 16);
+    const id = trkDrop("chest", it.x + 3, it.y - 16);
+    if (!id) { addGold(10); if (!S.trkHint) { S.trkHint = true; toast("Cofre vacío: desbloquea objetos con logros (Códice › Objetos)"); } else toast("+10 de oro"); }
+    else toast(T("¡Cofre!") + " " + T(TRK[id].n));
+    return true;
+  }
+  const D = TRK[it.id]; if (!D) return true;
+  if (D.r === "maldito" && !input.down) { if (!it.tip) { it.tip = true; toast(T("Objeto maldito: pulsa ABAJO para cogerlo")); } return false; }
+  trkGive(it.id); return true;
+}
+function trkPz(n) { return Math.ceil(n * (trk("moneda") ? 1.5 : 1)); }
+function trkPrice(id) { return trkPz(TRK[id].r === "raro" ? 45 : 30); }
+// Corona de latón: the first spike hit in each biome does nothing
+function trkCrown() {
+  const p = S.player; if (!S.escape || !trk("corona") || p.inv > 0) return false;
+  const z = S.camZone || 0; S.trkCrownZ = S.trkCrownZ || {}; if (S.trkCrownZ[z]) return false;
+  S.trkCrownZ[z] = 1; p.inv = 1; burst(p.x + p.w / 2, p.y + p.h, "#ffcf5a", 12); toast(T("La corona te protege de las púas")); return true;
+}
+// Reloj de arena roto: halves the modifier that just came in, then recharges for 2 minutes
+function trkClock(id, el) {
+  if (!trk("reloj") || S.trkClockT > 0) return;
+  const m = S.escMods[S.escMods.length - 1]; if (!m || m.id !== id) return;
+  m.until = el + Math.max(5, (m.until - el) / 2); S.trkClockT = 120; toast(T("Reloj de arena: este modificador dura la mitad"));
+}
+function trkRootHit(e) {
+  for (const o of S.enemies) { if (o === e || o.dead || o.critter) continue;
+    if (Math.abs(o.x + o.w / 2 - (e.x + e.w / 2)) < 52 && Math.abs(o.y + o.h / 2 - (e.y + e.h / 2)) < 34) { damage(o, 1, "hit"); o.flash = 0.4; puffC(o.x + o.w / 2, o.y + o.h, "#7ac74f", 6); } }
+}
+function trkHudHTML() { return S && S.trk && S.trk.length ? `<div class="trks">${S.trk.map(id => trkImg(id)).join("")}</div>` : ""; }
+// ---- hooks ----
+var trkHurt0 = hurt;
+hurt = function (dir, drown) {
+  const p = S && S.player; if (!S || !S.escape || !p) return trkHurt0.apply(this, arguments);
+  if (!(p.inv > 0) && !drown && S.trkFog && S.arena && S.arena.state !== "done") { S.trkFog = false; p.inv = 1; burst(p.x + p.w / 2, p.y + p.h / 2, "#5fd6c4", 16); toast(T("El frasco de niebla aguanta el golpe")); return; }
+  const hp0 = S.hp; const r = trkHurt0.apply(this, arguments);
+  if (S.hp < hp0) {
+    S.trkGear = 0;
+    if (trk("campanilla") && S.hp > 0) { for (const e of S.enemies) if (!e.dead && !e.critter && e.y + e.h > S.camY && e.y < S.camY + CH) { e.stun = Math.max(e.stun || 0, 1); e.flash = 0.3; } S.trkRing = 0.4; omfSfx("bell"); }
+  }
+  return r;
+};
+var trkKill0 = kill;
+kill = function (e, src) {
+  const was = e && e.dead; const r = trkKill0.apply(this, arguments);
+  try {
+    if (was || !S.escape || !e || e.critter || e.decoy || e.small) return r;
+    if (e.type === "bat" || e.type === "ghost" || e.type === "wisp") achAdd("kFly");
+    if (trk("diente") && !e.boss) { S.trkTooth = (S.trkTooth || 0) + 1; if (S.trkTooth % 10 === 0) { S.items.push({ kind: "potion", x: e.x + e.w / 2 - 7, y: e.y + e.h - 14, w: 14, h: 14 }); toast(T("Diente de leche: ¡poción!")); } }
+    if (trk("polvora") && !e.boss && src !== "boom") {
+      const cx = e.x + e.w / 2, cy = e.y + e.h / 2; burst(cx, cy, "#ff9a3a", 18); burst(cx, cy, "#ffcf5a", 10); S.shake = Math.max(S.shake || 0, 0.25); omfSfx("boom");
+      for (const o of S.enemies.slice()) if (o !== e && !o.dead && !o.critter && Math.hypot(o.x + o.w / 2 - cx, o.y + o.h / 2 - cy) < 52) damage(o, 1, "boom");
+    }
+  } catch (err) { errLog(err.message, "trkKill"); }
+  return r;
+};
+var trkDie0 = die;
+die = function () {
+  try {
+    if (S && S.escape && S.mode === "play" && trk("hueso") && !S.trkBone && !S.lab) {
+      S.trkBone = true; S.trk = S.trk.filter(x => x !== "o_hueso");
+      const p = S.player; S.hp = 1; S.devBite = 0; p.inv = 2.5; p.vx = 0; p.vy = 0; p.climb = false;
+      const busy = S.secret || (S.arena && S.arena.state !== "done");
+      if (!busy) { // the highest ledge on screen
+        const g = S.grid, y0 = Math.max(1, Math.floor(S.camY / TS) + 3), y1 = Math.floor((S.camY + CH * 0.6) / TS); let spot = null;
+        for (let y = y0; y <= y1 && !spot; y++) for (let x = 1; x < S.LW - 1; x++) if (g[y] && g[y + 1] && g[y][x] === 0 && g[y - 1][x] === 0 && solidCode(g[y + 1][x]) && g[y + 1][x] !== 6 && !S.spikes.some(sp => sp.tx === x && sp.ty === y)) { spot = [x, y]; break; }
+        if (spot) { p.x = spot[0] * TS + 4; p.y = (spot[1] + 1) * TS - p.h - 0.01; p.ground = true; }
+        else { p.y = S.camY + CH * 0.3; }
+      }
+      burst(p.x + p.w / 2, p.y + p.h / 2, "#fff6ea", 24); S.shake = Math.max(S.shake || 0, 0.4); toast(T("Hueso de la suerte: ¡sigues vivo! (se rompe)")); escHudKey = ""; lastHud = ""; updateHud(true);
+      return;
+    }
+  } catch (err) { errLog(err.message, "trkDie"); }
+  return trkDie0.apply(this, arguments);
+};
+var trkGold0 = addGold;
+addGold = function (n) { return trkGold0.call(this, trk("moneda") && n > 0 ? n * 2 : n); };
+var trkKnock0 = knockPlayer;
+knockPlayer = function (dir, power, lift) { if (trk("ancla")) { power = (power || 0) * 0.25; lift = (lift || 230) * 0.6; } return trkKnock0.call(this, dir, power, lift); };
+var trkName0 = goodName, trkIcon0 = goodIcon, trkDesc0 = goodDesc;
+goodName = function (id) { return TRK[id] ? T(TRK[id].n) : trkName0(id); };
+goodIcon = function (id) { return TRK[id] ? trkImg(id) : trkIcon0(id); };
+goodDesc = function (id) { return TRK[id] ? T(TRK[id].d) + " · " + T(TRK_RAR[TRK[id].r][0]) : trkDesc0(id); };
+// per-frame: chest on a ledge every ~150 m, glide, fireflies, gear heart, the clock's recharge, item labels
+function trkTick(dt) {
+  if (!S || !S.escape || S.mode !== "play" || !S.player) return;
+  const p = S.player; S.trk = S.trk || [];
+  achMax("lvlBest", S.lvl || 1);
+  if (S.trkClockT > 0) S.trkClockT -= dt;
+  if (S.trkRing > 0) S.trkRing -= dt;
+  if (S.trkNextM == null) S.trkNextM = 70 + Math.floor(Math.random() * 30);
+  if (!S.lab && !S.test && !S.secret && !(S.arena && S.arena.state !== "done") && S.escBest + 14 >= S.trkNextM) {
+    const g = S.grid, top = Math.floor(S.camY / TS); let spot = null;
+    for (let y = top - 2; y > top - 16 && y > S.genTop + 1 && !spot; y--) { const xs = []; for (let x = 2; x < S.LW - 2; x++) xs.push(x); xs.sort(() => Math.random() - 0.5);
+      for (const x of xs) if (g[y] && g[y - 1] && g[y + 1] && g[y][x] === 0 && g[y - 1][x] === 0 && g[y][x + 1] === 0 && solidCode(g[y + 1][x]) && solidCode(g[y + 1][x + 1]) && g[y + 1][x] !== 6 && !S.spikes.some(sp => (sp.tx === x || sp.tx === x + 1) && sp.ty === y)) { spot = [x, y]; break; } }
+    if (spot) { S.items.push({ kind: "tchest", x: spot[0] * TS + 2, y: (spot[1] + 1) * TS - 15, w: 20, h: 15 }); S.trkNextM += 130 + Math.floor(Math.random() * 40); }
+  }
+  if (trk("capa") && !p.ground && !p.climb && input.jump && p.vy * S.gdir > 55) { p.vy = 55 * S.gdir; if (Math.random() < dt * 12) S.parts.push({ x: p.x + p.w / 2 + rnd(-8, 8), y: p.y + 4, vx: 0, vy: -20, life: 0.3, c: "rgba(181,143,196,.6)", s: 2 }); }
+  if (trk("engranaje")) { S.trkGear = (S.trkGear || 0) + dt; if (S.trkGear >= 90 && S.hp < S.maxhp) { S.trkGear = 0; S.hp++; burst(p.x + p.w / 2, p.y + p.h / 2, "#ff5a6a", 12); toast(T("Corazón de engranaje: +1 corazón")); updateHud(true); } }
+  if (trk("luciernagas")) {
+    S.trkFlyA = (S.trkFlyA || 0) + dt * 3.2;
+    for (let i = 0; i < 3; i++) { const a = S.trkFlyA + i * Math.PI * 2 / 3, fx = p.x + p.w / 2 + Math.cos(a) * 30, fy = p.y + p.h / 2 + Math.sin(a) * 26;
+      for (const e of S.enemies) if (!e.dead && (e.type === "bat" || e.type === "ghost" || e.type === "wisp") && !(e.trkFlyCd > S.t) && Math.abs(e.x + e.w / 2 - fx) < e.w / 2 + 6 && Math.abs(e.y + e.h / 2 - fy) < e.h / 2 + 6) { e.trkFlyCd = S.t + 0.6; damage(e, 1, "hit"); burst(fx, fy, "#ffcf5a", 6); } }
+  }
+  for (const it of S.items) if (it.kind === "trk") { const near = Math.abs(it.x - p.x) < 80 && Math.abs(it.y - p.y) < 60; it.label = near ? (TRK[it.id].r === "maldito" ? "↓ " : "") + T(TRK[it.id].n) : null; }
+}
+var trkUpd0 = update;
+update = function (dt) { const r = trkUpd0.apply(this, arguments); try { trkTick(dt); } catch (e) { errLog(e.message, "trkTick"); } return r; };
+var trkPick0 = drawPickup;
+drawPickup = function (it, bob) {
+  if (it.kind !== "trk" && it.kind !== "tchest") return trkPick0(it, bob);
+  const A = TS / 16, cv = it.kind === "tchest" ? trkCanvas("chest", TRK_CHEST) : trkCanvas(it.id, TRK[it.id].rows), cx = it.x + it.w / 2;
+  const by = it.y + it.h + 1 + (it.kind === "tchest" ? 0 : Math.round(bob)), w = cv.width * A, h = cv.height * A;
+  const rar = it.kind === "tchest" ? "comun" : TRK[it.id].r;
+  if (typeof sprGlow === "function") sprGlow(cx, by - h / 2, 11 * A, TRK_RAR[rar][2], it.kind === "tchest" ? 0.12 : 0.22);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, Math.round(cx - w / 2), Math.round(by - h), w, h);
+  const t = S.t + it.x * 0.01; if (Math.floor(t * 2) % 3 === 0 && (t * 2 % 1) < 0.25) { ctx.fillStyle = "#ffffff"; const gx = Math.round(cx + 3 * A), gy = Math.round(by - h + 2 * A); ctx.fillRect(gx, gy - A, A, 3 * A); ctx.fillRect(gx - A, gy, 3 * A, A); }
+  ctx.restore();
+  if (it.label) { drawLabel({ label: it.label, lx: cx, ly: it.y - 10 }); }
+  return true;
+};
+var trkPlat0 = platDraw;
+platDraw = function (cx, cy) {
+  trkPlat0(cx, cy);
+  try {
+    if (!S.escape || !S.trk || !S.trk.length) return; const p = S.player;
+    if (trk("llave") && S.cracks) { const pulse = 0.35 + 0.3 * Math.sin(S.t * 6); ctx.save(); ctx.strokeStyle = "rgba(255,207,90," + pulse + ")"; ctx.lineWidth = 2;
+      for (const c of S.cracks) { if (S.grid[c.y0][c.side] !== 7) continue; const y = c.y0 * TS; if (Math.abs(y - p.y) > 7 * TS) continue; ctx.strokeRect(c.side * TS + 1, y + 1, TS - 2, (c.y1 - c.y0 + 1) * TS - 2); } ctx.restore(); }
+    if (trk("luciernagas")) { ctx.save(); for (let i = 0; i < 3; i++) { const a = (S.trkFlyA || 0) + i * Math.PI * 2 / 3, fx = Math.round(p.x + p.w / 2 + Math.cos(a) * 30), fy = Math.round(p.y + p.h / 2 + Math.sin(a) * 26);
+      if (typeof sprGlow === "function") sprGlow(fx, fy, 14, "255,207,90", 0.35); ctx.fillStyle = "#ffcf5a"; ctx.fillRect(fx - 2, fy - 2, 4, 4); ctx.fillStyle = "#fff6ea"; ctx.fillRect(fx - 1, fy - 1, 2, 2); } ctx.restore(); }
+    if (S.trkRing > 0) { ctx.save(); ctx.strokeStyle = "rgba(255,207,90," + (S.trkRing / 0.4) + ")"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + p.h / 2, 30 + (0.4 - S.trkRing) * 400, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    if (S.trkFog && S.arena && S.arena.state !== "done") { ctx.save(); ctx.globalAlpha = 0.35 + 0.1 * Math.sin(S.t * 5); ctx.strokeStyle = "#5fd6c4"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + p.h / 2, 20, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+  } catch (e) { errLog(e.message, "trkDraw"); }
+};
+// death screen: the items you carried
+var trkDead0 = showDead;
+showDead = function () {
+  trkDead0.apply(this, arguments);
+  try { if (!S.escape || !S.trk || !S.trk.length) return; const first = ov.querySelector(".mlabel"); if (!first) return;
+    const box = document.createElement("div"); box.innerHTML = `<div class="mlabel">${T("OBJETOS")}</div><div class="gains">${S.trk.map((id, i) => gTile({ ic: trkImg(id), k: T(TRK_RAR[TRK[id].r][0]), n: T(TRK[id].n), c: TRK[id].r === "maldito" ? "bad" : "good", ik: "good", id }, 0.2 + i * 0.06)).join("")}</div>`;
+    first.parentNode.insertBefore(box, first);
+  } catch (e) { errLog(e.message, "trkDead"); }
+};
+function trkCodexHTML() {
+  const ids = Object.keys(TRK), n = ids.filter(trkOk).length;
+  return `<h3>${T("OBJETOS DE LA TORRE")} ${n}/${ids.length} · ${T("duran toda la partida")}</h3>
+    <div class="codex">${ids.map(id => { const D = TRK[id], R = TRK_RAR[D.r], tag = `<span class="prog" style="color:${R[1]}">${T(R[0])}</span>`;
+      return trkOk(id) ? `<div><b>${trkImg(id)} ${T(D.n)}</b>${T(D.d)}${tag}</div>` : achRow(trkImg(id, "lk"), T(D.n), GOOD_UNLOCKS[id], false).replace("???", T(D.n)); }).join("")}</div>`;
+}
+Object.assign(EN_TEXT, {
+  "Diente de leche": "Milk tooth", "Cada 10 enemigos que vences sueltan una poción.": "Every 10 enemies you defeat drop a potion.",
+  "Campanilla rota": "Cracked bell", "Cuando te dan, los enemigos de la pantalla quedan aturdidos 1 s.": "When you get hit, enemies on screen are stunned for 1 s.",
+  "Raíz enrollada": "Coiled root", "Tus pisotones te lanzan más alto y dañan a los enemigos de al lado.": "Your stomps bounce you higher and hurt enemies next to the target.",
+  "Moneda partida": "Split coin", "Todo el oro vale el doble, pero la tienda cuesta un 50% más.": "All gold is worth double, but the shop costs 50% more.",
+  "Llave oxidada": "Rusty key", "Las paredes agrietadas se rompen de un golpe y brillan cuando estás cerca.": "Cracked walls break in one hit and glow when you're near.",
+  "Corona de latón": "Brass crown", "Las púas no te hacen daño la primera vez en cada bioma.": "Spikes don't hurt you the first time in each biome.",
+  "Reloj de arena roto": "Broken hourglass", "El siguiente modificador malo dura la mitad. Se recarga cada 2 minutos.": "The next bad modifier lasts half as long. Recharges every 2 minutes.",
+  "Saco de pólvora": "Powder sack", "Los enemigos que vences explotan y dañan a los que estén cerca.": "Enemies you defeat explode and hurt the ones nearby.",
+  "Guante de herrero": "Smith's gauntlet", "Tu ataque hace +1 de daño, pero atacas un poco más lento.": "Your attack deals +1 damage, but you swing a bit slower.",
+  "Luciérnagas": "Fireflies", "Tres luciérnagas giran a tu alrededor y dañan a murciélagos, fantasmas y fuegos fatuos.": "Three fireflies circle you and hurt bats, ghosts and wisps.",
+  "Hueso de la suerte": "Lucky bone", "Una vez por partida, si mueres vuelves con 1 corazón en el saliente más alto. Luego se rompe.": "Once per run, if you die you come back with 1 heart on the highest ledge. Then it breaks.",
+  "Capa de murciélago": "Bat cape", "Si mantienes SALTO mientras caes, planeas despacio.": "Hold JUMP while falling to glide slowly.",
+  "Brújula al revés": "Upside-down compass", "El Espejo no te afecta mientras la lleves.": "The Mirror doesn't affect you while you carry it.",
+  "Ancla de plomo": "Lead anchor", "No te empuja el viento y los golpes casi no te mueven, pero saltas un 10% menos.": "Wind doesn't push you and hits barely move you, but you jump 10% lower.",
+  "Corazón de engranaje": "Gear heart", "Si pasas 90 s sin recibir daño, recuperas un corazón.": "Go 90 s without damage to get a heart back.",
+  "Sombra cosida": "Stitched shadow", "Una sombra tuya repite cada ataque medio segundo después.": "A shadow of you repeats every attack half a second later.",
+  "Frasco de niebla": "Mist flask", "Empiezas cada pelea contra un jefe con un escudo que aguanta un golpe.": "Start every boss fight with a shield that takes one hit.",
+  "Dado de hueso": "Bone die", "Al subir de nivel las cartas ofrecen una opción más.": "Level-up cards offer one more choice.",
+  "Pacto en blanco": "Blank pact", "Tu ataque hace +2 de daño, pero siempre cargas con un modificador malo más.": "Your attack deals +2 damage, but you always carry one more bad modifier.",
+  "COMÚN": "COMMON", "RARO": "RARE", "MALDITO": "CURSED", "OBJETO": "ITEM", "OBJETOS DE LA TORRE": "TOWER ITEMS", "duran toda la partida": "they last the whole run",
+  "¡Cofre!": "Chest!", "Objeto maldito: pulsa ABAJO para cogerlo": "Cursed item: press DOWN to take it", "Cofre vacío: desbloquea objetos con logros (Códice › Objetos)": "Empty chest: unlock items with feats (Codex › Items)",
+  "La corona te protege de las púas": "The crown shields you from the spikes", "Reloj de arena: este modificador dura la mitad": "Hourglass: this modifier lasts half as long",
+  "El frasco de niebla aguanta el golpe": "The mist flask takes the hit", "Diente de leche: ¡poción!": "Milk tooth: potion!", "Hueso de la suerte: ¡sigues vivo! (se rompe)": "Lucky bone: you live! (it breaks)",
+  "Corazón de engranaje: +1 corazón": "Gear heart: +1 heart", "Objeto de la torre": "Tower item", "Cofre de objeto": "Item chest",
+  "Trae un objeto pasivo que dura toda la partida (si ya lo desbloqueaste).": "Holds a passive item that lasts the whole run (once unlocked).", "Uno cada ~150 m, en un saliente": "One every ~150 m, on a ledge",
+});
+
+window.__trk = { give: id => trkGive(id), drop: (src, x, y) => trkDrop(src, x, y), TRK, meta: () => META, unlock: () => { for (const id in TRK) if (!META.goods.includes(id)) META.goods.push(id); } };
+if (!OMF_SFX.boom) OMF_SFX.boom = [[110, 40, 0.28, "noise", 0, 0.8], [70, 35, 0.3, "sawtooth", 0, 0.5]];
+
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
