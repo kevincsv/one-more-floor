@@ -1,0 +1,1 @@
+roguelike,platformer,pixel,8-bit,retro,climb,tower,arcade,jump,endless,boss,indie,action,runner

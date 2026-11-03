@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: node scripts/build-pwa.mjs
+      # páginas de privacidad y soporte de la App Store: /privacy/ y /support/
+      - run: cp -r store/ios/site/. pwa/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: pwa }

@@ -1,0 +1,1 @@
+Single-player offline game. No account, no login, no in-app purchases, no ads and no data collection. Controls: on-screen D-pad, HIT and JUMP buttons (other layouts in Settings). Tap the title screen, then CLIMB to start a run. An EASY toggle on the title screen gives an extra heart and a slower camera if you want to see more of the game quickly.
