@@ -527,6 +527,36 @@ canvas.pxi { vertical-align: middle; display: inline-block; }
 .pbar, .gbar { border-radius: 0 !important; background: #0a0812 !important; border: 2px solid #4a4470 !important; box-shadow: none !important; }
 .pbar u, .gbar u { background: repeating-linear-gradient(90deg, #f2c14e 0 6px, #0a0812 6px 8px) !important; }
 
+/* v77: retos, backup, share card, title icon row with 7-8 icons */
+.etitle .eicons { gap: 5px; }
+.etitle .eicons button { width: 40px; position: relative; }
+.rbadge { position: absolute; top: -5px; right: -5px; min-width: 14px; height: 14px; padding: 0 3px; background: #e0566b; color: #fff; font: 9px/14px Silkscreen, monospace; font-style: normal; border: 2px solid #12101c; box-sizing: content-box; }
+.setx textarea { width: 100%; box-sizing: border-box; background: #0c0a14; color: #ece6ff; border: 2px solid var(--line); font: 11px/1.3 monospace; padding: 6px; resize: vertical; word-break: break-all; }
+.setx .cloudln, .setx .infoln { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+.setx .bkmsg { min-height: 1.2em; font-size: 12px; color: var(--teal, #5fd1c4); margin: 4px 0 0; }
+.setx .bkbox { display: grid; gap: 6px; margin-top: 6px; }
+.retos .rsub, .retos .rsum { font-size: 12px; color: var(--muted); text-align: center; margin: 4px 0 10px; }
+.rlist { display: grid; gap: 8px; text-align: left; }
+.reto { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 8px; background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; }
+.reto b { font-size: 13px; font-weight: 400; min-width: 0; }
+.reto small { font-family: Silkscreen, monospace; font-size: 10px; color: var(--muted); }
+.reto em { grid-column: 2 / 4; font-style: normal; font-size: 10px; color: var(--muted); }
+.reto .pxbar { grid-column: 1 / 4; }
+.reto.done { border-color: #5aa84a; }
+.reto.done b { color: #9be07a; }
+.reto.mini { padding: 5px 8px; }
+.reto .skulls { display: inline-flex; gap: 1px; }
+.rframes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.rframe { display: grid; gap: 4px; justify-items: center; background: var(--panel); border: 2px solid var(--line); padding: 8px 4px; font-size: 10px; text-align: center; opacity: .6; }
+.rframe.ok { opacity: 1; border-color: var(--fc); }
+.rframe i { width: 26px; height: 26px; border: 4px solid var(--fc); background: #0c0a14; box-shadow: 0 0 0 2px #0b0912; }
+.rframe b { font-weight: 400; }
+.rframe .pxbar { width: 90%; }
+.sharepop { position: fixed; inset: 0; z-index: 60; background: rgba(8,6,14,.92); display: grid; place-content: center; justify-items: center; gap: 10px; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+.sharepop img { width: min(86vw, 420px); height: auto; image-rendering: pixelated; border: 2px solid var(--line); }
+.sharepop p { font-size: 12px; color: var(--muted); margin: 0; text-align: center; }
+.sharepop button canvas.pxi, #shareBtn canvas.pxi { display: inline-block; vertical-align: middle; }
+
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -989,17 +1019,22 @@ function achRow(icon, name, u, ok, extra) {
 const PGS = (() => {
   try {
     const C = window.Capacitor;
-    if (!C || !C.isNativePlatform || !C.isNativePlatform() || C.getPlatform() !== "android") return null;
-    return C.registerPlugin("PlayGames");
+    // v77: one hook for both stores. Android = Google Play Juegos, iOS = Game Center (same method names); web/PC = null
+    if (!C || !C.isNativePlatform || !C.isNativePlatform()) return null;
+    const pf = C.getPlatform();
+    return pf === "android" ? C.registerPlugin("PlayGames") : pf === "ios" ? C.registerPlugin("GameCenter") : null;
   } catch (e) { return null; }
 })();
-const pgsCall = (m, a) => { if (PGS && !(typeof S !== "undefined" && S.test)) PGS[m](a || {}).catch(() => {}); };
+const NATIVE_GAMES = PGS;
+const pgsCall = (m, a) => { if (PGS && !(typeof S !== "undefined" && (S.test || S.lab))) { try { const r = PGS[m](a || {}); if (r && r.catch) r.catch(() => {}); } catch (_) {} } };
 // 1) Al desbloquear una regla o perk (dentro de unlockCheck, justo después de META.unlocked.push(id)):  pgsUnlock(id)
 function pgsUnlock(id) { pgsCall("unlock", { id }); }
 // 2) Hitos de Escape (en el mismo sitio donde se actualiza la altura / nivel):
 //    if (m >= 100) pgsUnlock("m100"); if (m >= 250) pgsUnlock("m250"); if (lv >= 10) pgsUnlock("lv10");
 // 3) Al morir en Escape (pantalla de muerte, no en PRUEBAS):  pgsRun(metros, segundos)
 function pgsRun(meters, seconds) {
+  if (typeof S !== "undefined" && S.easy) return; // v77: easy mode still earns achievements but stays off the rankings
+  if (typeof S !== "undefined" && S.daily) pgsCall("submitScore", { board: "daily_height", score: Math.floor(meters) });
   pgsCall("submitScore", { board: "height", score: Math.floor(meters) });
   pgsCall("submitScore", { board: "time", score: Math.round(seconds * 1000) });
 }
@@ -6787,7 +6822,7 @@ addEventListener("keydown", e => {
     const i = +e.code.slice(-1) - 1; if (S.cardPick.pick[i]) choose(S.cardPick.pick, i, S.cardPick.hard); e.preventDefault(); return;
   }
   if ((S.mode === "title" || S.mode === "dead") && e.code === "Enter") { $("goBtn")?.click(); e.preventDefault(); return; }
-  if (e.code === "KeyR" && S.mode === "play") { newRun({ char: S.char.id, daily: S.daily }); nextRuleStep(); return; }
+  if (e.code === "KeyR" && S.mode === "play" && !window.OMF_STORE) { newRun({ char: S.char.id, daily: S.daily }); nextRuleStep(); return; }
   const k = KEYS[e.code]; if (!k) return;
   if (S.mode === "play") e.preventDefault();
   if (!input[k] && k in pressed) pressed[k] = true;
@@ -6891,7 +6926,7 @@ function escHudSync() {
     if (key !== escHudKey) {
       escHudKey = key;
       document.getElementById("eHud").innerHTML =
-        `<span class="st"><i class="k">${T("TIEMPO")} </i><b>${Math.floor(el / 60)}:${String(Math.floor(el % 60)).padStart(2, "0")}</b></span><span class="st"><i class="k">${T("ALTURA")} </i><b>${S.escBest} m</b></span>` +
+        `<span class="st"><i class="k">${T("TIEMPO")} </i><b>${Math.floor(el / 60)}:${String(Math.floor(el % 60)).padStart(2, "0")}</b></span><span class="st"><i class="k">${T("ALTURA")} </i><b${S.recHit ? ' style="color:#f2c14e"' : ""}>${S.escBest} m</b></span>` +
         `<div class="bars"><div class="bar"><div class="seg">${ESC_TIERS.map(([, c], i) => `<i><u style="width:${i < tier ? 100 : i === tier ? Math.round(Math.min(1, D - i) * 100) : 0}%;background:${c}"></u></i>`).join("")}</div>` +
         `<span class="lbl" style="color:${ESC_TIERS[tier][1]}">${T(ESC_TIERS[tier][0]).toUpperCase()}</span></div>` +
         `<div class="xp${S.xpPopT > 0 || S.lvlFxT ? " pop" : ""}"><u style="width:${Math.round(fr * 100)}%"></u></div><span class="lbl" style="color:var(--teal)">${lv >= ESC_LVL_MAX ? T("NV MÁX") : T("NV") + " " + lv}</span></div>`;
@@ -6951,7 +6986,7 @@ try { const v = parseFloat(localStorage.getItem("omf-speed")); if (v > 0.3 && v 
 let frameErrs = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  try { frameBody(now); } catch (err) { if (frameErrs++ < 20) console.error(err); if (S && S.spikes && S.spikes.includes(undefined)) S.spikes = S.spikes.filter(Boolean); }
+  try { frameBody(now); } catch (err) { if (frameErrs++ < 20) { console.error(err); if (typeof errLog === "function") errLog(err && err.message || String(err), err && err.stack ? String(err.stack).split("\n")[1] || "frame" : "frame"); } if (S && S.spikes && S.spikes.includes(undefined)) S.spikes = S.spikes.filter(Boolean); }
 }
 function frameBody(now) {
   { const rot = escLandscape(), rm = document.getElementById("rotMsg"); if (rm && rm.hidden === rot) rm.hidden = !rot; if (rot) { escPause(); last = now; return; } }
@@ -10026,6 +10061,11 @@ window.OMF_LOGO_I = L; window.OMF_ICON_I = () => icon2("I");
 // cycles your owned skins), a hanger button that opens the wardrobe, CLIMB full width, DAILY + HORDE half width, and a
 // row of 5 pixel icon buttons. The old rows of hero and skin tiles are gone.
 var ESC_PI = {
+  chart: [".......#.", ".......#.", "....#..#.", "....#..#.", ".#..#..#.", ".#..#..#.", ".#..#..#.", ".#..#..#.", "#########"],
+  target: ["..#####..", ".#.....#.", "#..###..#", "#.#...#.#", "#.#.#.#.#", "#.#...#.#", "#..###..#", ".#.....#.", "..#####.."],
+  share: ["....#....", "...###...", "..#.#.#..", "....#....", "....#....", "#...#...#", "#.......#", "#.......#", "#########"],
+  cloud: [".........", "...###...", "..#####..", ".#######.", "#########", "#########", ".#######.", ".........", "........."],
+  check: ["........#", ".......##", "......##.", "#....##..", "##..##...", ".####....", "..##.....", ".........", "........."],
   trophy: ["##.....##","#.#####.#","#.#####.#",".#.###.#.","...###...","....#....","....#....","..#####..","..#####.."],
   book: [".###.###.","#...#...#","#.#.#.#.#","#...#...#","#.#.#.#.#","#...#...#","#.#.#.#.#",".###.###.","....#...."],
   gear: ["...#.#...",".#.###.#.","..#####..","####.####","###...###","####.####","..#####..",".#.###.#.","...#.#..."],
@@ -10063,7 +10103,7 @@ function escTitleHTML(ch0, db) {
       <button class="mode half" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e")}</span><span class="mt">DIARIO</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
       <button class="mode half" id="hordeBtn"><span class="mi">${pxi("swords", "#e0566b")}</span><span class="mt">HORDA</span><span class="mv"><small>MEJOR</small>${bestOf("escape-horde")} m</span></button>
     </div>
-    <div class="eicons"><button id="lbBtn" title="${T("Récords")}" aria-label="${T("Récords")}">${pxi("trophy", "#f2c14e")}</button><button id="codexBtn" title="${T("Códice")}" aria-label="${T("Códice")}">${pxi("book", "#c9c3e6")}</button>${ach}<button id="setBtn" title="${T("Ajustes")}" aria-label="${T("Ajustes")}">${pxi("gear", "#c9c3e6")}</button><button id="howBtn" title="${T("Cómo se juega")}" aria-label="${T("Cómo se juega")}">${pxi("q", "#e0566b")}</button>${store ? "" : `<button id="testsBtn" title="PRUEBAS" aria-label="PRUEBAS">${pxi("flask", "#9a94b8")}</button>`}</div>
+    <div class="eicons"><button id="lbBtn" title="${T("Récords")}" aria-label="${T("Récords")}">${pxi("trophy", "#f2c14e")}</button><button id="codexBtn" title="${T("Códice")}" aria-label="${T("Códice")}">${pxi("book", "#c9c3e6")}</button>${ach}${PGS ? `<button id="pgsLb" title="${T("Ranking")}" aria-label="${T("Ranking")}">${pxi("chart", "#f2c14e")}</button>` : ""}<button id="retoBtn" title="${T("Retos")}" aria-label="${T("Retos")}">${pxi("target", "#e0566b")}${retoBadge()}</button><button id="setBtn" title="${T("Ajustes")}" aria-label="${T("Ajustes")}">${pxi("gear", "#c9c3e6")}</button><button id="howBtn" title="${T("Cómo se juega")}" aria-label="${T("Cómo se juega")}">${pxi("q", "#e0566b")}</button>${store ? "" : `<button id="testsBtn" title="PRUEBAS" aria-label="PRUEBAS">${pxi("flask", "#9a94b8")}</button>`}</div>
     ${store ? "" : `<details class="how bt" id="testsBox"><summary>PRUEBAS</summary>
       <div class="bossrows">${BOSS_TEST.map((n, i) => `<div class="brow"><button data-bt="${i}">${n}</button>${[1, 2, 3].map(ph => `<button class="ph" data-bt="${i}" data-ph="${ph}">F${ph}</button>`).join("")}</div>`).join("")}</div>
       <div class="tools"><button id="labBtn">🧪 Sala de mobs</button><button id="itemLabBtn">🧪 Sala de objetos</button><label class="flsel"><input id="boxChk" type="checkbox" ${window.OMF_SHOWBOXES ? "checked" : ""}> ${T("Ver cajas")}</label></div>
@@ -10080,7 +10120,7 @@ function escTitleWire() {
   on("heroPrev", () => go(-1)); on("heroNext", () => go(1));
   on("heroTap", () => { if (!META.chars.includes(view.id) || !heroesOn()) return; const ids = heroSkinsOf(view.id).filter(skinOwned); if (ids.length < 2) return;
     const cur = heroSkinOf(view.id); META.skin[view.id] = ids[(ids.indexOf(cur) + 1) % ids.length]; saveMeta(); omfSfx("pick"); showTitle(); });
-  on("wardBtn", () => escWardrobe(view));
+  on("wardBtn", () => escWardrobe(view)); on("retoBtn", () => { omfSfx("click"); showRetos(); }); on("pgsLb", () => pgsShow("leaderboard"));
   on("testsBtn", () => { const d = document.getElementById("testsBox"); if (d) { d.open = !d.open; if (d.open) d.scrollIntoView({ block: "nearest" }); } });
   if (!META.chars.includes(view.id)) ov.querySelectorAll(".emodes button").forEach(b => b.disabled = true);
 }
@@ -10335,6 +10375,362 @@ const escLandscape = () => ESCAPE && window.matchMedia && matchMedia("(orientati
 if (S && S.mode === "title") showTitle();
 { let re = null; try { re = sessionStorage.getItem("omf-reopen"); sessionStorage.removeItem("omf-reopen"); } catch (_) {}
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
+// ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
+// best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
+var OMF_VER = "Escape v77";
+function Lx(es, en) { return LANG === "en" ? en : es; }
+function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+
+// ---------- E. local error log: last 20 errors, never sent anywhere ----------
+var ERRLOG_KEY = "omf-errlog";
+function errList() { try { return JSON.parse(localStorage.getItem(ERRLOG_KEY) || "[]"); } catch (_) { return []; } }
+function errLog(msg, where) {
+  try { const a = errList(); a.push({ m: String(msg).slice(0, 300), w: String(where || "").slice(0, 160), v: OMF_VER, at: new Date().toISOString(), s: (typeof S !== "undefined" && S && S.mode) || "" });
+    while (a.length > 20) a.shift(); localStorage.setItem(ERRLOG_KEY, JSON.stringify(a)); } catch (_) {}
+}
+addEventListener("error", e => { if (e && e.message) errLog(e.message, (e.filename ? String(e.filename).split("/").pop() : "") + ":" + (e.lineno || 0) + ":" + (e.colno || 0)); });
+addEventListener("unhandledrejection", e => { const r = e && e.reason; errLog("promise: " + (r && r.message ? r.message : String(r)), r && r.stack ? String(r.stack).split("\n")[1] || "" : ""); });
+// store build: nothing from PRUEBAS (lab panel, speed, hitboxes, test keys); TestFlight builds keep PRUEBAS
+if (window.OMF_STORE) { const lb = document.getElementById("lab"); if (lb) lb.remove(); GAME_SPEED = 0.62; window.OMF_SHOWBOXES = false; showGraph = false; }
+
+// ---------- A. iCloud key-value copy (iOS) + backup code everywhere ----------
+var CLOUD = (() => { try { const C = window.Capacitor; if (!C || !C.isNativePlatform || !C.isNativePlatform() || C.getPlatform() !== "ios") return null; return C.registerPlugin("CloudSave"); } catch (_) { return null; } })();
+var cloudT = 0, cloudLast = 0, cloudOk = false, cloudAvail = false; // the iCloud line and syncing wait for status().available
+var SAVE_SETTINGS = ["easy", "music", "sound", "sfxVol", "musVol", "skin", "escIntro", "ghostTip"]; // newest copy wins
+function saveBlob() { let ctl = null, lang = null; try { ctl = localStorage.getItem("omf-ctl"); lang = localStorage.getItem("omf-lang"); } catch (_) {} return { v: 1, at: META.saveAt || Date.now(), meta: META, runs: localRuns(), ctl, lang }; }
+function mergeArr(a, b) {
+  if (a.every(x => typeof x !== "object") && b.every(x => typeof x !== "object")) return [...new Set(a.concat(b))];
+  const seen = new Set(a.map(x => JSON.stringify(x))); return a.concat(b.filter(x => !seen.has(JSON.stringify(x))));
+}
+// merge, never overwrite: lists are joined, counters and records keep the highest, settings follow the newest copy
+function mergeObj(L, R, rNew, depth) {
+  const out = Object.assign({}, L);
+  for (const k in R) {
+    const a = L[k], b = R[k];
+    if (a === undefined || a === null) { out[k] = b; continue; }
+    if (b === undefined || b === null) continue;
+    if (depth === 0 && SAVE_SETTINGS.includes(k)) { out[k] = rNew ? b : a; continue; }
+    if (depth === 0 && k === "dailyStreak") { out[k] = (b.last > a.last || (b.last === a.last && b.n > a.n)) ? b : a; continue; }
+    if (depth === 0 && k === "retos") { out[k] = retoMerge(a, b); continue; }
+    if (Array.isArray(a) && Array.isArray(b)) { out[k] = mergeArr(a, b); continue; }
+    if (typeof a === "number" && typeof b === "number") { out[k] = Math.max(a, b); continue; }
+    if (typeof a === "boolean" && typeof b === "boolean") { out[k] = a || b; continue; }
+    if (typeof a === "object" && typeof b === "object" && !Array.isArray(a) && !Array.isArray(b)) { out[k] = mergeObj(a, b, rNew, depth + 1); continue; }
+    out[k] = rNew ? b : a;
+  }
+  return out;
+}
+function keepRuns(all) {
+  const seen = new Set(), uniq = all.filter(x => { const k = x.run + "|" + x.at; if (seen.has(k)) return false; seen.add(k); return true; });
+  const keep = []; for (const k of ["story", "endless", "daily", "escape", "escape-easy", "daily-easy", "escape-horde"]) keep.push(...uniq.filter(x => x.run === k).sort(scoreCmp).slice(0, 15));
+  return keep;
+}
+function applyBlob(blob) {
+  if (!blob || blob.v !== 1 || !blob.meta || typeof blob.meta !== "object") return false;
+  const rNew = (blob.at || 0) > (META.saveAt || 0), merged = mergeObj(META, blob.meta, rNew, 0);
+  for (const k in merged) META[k] = merged[k];
+  META.saveAt = Math.max(META.saveAt || 0, blob.at || 0);
+  if (Array.isArray(blob.runs)) try { localStorage.setItem("omf-runs", JSON.stringify(keepRuns(localRuns().concat(blob.runs)))); } catch (_) {}
+  if (rNew) try { if (blob.ctl) localStorage.setItem("omf-ctl", blob.ctl); if (blob.lang) localStorage.setItem("omf-lang", blob.lang); } catch (_) {}
+  saveMeta0(); return true;
+}
+var saveMeta0 = saveMeta;
+saveMeta = function () { META.saveAt = Date.now(); saveMeta0(); cloudQueue(); };
+var recordRun0 = recordRun;
+recordRun = function () { const r = recordRun0.apply(this, arguments); cloudQueue(); return r; };
+function cloudQueue() { if (!CLOUD || !cloudAvail) return; clearTimeout(cloudT); cloudT = setTimeout(cloudPush, 3000); }
+function cloudPush() {
+  if (!CLOUD || !cloudAvail) return; clearTimeout(cloudT);
+  try { const r = CLOUD.set({ key: "omf-save", value: JSON.stringify(saveBlob()) }); if (r && r.then) r.then(() => { cloudOk = true; cloudLast = Date.now(); try { const q = CLOUD.synchronize(); if (q && q.catch) q.catch(() => {}); } catch (_) {} }).catch(() => {}); } catch (_) {}
+}
+function cloudPull() {
+  if (!CLOUD || !cloudAvail) return;
+  try { const r = CLOUD.get({ key: "omf-save" }); if (!r || !r.then) return;
+    r.then(res => { cloudOk = true; const v = res && res.value; if (v) { try { if (applyBlob(JSON.parse(v)) && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); } catch (_) {} } cloudQueue(); }).catch(() => {}); } catch (_) {}
+}
+if (CLOUD) {
+  try { const st = CLOUD.status(); if (st && st.then) st.then(r => { cloudAvail = !!(r && r.available); if (cloudAvail) cloudPull(); }).catch(() => {}); } catch (_) {}
+  try { const r = CLOUD.addListener("changed", () => cloudPull()); if (r && r.catch) r.catch(() => {}); } catch (_) {}
+  addEventListener("pagehide", cloudPush); document.addEventListener("visibilitychange", () => { if (document.hidden) cloudPush(); });
+}
+function b64(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+async function exportCode() {
+  const json = JSON.stringify(saveBlob());
+  try { if (typeof CompressionStream !== "undefined") { const st = new Blob([json]).stream().pipeThrough(new CompressionStream("gzip")); return "OMF1:" + b64(new Uint8Array(await new Response(st).arrayBuffer())); } } catch (_) {}
+  return "OMF0:" + b64(new TextEncoder().encode(json));
+}
+async function importCode(code) {
+  code = String(code || "").replace(/\s+/g, ""); const tag = code.slice(0, 5), body = unb64(code.slice(5)); let json;
+  if (tag === "OMF1:") { const st = new Blob([body]).stream().pipeThrough(new DecompressionStream("gzip")); json = await new Response(st).text(); }
+  else if (tag === "OMF0:") json = new TextDecoder().decode(body); else throw new Error("bad code");
+  if (!applyBlob(JSON.parse(json))) throw new Error("bad save"); cloudQueue(); return true;
+}
+function copyText(txt, ta) {
+  const sel = () => { if (ta) { ta.value = txt; ta.focus(); ta.select(); } };
+  try { const r = navigator.clipboard && navigator.clipboard.writeText(txt); if (r && r.then) return r.then(() => true, () => { sel(); return false; }); } catch (_) {}
+  sel(); return Promise.resolve(false);
+}
+var showSettings0 = showSettings;
+showSettings = function () {
+  showSettings0();
+  const pg = ov.querySelector(".setpage"), row = pg && pg.querySelector(".rowbig"); if (!row || pg.querySelector(".setx")) return;
+  const errs = errList(), box = document.createElement("div"); box.className = "setx";
+  box.innerHTML = `<div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
+    ${CLOUD && cloudAvail ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>` : ""}
+    <p class="ctldesc">${Lx("Exporta un código para pasar tu progreso a otro aparato. Al importar se suma lo de los dos, nunca se borra nada.", "Export a code to move your progress to another device. Importing joins both, nothing is ever erased.")}</p>
+    <div class="ctlsel"><button id="expBtn">${Lx("EXPORTAR", "EXPORT")}</button><button id="impBtn">${Lx("IMPORTAR", "IMPORT")}</button></div>
+    <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
+      <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button><button id="bkApply" hidden>${Lx("APLICAR", "APPLY")}</button></div><p class="bkmsg" id="bkMsg"></p></div>
+    <div class="mlabel">INFO</div>
+    <p class="infoln">${OMF_VER} · ${Lx("Errores", "Errors")}: <b>${errs.length}</b></p>
+    ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`;
+  pg.insertBefore(box, row); paintPxi(box);
+  const $b = id => box.querySelector("#" + id), bk = $b("bkBox"), ta = $b("bkCode"), msg = $b("bkMsg");
+  const say = t => { msg.textContent = t; };
+  $b("expBtn").onclick = async () => { omfSfx("click"); bk.hidden = false; $b("bkApply").hidden = true; $b("bkCopy").hidden = false; ta.readOnly = true; ta.value = await exportCode(); say(""); };
+  $b("impBtn").onclick = () => { omfSfx("click"); bk.hidden = false; $b("bkApply").hidden = false; $b("bkCopy").hidden = true; ta.readOnly = false; ta.value = ""; ta.focus(); say(Lx("Pega aquí tu código y pulsa APLICAR.", "Paste your code here and press APPLY.")); };
+  $b("bkCopy").onclick = () => copyText(ta.value, ta).then(ok => { omfSfx("click"); say(ok ? Lx("Copiado.", "Copied.") : Lx("Selecciónalo y cópialo.", "Select it and copy it.")); });
+  $b("bkApply").onclick = async () => { try { await importCode(ta.value); omfSfx("levelup"); say(Lx("Progreso importado y sumado.", "Progress imported and joined.")); } catch (_) { omfSfx("hurt"); say(Lx("Ese código no es válido.", "That code isn't valid.")); } };
+  const ec = $b("errCopy"); if (ec) ec.onclick = () => { bk.hidden = false; $b("bkApply").hidden = true; $b("bkCopy").hidden = false; const t = errList().map(e => `${e.at} ${e.v} [${e.s}] ${e.m} @ ${e.w}`).join("\n"); ta.readOnly = true; ta.value = t; copyText(t, ta).then(ok => say(ok ? Lx("Errores copiados.", "Errors copied.") : Lx("Selecciónalos y cópialos.", "Select and copy them."))); };
+};
+if (ov && ov.querySelector(".setpage") && !ov.querySelector(".setx")) showSettings();
+
+// ---------- B. best-height line on the tower wall ----------
+OMF_SFX.record = [[523, 523, 0.08, "square", 0, 0.45], [659, 659, 0.08, "square", 0.08, 0.45], [784, 784, 0.08, "square", 0.16, 0.45], [1047, 1047, 0.24, "square", 0.24, 0.5]];
+OMF_SFX.reto = [[880, 1320, 0.1, "triangle", 0, 0.5], [1320, 1320, 0.16, "triangle", 0.1, 0.5]];
+function recInit() {
+  S.recM = 0; S.recM2 = 0; S.recM3 = 0; S.recHit = false; S.recFx = 0;
+  if (!ESCAPE || S.test || !(S.run === "escape" || S.run === "daily")) return;
+  if (S.daily) { S.recM = META.daily[String(S.seed) + (S.easy ? "e" : "")] || 0; return; }
+  const kind = S.easy ? "escape-easy" : S.horde ? "escape-horde" : "escape";
+  const b = localRuns().filter(x => x.run === kind).map(x => x.floor || 0).sort((a, c) => c - a);
+  S.recM = b[0] || 0; S.recM2 = b[1] || 0; S.recM3 = b[2] || 0;
+}
+var newRun0 = newRun;
+newRun = function () { const r = newRun0.apply(this, arguments); try { recInit(); retoRunInit(); } catch (e) { errLog(e.message, "recInit"); } return r; };
+function recRowY(m) { return (S.LH - 2 - m) * TS; }
+function recDraw(cx, cy) {
+  if (!S.escape || S.test || S.lab || !S.recM) return;
+  const marks = [[S.recM, 0]]; if (S.recM2 && S.recM2 < S.recM) marks.push([S.recM2, 1]); if (S.recM3 && S.recM3 < S.recM2) marks.push([S.recM3, 2]);
+  const x0 = TS, x1 = (S.LW - 1) * TS;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  for (const [m, i] of marks) {
+    const y = recRowY(m); if (y < cy - 20 || y > cy + CH + 20) continue;
+    if (i === 0) {
+      const lit = S.recHit ? 0.45 : 1;
+      ctx.globalAlpha = lit; ctx.fillStyle = "#3a2a08"; for (let x = x0; x < x1; x += 10) ctx.fillRect(x, y - 1, 6, 4);
+      ctx.fillStyle = "#f2c14e"; for (let x = x0; x < x1; x += 10) ctx.fillRect(x, y - 1, 6, 2);
+      // wooden sign on the left wall: MEJOR 312 m
+      ctx.font = "8px Silkscreen, monospace"; const txt = (S.daily ? Lx("HOY ", "TODAY ") : Lx("MEJOR ", "BEST ")) + m + " m", w = Math.ceil(ctx.measureText(txt).width) + 8, sx = x0 + 4, sy = y - 15;
+      ctx.fillStyle = "#2a1608"; ctx.fillRect(sx - 1, sy - 1, w + 2, 13); ctx.fillStyle = "#8a5a34"; ctx.fillRect(sx, sy, w, 11); ctx.fillStyle = "#a8743f"; ctx.fillRect(sx, sy, w, 2);
+      ctx.fillStyle = "#2a1608"; ctx.fillRect(sx + 3, sy + 11, 2, 3); ctx.fillRect(sx + w - 5, sy + 11, 2, 3);
+      ctx.fillStyle = "#ffe08a"; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left"; ctx.fillText(txt, sx + 4, sy + 9);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = "rgba(201,195,230,.55)"; for (let x = x0; x < x0 + 3 * TS; x += 8) ctx.fillRect(x, y - 1, 4, 2); for (let x = x1 - 3 * TS; x < x1; x += 8) ctx.fillRect(x, y - 1, 4, 2);
+      ctx.font = "8px Silkscreen, monospace"; ctx.textAlign = "left"; ctx.fillStyle = "rgba(201,195,230,.75)"; ctx.fillText((i + 1) + "º " + m, x0 + 2, y - 4);
+    }
+  }
+  ctx.restore();
+}
+var platDraw0 = platDraw;
+platDraw = function (cx, cy) { platDraw0(cx, cy); try { recDraw(cx, cy); } catch (e) { errLog(e.message, "recDraw"); } };
+var draw0 = draw;
+draw = function () {
+  draw0();
+  if (!(S && S.recFx > 0 && S.mode === "play")) return;
+  const a = S.recFx / 1.2, W = cv.width, H = cv.height;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+  if (a > 0.75) { ctx.fillStyle = `rgba(242,193,78,${(a - 0.75) * 1.2})`; ctx.fillRect(0, 0, W, H); }
+  const fs = Math.max(12, Math.round(W / 15)), txt = Lx("¡NUEVO RÉCORD!", "NEW RECORD!"), y = Math.round(H * 0.42);
+  ctx.font = fs + "px Silkscreen, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.globalAlpha = Math.min(1, a * 3);
+  const k = Math.max(2, Math.round(fs / 10)); ctx.fillStyle = "#1a1206"; for (const [dx, dy] of [[-k, 0], [k, 0], [0, -k], [0, k], [k, k]]) ctx.fillText(txt, W / 2 + dx, y + dy);
+  ctx.fillStyle = (S.t * 8 | 0) % 2 ? "#ffe08a" : "#f2c14e"; ctx.fillText(txt, W / 2, y);
+  ctx.restore();
+};
+
+// ---------- D. three daily challenges (same for everyone: date seed) ----------
+var MOBP = { bat: ["murciélagos", "bats"], walker: ["caminantes", "walkers"], spider: ["arañas", "spiders"], hopper: ["saltarines", "hoppers"], wisp: ["fuegos fatuos", "wisps"], shooter: ["tiradores", "shooters"], charger: ["embestidores", "chargers"], knight: ["caballeros", "knights"], bomber: ["bombarderos", "bombers"] };
+var BOSSN = [["la Campana", "the Bell"], ["la Bestia de raíces", "the Root Beast"], ["el Robot fuelle", "the Bellows Robot"]];
+// k: event, n: goal per difficulty (easy, medium, hard), one: must happen in a single run, ds: allowed difficulties
+var RETO_T = [
+  { id: "kill", k: "kill", n: [10, 8, 5], x: (d, R) => [["bat", "walker", "spider"], ["hopper", "wisp", "shooter"], ["charger", "knight", "bomber"]][d][Math.floor(R() * 3)], t: (n, x) => [`Derrota ${n} ${MOBP[x][0]}`, `Defeat ${n} ${MOBP[x][1]}`] },
+  { id: "kills", k: "kills", n: [30, 60, 100], t: n => [`Derrota ${n} enemigos`, `Defeat ${n} enemies`] },
+  { id: "runkills", k: "runkills", n: [15, 30, 50], one: 1, t: n => [`Derrota ${n} enemigos en una partida`, `Defeat ${n} enemies in one run`] },
+  { id: "height", k: "height", n: [60, 120, 200], one: 1, t: n => [`Llega a ${n} m`, `Reach ${n} m`] },
+  { id: "modh", k: "modh", n: [30, 70, 120], one: 1, x: (d, R) => { const ok = ESC_BASE.filter(id => RULE[id] && id !== "mirror"); return ok[Math.floor(R() * ok.length)]; }, t: (n, x) => [`Llega a ${n} m con ${RULE[x] ? RULE[x].name : x} activo`, `Reach ${n} m with ${RULE[x] ? T(RULE[x].name) : x} on`] },
+  { id: "boss", k: "boss", n: [1, 2, 3], ds: [1, 2], t: n => [n > 1 ? `Vence a ${n} jefes` : "Vence a un jefe", n > 1 ? `Beat ${n} bosses` : "Beat a boss"] },
+  { id: "bossx", k: "bossx", n: [1, 1, 1], x: d => d, t: (n, x) => [`Vence a ${BOSSN[x][0]}`, `Beat ${BOSSN[x][1]}`] },
+  { id: "nohit", k: "nohit", n: [1, 1, 1], ds: [2], t: () => ["Vence a un jefe sin recibir daño", "Beat a boss without getting hit"] },
+  { id: "room", k: "room", n: [1, 3, 5], t: n => [n > 1 ? `Encuentra ${n} salas secretas` : "Encuentra una sala secreta", n > 1 ? `Find ${n} secret rooms` : "Find a secret room"] },
+  { id: "level", k: "level", n: [4, 7, 10], one: 1, t: n => [`Sube a nivel ${n}`, `Reach level ${n}`] },
+  { id: "goldend", k: "goldend", n: [30, 80, 150], one: 1, t: n => [`Termina una partida con ${n} de oro`, `End a run with ${n} gold`] },
+  { id: "surv", k: "surv", n: [3, 6, 10], t: n => [`Sobrevive a ${n} modificadores`, `Outlast ${n} modifiers`] },
+  { id: "meters", k: "meters", n: [300, 600, 1000], t: n => [`Sube ${n} m en total`, `Climb ${n} m in total`] },
+  { id: "runs", k: "runs", n: [3, 5, 8], ds: [0], t: n => [`Juega ${n} partidas`, `Play ${n} runs`] },
+  { id: "time", k: "time", n: [2, 4, 6], one: 1, t: n => [`Aguanta ${n} minutos en una partida`, `Last ${n} minutes in one run`] },
+  { id: "coins", k: "coins", n: [50, 150, 300], t: n => [`Recoge ${n} de oro`, `Collect ${n} gold`] },
+];
+var RETO_FRAMES = [[3, "#c98a4a", ["Marco de bronce", "Bronze frame"]], [10, "#c9cde0", ["Marco de plata", "Silver frame"]], [25, "#f2c14e", ["Marco de oro", "Gold frame"]]];
+function retoGen(day) {
+  const R = mulberry(day * 7919 + 17), used = new Set(), list = [];
+  for (let d = 0; d < 3; d++) {
+    const pool = RETO_T.filter(t => !used.has(t.k) && (!t.ds || t.ds.includes(d)));
+    const t = pool[Math.floor(R() * pool.length)]; used.add(t.k);
+    list.push({ t: t.id, d, n: t.n[d], x: t.x ? t.x(d, R) : null, p: 0, done: false });
+  }
+  return list;
+}
+function retos() {
+  const day = todayKey(); if (!RETO_T) return { day, list: [], total: 0, full: 0 }; // the title can draw before this add-on loads
+  META.retos = META.retos || { day: 0, list: [], total: 0, full: 0 };
+  if (META.retos.day !== day || !(META.retos.list || []).length) { META.retos.list = retoGen(day); META.retos.day = day; }
+  return META.retos;
+}
+function retoMerge(a, b) {
+  const o = { day: Math.max(a.day || 0, b.day || 0), total: Math.max(a.total || 0, b.total || 0), full: Math.max(a.full || 0, b.full || 0) };
+  if ((a.day || 0) !== (b.day || 0)) o.list = (a.day || 0) > (b.day || 0) ? a.list : b.list;
+  else o.list = (a.list || []).map((it, i) => { const q = (b.list || [])[i]; return q && q.t === it.t ? Object.assign({}, it, { p: Math.max(it.p || 0, q.p || 0), done: !!(it.done || q.done) }) : it; });
+  return o;
+}
+function retoTpl(it) { return RETO_T.find(t => t.id === it.t); }
+function retoText(it) { const t = retoTpl(it); return t ? t.t(it.n, it.x)[LANG === "en" ? 1 : 0] : it.t; }
+function retoOn() { return ESCAPE && S && S.escape && !S.test && !S.lab; }
+function retoEv(k, x, v) {
+  if (!retoOn() || !(v > 0)) return;
+  const R = retos(); let hit = false;
+  for (const it of R.list) {
+    if (it.done) continue; const t = retoTpl(it); if (!t || t.k !== k) continue;
+    if (it.x != null && x !== it.x) continue;
+    const np = t.one ? Math.max(it.p || 0, v) : (it.p || 0) + v; if (np === it.p) continue;
+    it.p = Math.min(it.n, np);
+    if (it.p >= it.n) { it.done = true; hit = true; R.total = (R.total || 0) + 1; achAdd("retos"); { const c = (META.cnt && META.cnt.retos) || 0; if (c >= 10) pgsUnlock("r10"); if (c >= 50) pgsUnlock("r50"); }
+      toast("✓ " + Lx("Reto", "Challenge") + ": " + retoText(it)); omfSfx("reto");
+      if (R.list.every(q => q.done)) { R.full = (R.full || 0) + 1; achAdd("retoDays"); const d = META.dailyStreak || { last: 0, n: 0 }, td = todayKey(); if (d.last !== td) META.dailyStreak = { last: td, n: dailyStreak() + 1 }; }
+      const fr = RETO_FRAMES.find(f => f[0] === R.total); if (fr) toast("✦ " + fr[2][LANG === "en" ? 1 : 0]); }
+  }
+  if (hit) saveMeta();
+}
+function retoBadge() { try { const R = retos(), n = R.list.filter(q => !q.done).length; return n ? `<i class="rbadge">${n}</i>` : ""; } catch (_) { return ""; } }
+function retoRunInit() { S.v77k = 0; S.v77surv = []; S.v77boss = []; S.v77lv = 0; S.v77h = 0; S.v77min = 0; S.v77arena = null; }
+var kill0 = kill;
+kill = function (e) { const was = e && e.dead; const r = kill0.apply(this, arguments);
+  try { if (!was && e && !e.critter && !e.decoy && !e.boss && retoOn()) { S.v77k = (S.v77k || 0) + 1; retoEv("kill", e.type, 1); retoEv("kills", null, 1); retoEv("runkills", null, S.v77k); } } catch (er) { errLog(er.message, "retoKill"); }
+  return r; };
+var achRoom0 = achRoom;
+achRoom = function () { const r = achRoom0.apply(this, arguments); try { retoEv("room", null, 1); } catch (_) {} return r; };
+var escSurvived0 = escSurvived;
+escSurvived = function (id) { const r = escSurvived0.apply(this, arguments); try { if (retoOn()) { (S.v77surv = S.v77surv || []).push(id); retoEv("surv", null, 1); } } catch (_) {} return r; };
+var addGold0 = addGold;
+addGold = function () { const c0 = S.coins; const r = addGold0.apply(this, arguments); try { if (S.coins > c0) retoEv("coins", null, S.coins - c0); } catch (_) {} return r; };
+var die0 = die;
+die = function () { try { if (retoOn()) { retoEv("goldend", null, S.coins); retoEv("meters", null, S.escBest || 0); retoEv("runs", null, 1); saveMeta(); } } catch (e) { errLog(e.message, "retoDie"); } return die0.apply(this, arguments); };
+var update0 = update;
+update = function (dt) {
+  update0(dt);
+  if (!(S && S.mode === "play" && S.escape && !S.test && !S.lab)) return;
+  try {
+    // B: crossing the best-height line
+    if (S.recFx > 0) S.recFx -= dt;
+    if (S.recM > 0 && !S.recHit && (S.escBest || 0) > S.recM && !(S.arena && S.arena.state === "fight")) {
+      S.recHit = true; S.recFx = 1.2; omfSfx("record"); try { navigator.vibrate && navigator.vibrate(25); } catch (_) {} escHudKey = "";
+    }
+    // D: run values (only when they change)
+    if ((S.escBest || 0) !== S.v77h) { S.v77h = S.escBest || 0; retoEv("height", null, S.v77h); for (const id of S.rules || []) retoEv("modh", id, S.v77h); }
+    if ((S.lvl || 1) !== S.v77lv) { S.v77lv = S.lvl || 1; retoEv("level", null, S.v77lv); }
+    const mn = Math.floor(Math.max(0, S.t - S.escT0) / 60); if (mn !== S.v77min) { S.v77min = mn; retoEv("time", null, mn); }
+    // bosses: note the hearts when the fight starts, judge when the arena opens
+    const A = S.arena;
+    if (A && A.state === "fight" && S.v77arena !== A) { S.v77arena = A; A.v77 = { hp: S.hp, hurt: false, z: Math.min(4, escBiomeAt(S.t - S.escT0)) }; }
+    if (A && A.v77 && A.state === "fight" && S.hp < A.v77.hp) A.v77.hurt = true;
+    if (A && A.v77 && A.state === "done" && !A.v77.end) { A.v77.end = true; (S.v77boss = S.v77boss || []).push(A.v77.z); retoEv("boss", null, 1); retoEv("bossx", A.v77.z, 1); if (!A.v77.hurt) retoEv("nohit", null, 1); }
+  } catch (e) { errLog(e.message, "v77Tick"); }
+};
+function retoRows(R, mini) {
+  return R.list.map(it => { const t = retoTpl(it), f = Math.min(1, (it.p || 0) / it.n);
+    return `<div class="reto${it.done ? " done" : ""}${mini ? " mini" : ""}"><span class="skulls sk${it.d + 1}">${[0, 1, 2].map(i => SKULL_SVG(i <= it.d)).join("")}</span>
+      <b>${retoText(it)}</b>${it.done ? pxi("check", "#9be07a", 2) : `<small>${Math.floor(it.p || 0)}/${it.n}</small>`}
+      ${mini ? "" : `<em>${t && t.one ? Lx("en una partida", "in one run") : Lx("suma en varias partidas", "adds up across runs")}</em>`}${pxBar(f)}</div>`; }).join("");
+}
+function showRetos() {
+  const R = retos(); saveMeta0(); S.mode = S.mode === "title" ? "title" : S.mode;
+  const d = new Date(), dd = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
+  ov.hidden = false; ov.classList.remove("dead");
+  ov.innerHTML = `<div class="menu setpage retos"><h2>${pxi("target", "#e0566b", 2)} ${Lx("RETOS DE HOY", "TODAY'S CHALLENGES")}</h2>
+    <p class="rsub">${dd} · ${Lx("los mismos para todos, se renuevan a medianoche", "the same for everyone, new ones at midnight")}</p>
+    <div class="rlist">${retoRows(R)}</div>
+    <p class="rsum">${Lx("Completados", "Completed")}: <b>${R.total || 0}</b> · ${Lx("Días con los 3", "Days with all 3")}: <b>${R.full || 0}</b> · ${Lx("Racha", "Streak")}: <b>${dailyStreak()}</b></p>
+    <div class="mlabel">${Lx("MARCOS PARA COMPARTIR", "SHARE CARD FRAMES")}</div>
+    <div class="rframes">${RETO_FRAMES.map(([need, c, nm]) => { const ok = (R.total || 0) >= need; return `<div class="rframe${ok ? " ok" : ""}" style="--fc:${c}"><i></i><b>${nm[LANG === "en" ? 1 : 0]}</b>${ok ? "" : `<small>${Math.min(R.total || 0, need)}/${need} ${Lx("retos", "challenges")}</small>`}</div>`; }).join("")}</div>
+    <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
+  paintPxi(ov); ov.scrollTop = 0;
+  document.getElementById("backBtn").onclick = () => { omfSfx("click"); showTitle(); };
+}
+
+// ---------- C. share card (1080 x 1080, whole-pixel scale) ----------
+function frameColor() { const t = (META.retos && META.retos.total) || 0; let c = "#4a4470"; for (const [need, col] of RETO_FRAMES) if (t >= need) c = col; return c; }
+function shareCard(D) {
+  const c = document.createElement("canvas"); c.width = c.height = 1080; const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+  const B = BIOMES[Math.min(4, D.biome || 0)] || BIOMES[0], K = 6;
+  g.fillStyle = B.bgB; g.fillRect(0, 0, 1080, 1080);
+  for (let y = 0; y < 1080; y += 8 * K) for (let x = -((y / (8 * K)) % 2) * 8 * K; x < 1080; x += 16 * K) { g.fillStyle = B.stone; g.fillRect(x, y, 16 * K - K, 8 * K - K); g.fillStyle = B.edge; g.fillRect(x, y, 16 * K - K, K); }
+  g.fillStyle = "rgba(10,8,18,.55)"; g.fillRect(0, 0, 1080, 1080);
+  const fc = frameColor(); g.fillStyle = "#0b0912"; g.fillRect(24, 24, 1032, 1032); g.fillStyle = fc; g.fillRect(36, 36, 1008, 1008); g.fillStyle = B.bgA; g.fillRect(48, 48, 984, 984);
+  const L = window.OMF_LOGO_I; if (L && L.img) { const k = Math.max(1, Math.floor(600 / L.w)); g.drawImage(L.img, Math.round((1080 - L.w * k) / 2), 80, L.w * k, L.h * k); }
+  let fr = null; try { fr = heroFrame(D.skin, "idle", 0); } catch (_) {}
+  const floorY = 690;
+  g.fillStyle = "#2a2640"; g.fillRect(340, floorY, 400, 24); g.fillStyle = "#4a4470"; g.fillRect(340, floorY, 400, 6);
+  if (fr) g.drawImage(fr, 0, 6, 16, 26, 540 - 64, floorY - 208, 128, 208);
+  g.textAlign = "center"; g.textBaseline = "alphabetic";
+  const out = (txt, x, y, px, col, o) => { g.font = px + "px Silkscreen, monospace"; g.fillStyle = "#0b0912"; for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [o, o]]) g.fillText(txt, x + dx, y + dy); g.fillStyle = col; g.fillText(txt, x, y); };
+  out(D.m + " m", 540, 830, 130, "#f2c14e", 8);
+  const tm = Math.floor(D.time / 60) + ":" + String(Math.floor(D.time % 60)).padStart(2, "0");
+  out(tm + " · " + B.name.toUpperCase(), 540, 890, 38, "#ece6ff", 4);
+  const extra = [D.daily ? Lx("RETO DIARIO ", "DAILY ") + D.daily : "", D.mode, D.boss ? Lx("JEFE: ", "BOSS: ") + D.boss : ""].filter(Boolean).join(" · ");
+  if (extra) out(extra, 540, 942, 28, "#5fd1c4", 3);
+  if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; g.fillText(RULE[id] ? RULE[id].icon : "?", x0 + i * w, 340); }); }
+  out("One More Floor: Escape", 540, 1008, 26, "#a39cc4", 3);
+  return c;
+}
+function runCardData() {
+  const d = new Date(), mods = [...new Set((S.escMods || []).map(m => m.id).concat(S.v77surv || []))].filter(id => RULE[id]).slice(0, 8);
+  const z = Math.min(4, escBiomeAt(Math.max(0, S.t - S.escT0))), bz = (S.v77boss || []).slice(-1)[0];
+  return { m: S.escBest || 0, time: Math.max(0, S.t - S.escT0), skin: heroesOn() ? heroSkinOf(S.char.id) : S.char.id, biome: z, mods,
+    boss: bz != null && BOSSN[bz] ? BOSSN[bz][LANG === "en" ? 1 : 0].replace(/^(la|el|the) /i, "").toUpperCase() : "",
+    daily: S.daily ? String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") : "",
+    mode: S.easy ? Lx("FÁCIL", "EASY") : S.horde ? Lx("HORDA", "HORDE") : "" };
+}
+async function shareRun() {
+  omfSfx("click");
+  let cnv; try { cnv = shareCard(runCardData()); } catch (e) { errLog(e.message, "shareCard"); return; }
+  const url = cnv.toDataURL("image/png"), blob = await new Promise(r => cnv.toBlob(r, "image/png"));
+  const el = document.createElement("div"); el.className = "sharepop"; el.id = "sharePop";
+  el.innerHTML = `<img src="${url}" alt="${Lx("Tarjeta de tu partida", "Your run card")}"><p id="shMsg">${Lx("Mantén pulsada la imagen para guardarla.", "Long-press the image to save it.")}</p>
+    <div class="ctlsel"><button id="shGo">${pxi("share", "#5fd1c4", 2)} ${Lx("COMPARTIR", "SHARE")}</button><button id="shSave">${Lx("GUARDAR", "SAVE")}</button><button id="shClose">OK</button></div>`;
+  document.body.appendChild(el); paintPxi(el);
+  const file = blob ? new File([blob], "one-more-floor-escape.png", { type: "image/png" }) : null, msg = el.querySelector("#shMsg");
+  const canShare = !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+  if (!canShare) el.querySelector("#shGo").hidden = true;
+  el.querySelector("#shGo").onclick = async () => { try { await navigator.share({ files: [file], text: "One More Floor: Escape" }); } catch (e) { if (!(e && e.name === "AbortError")) msg.textContent = Lx("No se pudo compartir; guárdala.", "Couldn't share; save it."); } };
+  el.querySelector("#shSave").onclick = () => { try { const a = document.createElement("a"); a.href = blob ? URL.createObjectURL(blob) : url; a.download = "one-more-floor-escape.png"; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); }, 1500); msg.textContent = Lx("Imagen guardada en Descargas.", "Image saved to Downloads."); } catch (_) {} };
+  el.querySelector("#shClose").onclick = () => { omfSfx("click"); el.remove(); };
+}
+var showDead0 = showDead;
+showDead = function () {
+  showDead0();
+  if (!S.escape || S.test || S.lab) return;
+  try {
+    const tools = ov.querySelector(".menu > .tools"); if (tools && !document.getElementById("shareBtn")) { const b = document.createElement("button"); b.id = "shareBtn"; b.innerHTML = `${pxi("share", "#5fd1c4", 2)} <span>${Lx("Compartir", "Share")}</span>`; tools.insertBefore(b, tools.firstChild); paintPxi(b); b.onclick = shareRun; }
+    const lb = ov.querySelector("#lbBox"), R = retos();
+    if (lb && R.list.length) { const box = document.createElement("div"); box.innerHTML = `<div class="mlabel">${Lx("RETOS DE HOY", "TODAY'S CHALLENGES")}</div><div class="rlist">${retoRows(R, true)}</div>`; lb.parentNode.insertBefore(box, lb); paintPxi(box); }
+  } catch (e) { errLog(e.message, "deadExtras"); }
+};
+PGS_FEATS.push(["r10", "10 retos", "Completa 10 retos diarios.", () => ((META.cnt && META.cnt.retos) || 0) / 10], ["r50", "50 retos", "Completa 50 retos diarios.", () => ((META.cnt && META.cnt.retos) || 0) / 50]);
+Object.assign(EN_TEXT, { "Ranking": "Leaderboard", "Retos": "Challenges", "10 retos": "10 challenges", "50 retos": "50 challenges", "Completa 10 retos diarios.": "Complete 10 daily challenges.", "Completa 50 retos diarios.": "Complete 50 daily challenges." });
+window.__v77 = { retos, retoGen, retoRows, retoEv, shareCard, runCardData, applyBlob, saveBlob, exportCode, importCode, mergeObj, errList };
+if (S && S.mode === "title" && ov && ov.querySelector(".etitle")) showTitle();
+
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>

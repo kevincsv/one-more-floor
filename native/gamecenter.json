@@ -394,6 +394,24 @@
    "cond_en": "Climb 150 m on 1 heart",
    "points": 30,
    "hidden": false
+  },
+  {
+   "id": "r10",
+   "es": "Retador",
+   "en": "Challenger",
+   "cond_es": "Completa 10 retos diarios",
+   "cond_en": "Complete 10 daily challenges",
+   "points": 10,
+   "hidden": false
+  },
+  {
+   "id": "r50",
+   "es": "Constante",
+   "en": "Dedicated",
+   "cond_es": "Completa 50 retos diarios",
+   "cond_en": "Complete 50 daily challenges",
+   "points": 15,
+   "hidden": false
   }
  ]
 }
