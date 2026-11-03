@@ -36,6 +36,21 @@ jobs:
           sed -i '' "s/platform :ios, '1[34].0'/platform :ios, '15.0'/" ios/App/Podfile
           grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 15.0' ios/App/App.xcodeproj/project.pbxproj
           npx cap sync ios
+          # Pantalla de arranque lisa #100e1a (se funde con el splash del juego)
+          for f in ios/App/App/Assets.xcassets/Splash.imageset/*.png; do cp pwa-assets/splash-2732.png "$f"; done
+          sed -i '' 's/<color key="backgroundColor"[^>]*\/>/<color key="backgroundColor" red="0.0627" green="0.0549" blue="0.102" alpha="1" colorSpace="custom" customColorSpace="sRGB"\/>/g' ios/App/App/Base.lproj/LaunchScreen.storyboard
+          # Audio: categoría ambient para que vuelva tras interrupciones y respete el silencio
+          python3 - <<'PY'
+          p = "ios/App/App/AppDelegate.swift"
+          s = open(p).read()
+          if "AVAudioSession" not in s:
+              s = s.replace("import UIKit", "import UIKit\nimport AVFoundation", 1)
+              s = s.replace("launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {",
+                            "launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {\n        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])\n        try? AVAudioSession.sharedInstance().setActive(true)", 1)
+              assert "AVAudioSession" in s, "No encontré didFinishLaunching en AppDelegate.swift"
+              open(p, "w").write(s)
+          print("AppDelegate con AVAudioSession .ambient")
+          PY
           cp pwa-assets/icon-1024.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" ios/App/App/Info.plist
