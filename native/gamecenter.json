@@ -11,7 +11,7 @@
   },
   {
    "id": "time",
-   "formatter": "ELAPSED_TIME_MILLISECOND",
+   "formatter": "ELAPSED_TIME_CENTISECOND",
    "en": "Escape · Time",
    "es": "Escape · Tiempo"
   },

@@ -103,7 +103,9 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         guard let id = gcId(call.getString("board")),
               let score = call.getDouble("score") else { call.resolve(result(false)); return }
         guard GKLocalPlayer.local.isAuthenticated else { call.resolve(result(false)); return }
-        GKLeaderboard.submitScore(Int(score), context: 0, player: GKLocalPlayer.local, leaderboardIDs: [id]) { error in
+        // El juego manda el tiempo en ms (como Android); Game Center lo guarda en centésimas.
+        let value = id == prefix + "time" ? Int(score / 10) : Int(score)
+        GKLeaderboard.submitScore(value, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [id]) { error in
             call.resolve(self.result(error == nil, error.map { ["error": $0.localizedDescription] } ?? [:]))
         }
     }
