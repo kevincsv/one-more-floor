@@ -2802,7 +2802,9 @@ function sprDrawGhost(e, white) {
   if (st === "lunge") { const vx = e.vx || 0, vy = e.vy || 0, back = vx < 0; if (back) ctx.scale(-1, 1); ctx.rotate(Math.max(-0.5, Math.min(0.5, Math.atan2(vy, Math.abs(vx) || 1)))); dx = -(cv.width - 9) * A; }
   else if (S.player && S.player.x + S.player.w / 2 < cx) ctx.scale(-1, 1); // face the player (art faces right)
   ctx.drawImage(cv, dx, -cv.height * A / 2, cv.width * A, cv.height * A);
-  if (white) { ctx.globalCompositeOperation = "source-atop"; ctx.globalAlpha = 0.85; ctx.fillStyle = "#ffffff"; ctx.fillRect(dx, -cv.height * A / 2, cv.width * A, cv.height * A); }
+  if (white) { // v119 (user): a white silhouette of the ghost itself, not a white box over the background
+    const wc = cv._white || (cv._white = (() => { const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height; const g = c.getContext("2d"); g.drawImage(cv, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height); return c; })());
+    ctx.globalAlpha = 0.85 * fade; ctx.drawImage(wc, dx, -cv.height * A / 2, cv.width * A, cv.height * A); }
   ctx.restore();
   return true;
 }
@@ -10613,7 +10615,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v118";
+var OMF_VER = "Escape v119";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
