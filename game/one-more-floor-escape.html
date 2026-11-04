@@ -4310,11 +4310,11 @@ function storyVignette(v, done, kicker) {
   const show = () => {
     ov.innerHTML = `<div class="vign" style="--vc:${v.c}"><div class="vk">${T(kicker || "")}</div><h2>${T(v.t)}</h2>
       <div class="vp">${v.p.map((ph, k) => `<p class="${k < i ? "seen" : k === i ? "now" : ""}">${T(ph)}</p>`).join("")}</div>
-      <button class="go" id="vSkip">${i < v.p.length - 1 ? T("Saltar escena") : T("Seguir")}</button></div>`;
+      ${i < v.p.length - 1 ? `<div class="vbtns"><button id="vSkip">${T("Saltar escena")}</button><button class="go" id="vNext">${T("Continuar")}</button></div>` : `<button class="go" id="vSkip">${T("Seguir")}</button>`}</div>`;
     if (v.art && typeof huArtRun === "function") { ov.querySelector(".vk").insertAdjacentHTML("afterend", `<canvas class="vart" width="160" height="90" data-i="${i}"></canvas>`); huArtRun(v); } // v93: painted vignette
     document.getElementById("vSkip").onclick = ev => { ev.stopPropagation(); finish(); };
-    ov.onclick = () => next();
-    timer = setTimeout(next, 2300);
+    { const nb = document.getElementById("vNext"); if (nb) nb.onclick = ev => { ev.stopPropagation(); next(); }; }
+    ov.onclick = () => { if (i < v.p.length - 1) next(); }; /* v111 (user): the story never moves on by itself, only on SALTAR / CONTINUAR (or a tap) */
   };
   const next = () => { if (ended) return; clearTimeout(timer); if (i >= v.p.length - 1) { finish(); return; } i++; show(); };
   show();
@@ -10586,7 +10586,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v110";
+var OMF_VER = "Escape v111";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10968,14 +10968,14 @@ var PAY_NATIVE = (() => { try { const C = window.Capacitor; return !!(C && C.isN
 var PAY_TEST = (() => { try { return localStorage.getItem("omf-paytest") === "1"; } catch (_) { return false; } })(); // PRUEBAS: try the free version anywhere
 var PAY_ON = (PAY_NATIVE || PAY_TEST) && !(window.NL_VERSION || window.Neutralino || window.OMF_PC);
 var STOREP = (() => { try { return PAY_NATIVE ? window.Capacitor.registerPlugin("EscapeStore") : null; } catch (_) { return null; } })();
-var fullPrice = "3,99 US$";
+var fullPrice = ""; /* v111 (user): only the App Store's own price string (their storefront currency); no guessed currency */
 function fullOwned() { if (!PAY_ON) return true; return PAY_TEST ? !!(META && META.fullTest) : !!(META && META.full); }
 function heroPaidOk(id) { return true; } function heroPaidOk0(id) { return id === "velo" || fullOwned(); }
 function storeCall(m, a) { try { const r = STOREP && STOREP[m](a || {}); return r && r.then ? r : Promise.reject(new Error("no store")); } catch (e) { return Promise.reject(e); } }
 function setFull(v) { if (PAY_TEST) META.fullTest = v; else META.full = v; saveMeta0(); }
 if (PAY_ON && !PAY_TEST && STOREP) {
   storeCall("owned").then(r => { const was = fullOwned(); setFull(!!(r && r.owned)); if (was !== fullOwned() && S && S.mode === "title" && !ov.hidden && ov.querySelector(".etitle")) showTitle(); }).catch(() => {});
-  storeCall("products").then(r => { if (r && r.price) fullPrice = String(r.price); else if (r && r.error) errLog(String(r.error).slice(0, 200), "store:products"); }).catch(e => errLog(String(e && e.message || e).slice(0, 200), "store:products"));
+  storeCall("products").then(r => { if (r && r.price) { fullPrice = String(r.price); fullPriceInfo = r; } else if (r && r.error) errLog(String(r.error).slice(0, 200), "store:products"); }).catch(e => errLog(String(e && e.message || e).slice(0, 200), "store:products"));
   // purchases that finish outside the app (Ask to Buy approval, refunds)
   try { const l = STOREP.addListener("ownedChanged", r => { const was = fullOwned(); setFull(!!(r && r.owned)); if (was !== fullOwned()) { if (fullOwned()) toast(Lx("¡Escape completo desbloqueado!", "Full Escape unlocked!")); if (S && S.mode === "title" && !ov.hidden) { if (ov.querySelector(".fullpg")) showFull(); else if (ov.querySelector(".etitle")) showTitle(); } } }); if (l && l.catch) l.catch(() => {}); } catch (_) {}
 }
@@ -10992,7 +10992,7 @@ function showFull(why) {
     ${why === "horde" ? `<p class="hordelock">${pxi("lock", "#f2c14e", 2)}<span>${Lx("HORDA se desbloquea al terminar La Huida (modo historia) en Normal o Hardcore. O ahora mismo, con Escape completo.", "HORDE unlocks when you finish La Huida (story mode) on Normal or Hardcore. Or right now, with Full Escape.")}</span></p>` : ""}
     <ul class="fulllist">${row("swords", "#e0566b", "Modo HORDA (también se gana con la historia)", "HORDE mode (also earned through the story)")}${row("up", "#f2c14e", "Kai y Nyx, con sus armas", "Kai and Nyx, with their weapons")}${row("hanger", "#5fd1c4", "Todos los aspectos del armario", "Every look in the wardrobe")}${row("check", "#9be07a", "Todo lo que llegue en el futuro", "Everything that comes later")}</ul>
     <p class="rsub">${Lx("Gratis para siempre: Escape, Fácil, Reto diario, Velo y los aspectos que ganas con logros.", "Free forever: Escape, Easy, Daily, Velo and the looks you earn with feats.")}</p>
-    ${got ? `<p class="fullok">${pxi("check", "#9be07a", 2)} ${Lx("¡Ya lo tienes todo!", "You have it all!")}</p>` : `<div class="rowbig"><button class="go" id="buyBtn">${Lx("COMPRAR", "BUY")} · ${fullPrice}</button></div>`}
+    ${got ? `<p class="fullok">${pxi("check", "#9be07a", 2)} ${Lx("¡Ya lo tienes todo!", "You have it all!")}</p>` : `<div class="rowbig"><button class="go" id="buyBtn">${Lx("COMPRAR", "BUY")}${fullPrice ? " · " + fullPrice : ""}</button></div>`}
     <p class="bkmsg" id="fullMsg"></p>
     <div class="ctlsel"><button id="restBtn">${Lx("RESTAURAR COMPRA", "RESTORE PURCHASE")}</button><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov); ov.scrollTop = 0;
@@ -12017,7 +12017,7 @@ addEventListener("keydown", e => { if (!ov || ov.hidden || !ov.querySelector(".s
 { const sf0 = showFull; showFull = function () { const r = sf0.apply(this, arguments); try { const li = ov.querySelectorAll(".fulllist li span"); if (li[1]) li[1].textContent = Lx("Kai, Nyx y Brisa, con sus armas", "Kai, Nyx and Brisa, with their weapons"); if (li[2]) li[2].textContent = Lx("Todos los aspectos de logros (los de la tienda van con monedas)", "Every feat look (shop looks are bought with coins)"); } catch (_) {} return r; }; }
 if (typeof ESC_PI === "object" && !ESC_PI.coin) ESC_PI.coin = ["..#####..", ".#.....#.", "#..###..#", "#.#...#.#", "#.#.....#", "#.#...#.#", "#..###..#", ".#.....#.", "..#####.."];
 (() => { const st = document.createElement("style"); st.textContent = `
-.shoppg{max-width:460px} .shoppg h2{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap} .shoppg .sbank{color:#f2c14e;font-size:14px;margin-left:8px}
+.vign .vbtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap} .vign .vbtns button{min-width:130px} .shoppg{max-width:460px} .shoppg h2{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap} .shoppg .sbank{color:#f2c14e;font-size:14px;margin-left:8px}
 .shoppg .soffer{margin:4px 0 8px;padding:5px 8px;background:#3a2a12;box-shadow:0 0 0 2px #f2c14e;color:#f2c14e;font-size:11px}
 .shoppg .stabs{display:flex;gap:6px;justify-content:center;margin:6px 0} .shoppg .stabs button{flex:1;max-width:160px} .shoppg .stabs button[aria-selected="true"]{background:#f2c14e;color:#1b1430}
 .shoppg .sgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:96px;min-height:300px;align-content:start;gap:6px;margin:6px 0}
@@ -12035,6 +12035,13 @@ if (typeof ESC_PI === "object" && !ESC_PI.coin) ESC_PI.coin = ["..#####..", ".#.
 .shoppg .smodal[hidden]{display:none} .shoppg .smodal>div{background:#1d1830;box-shadow:0 0 0 3px #f2c14e;padding:16px 18px;text-align:center} .shoppg .smodal p{color:#ece8f5;font-size:12px;line-height:1.6}
 .etitle .shopmode .mt{color:#f2c14e} .shopblink{animation:shopbl 1s steps(1) infinite} @keyframes shopbl{50%{box-shadow:0 0 0 2px #f2c14e}}
 .cn{display:inline-block;width:8px;height:8px;margin:0 3px 0 1px;vertical-align:-1px;background:#f2c14e;box-shadow:inset -2px -2px 0 #b8862a,inset 2px 2px 0 #ffe9a0} .bankln{font-size:11px;color:#c9c3e6;margin:6px 0} .bankln .coin,.bankln b{color:#f2c14e}`; document.head.appendChild(st); })();
+
+// v111 (user: "me salen euros cuando mi cuenta es GBP"): the price is asked again each time the Full Escape screen opens,
+// so it always follows the App Store account's current storefront; the button shows no price until StoreKit answers.
+var fullPriceInfo = null;
+{ const sfp0 = showFull; showFull = function () { const r = sfp0.apply(this, arguments);
+    try { if (PAY_ON && !PAY_TEST && STOREP) storeCall("products").then(p => { if (!p || !p.price) return; fullPrice = String(p.price); fullPriceInfo = p; const b = document.getElementById("buyBtn"); if (b) b.textContent = Lx("COMPRAR", "BUY") + " · " + fullPrice; }).catch(() => {}); } catch (_) {}
+    return r; }; }
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
