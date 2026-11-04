@@ -2096,6 +2096,7 @@ function genEscSegment() {
     for (let i = 0; i < nf; i++) { const fx = rri(R, 2, LW - 3), fy = rri(R, top, startRow - 3), kind = f >= 2 && R() < 0.4 ? (tier >= 2 && R() < 0.35 ? "wisp" : "ghost") : "bat";
       if (kind === "bat" && g[fy] && g[fy][fx] !== 0) continue; // bats never start inside a wall (ghosts pass through anyway)
       S.enemies.push(mkEnemy(kind, fx * TS, fy * TS)); }
+    escTidySeg(top, startRow, save.mv.length, save.sp.length, save.co.length); // v109 (user): no platform stacked on another, no coin on a spike
     if (escSegmentOk(startRow, row, eg.main, main)) { eg.row = row; eg.prev = prev; eg.drift = drift; eg.main = main; break; }
     if (attempt === 13) { // never leave a dead end: a ladder from the start ledge up past the new top ledge
       const lx = clamp(main[0] - 1 >= 1 ? main[0] - 1 : main[1] + 1, 1, LW - 2);
@@ -10591,7 +10592,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v108";
+var OMF_VER = "Escape v109";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11819,6 +11820,39 @@ function dgHit(e, dir) {
 // v108 (user): HORDA unlocks by finishing La Huida on Normal or Hardcore, or with Full Escape; a locked tap says so
 function hordeOk() { if (fullOwned()) return true; try { const M = huM(); return !!(M.best && (M.best.n || M.best.h)) || !!M.hardDone; } catch (_) { return false; } }
 (() => { const st = document.createElement("style"); st.textContent = '.fullpg .hordelock{display:flex;gap:10px;align-items:center;text-align:left;margin:8px auto 12px;max-width:420px;padding:8px 10px;background:#2a1f12;box-shadow:0 0 0 2px #f2c14e;color:#f2c14e;font-size:12px;line-height:1.4}.fullpg .hordelock .pxi,.fullpg .hordelock canvas,.fullpg .hordelock img{flex:none}'; document.head.appendChild(st); })();
+// ===== v109 (user): "Que no se puedan generar plataforma una encima de la otra" + coins never on a spike + coins from a
+// ghost killed inside a wall fall out instead of floating in it.
+// 1) A moving/special platform (purple crumble, blink, flip, slider, light, ghost steps, roots, pistons) owns its rows: any plain
+//    ledge tile generated on the same row, or right above or below it, inside its span is removed (with the spikes on it).
+//    Two special platforms on top of each other: the later one is dropped. The segment is still validated afterwards.
+// 2) Coins that share a tile with a spike are moved off it (or removed if there is no free spot next to them).
+function escTidySeg(top, startRow, mv0, sp0, co0) {
+  const g = S.grid, LW = S.LW, tile = v => Math.floor(v / TS);
+  const span = m => m.kind === "move" ? [tile(m.bx != null ? m.bx : m.x), tile((m.bx != null ? m.bx : m.x) + m.w + (m.ax || 0) - 1)] : m.fw ? [tile(m.fx), tile(m.fx + m.fw - 1)] : [tile(m.x), tile(m.x + m.w - 1)];
+  const fresh = S.movers.slice(mv0).filter(m => m.esc && m.kind !== "fake" && m.kind !== "sw");
+  const keep = [];
+  for (const m of fresh) { const r = tile(m.y), [a, b] = span(m);
+    if (keep.some(k => { const rk = tile(k.y), [ka, kb] = span(k); return Math.abs(rk - r) <= 1 && a <= kb + 1 && ka <= b + 1; })) { S.movers.splice(S.movers.indexOf(m), 1); continue; }
+    keep.push(m);
+    for (let y = r - 1; y <= r + 1; y++) { if (y < top - 1 || y >= startRow || !g[y]) continue;
+      for (let x = Math.max(1, a); x <= Math.min(LW - 2, b); x++) if (g[y][x] === 1 || g[y][x] === 6) { g[y][x] = 0; S.spikes = S.spikes.filter(sp => !(sp.tx === x && sp.ty === y - 1)); } } }
+  const spk = new Set(S.spikes.map(sp => sp.tx + "," + sp.ty));
+  for (let i = S.coinsL.length - 1; i >= co0; i--) { const c = S.coinsL[i], tx = tile(c.x + c.w / 2), ty = tile(c.y + c.h / 2); if (!spk.has(tx + "," + ty)) continue;
+    let moved = false; for (const d of [1, -1, 2, -2]) { const nx = tx + d; if (nx >= 1 && nx <= LW - 2 && !spk.has(nx + "," + ty) && g[ty] && g[ty][nx] === 0 && g[ty + 1] && g[ty + 1][nx] !== 0) { c.x += d * TS; moved = true; break; } }
+    if (!moved) S.coinsL.splice(i, 1); }
+}
+// 3) loot from an enemy that dies inside a wall (ghosts drift through walls) pops out to the nearest open tile and falls from there
+function escUnstick(o) {
+  const cx = o.x + (o.w || 0) / 2, cy = o.y + (o.h || 0) / 2; if (!solid(cx, cy)) return;
+  const tx = Math.floor(cx / TS), ty = Math.floor(cy / TS);
+  for (let r = 1; r <= 8; r++) for (const [dx, dy] of [[r, 0], [-r, 0], [0, -r], [r, -r], [-r, -r], [0, r], [r, r], [-r, r]]) {
+    const nx = tx + dx, ny = ty + dy; if (nx < 1 || nx > S.LW - 2 || !S.grid[ny] || solid(nx * TS + TS / 2, ny * TS + TS / 2)) continue;
+    o.x = nx * TS + TS / 2 - (o.w || 0) / 2; o.y = ny * TS + TS / 2 - (o.h || 0) / 2; if (o.vx != null) o.vx = 0; if (o.vy != null) o.vy = 0; return; }
+}
+{ const k0 = kill; kill = function (e, src) { const n0 = S.coinsL.length, x0 = (S.xpOrbs || []).length, i0 = (S.items || []).length; const r = k0.apply(this, arguments);
+    try { for (let i = n0; i < S.coinsL.length; i++) escUnstick(S.coinsL[i]); for (let i = x0; i < (S.xpOrbs || []).length; i++) escUnstick(S.xpOrbs[i]); for (let i = i0; i < (S.items || []).length; i++) escUnstick(S.items[i]); } catch (er) { errLog(er.message, "unstick"); }
+    return r; }; }
+
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
