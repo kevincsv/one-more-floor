@@ -774,7 +774,7 @@ const RULES = [
   { id: "broken", cat: "per", name: "Pantalla rota", icon: "\u2592", cost: 1, desc: "No ves tu vida, tu oro ni el tiempo." },
   { id: "blackout", cat: "per", name: "Apagón", icon: "\u25A0", cost: 2, desc: "La pantalla se pone negra 1 s cada 5 s. El juego sigue." },
   { id: "liar", cat: "per", name: "Mentiroso", icon: "\u2048", cost: 1, desc: "Una de las reglas del piso está oculta durante los primeros 15 s." },
-  { id: "vamp", cat: "com", name: "Vampiro", icon: "\u2625", cost: 2, desc: "Pierdes un corazón cada 8 s (nunca el último). Cada enemigo que vences te cura." },
+  { id: "vamp", cat: "com", name: "Vampiro", icon: "\u2625", cost: 2, desc: "Pierdes un corazón cada 10 s (Fácil 15 s, Hardcore 8 s; nunca el último). Cada enemigo que vences te cura." },
   { id: "ammo", cat: "com", name: "Munición", icon: "\u2059", cost: 2, desc: "Solo 5 ataques. Se recargan al tocar el suelo." },
   { id: "shields", cat: "com", name: "Escudos", icon: "\u26E8", cost: 2, desc: "Todos los enemigos se cubren por delante: golpéalos por detrás o desde arriba." },
   { id: "recoil", cat: "com", name: "Retroceso", icon: "\u21DC", cost: 1, desc: "Cada golpe te empuja con fuerza en sentido contrario." },
@@ -2509,7 +2509,7 @@ function freeBox(x, y, w, h) {
 function initRuleState() {
   const R = S.rng, p = S.player, Gr = S.graph;
   S.floorT = 0; S.wt = S.wt || 0; S.ws = 1; S.ammo = 5; S.huntT = 0; S.grow = 1; S.tail = []; S.ptrail = []; S.crumbs = new Map(); S.debris = [];
-  S.vampT = 8; S.quakeT = 10; S.shake = 0; S.sweepT = 8; S.sweep = null; S.sirenT = 6; S.siren = 0; S.sirenPull = 0; S.debT = 3.5; S.swc = 0;
+  S.vampT = vampEvery(); S.quakeT = 10; S.shake = 0; S.sweepT = 8; S.sweep = null; S.sirenT = 6; S.siren = 0; S.sirenPull = 0; S.debT = 3.5; S.swc = 0;
   S.beast = null; S.shadowE = null; S.portals = []; S.orbs = []; S.liarHide = null; S.halfHit = false;
   const pathAt = fr => { if (!Gr || !Gr.path.length) return null; const k = Gr.path[Math.floor(clamp(fr, 0, 0.999) * Gr.path.length)]; return { x: (k % Gr.LW) * TS, y: Math.floor(k / Gr.LW) * TS }; };
   if (has("decoy")) S.enemies.forEach((e, i) => { if (!e.boss && !e.critter && R() < 0.5) { e.decoy = true; e.cd = 1e9; } });
@@ -2532,7 +2532,7 @@ function initRuleState() {
 }
 function updateRules(dt, dtW, p) {
   S.floorT += dt; achTick(dt, p); sfxTick(dt, p);
-  if (has("vamp")) { S.vampT -= dtW; if (S.vampT <= 0) { S.vampT = 8; if (S.hp > 1) { S.hp--; burst(p.x + p.w / 2, p.y + p.h / 2, "#8a1f35", 8); toast("Vampiro: −1 corazón"); } } }
+  if (has("vamp")) { S.vampT -= dtW; if (S.vampT <= 0) { S.vampT = vampEvery(); if (S.hp > 1) { S.hp--; burst(p.x + p.w / 2, p.y + p.h / 2, "#8a1f35", 8); toast("Vampiro: −1 corazón"); } } }
   if (has("ammo") && (p.ground || p.climb)) S.ammo = 5;
   S.huntT = Math.max(0, S.huntT - dt);
   if (S.liarHide && S.floorT > 15) { toast("Mentiroso: la regla oculta era " + RULE[S.liarHide].name); S.liarHide = null; updateHud(true); }
@@ -3106,7 +3106,7 @@ function update(dt) {
   if (has("gold")) sp *= Math.max(0.5, 1 - S.carry * (rel("bolsa") ? 0.015 : 0.03));
   if (water) sp *= 0.6;
   if (has("charge") && (p.charge || 0) > 0) sp *= 0.35;
-  const target = dirIn * sp + (has("wind") && !trk("ancla") ? S.wind * 85 : 0) + (S.sirenPull || 0) * 120;
+  const target = dirIn * sp + (has("wind") && !trk("ancla") ? S.wind * (has("ice") ? Math.min(28, sp * 0.18) : Math.min(55, sp * 0.35)) : 0) /* v100 (user): hard cap 55 px/s, and on Ice only 28 (user: sometimes you could not walk against it): wind is at most 35% of your speed, was 85 */ + (S.sirenPull || 0) * 120;
   const gk = has("glutton") ? S.grow || 1 : 1;
   const sw = Math.round((has("shrink") ? 10 : 16) * gk), sh = Math.round((has("shrink") ? 13 : 22) * gk);
   if (p.w !== sw) { if (S.gdir > 0) p.y += p.h - sh; p.x += (p.w - sw) / 2; p.w = sw; p.h = sh; }
@@ -3203,7 +3203,7 @@ function update(dt) {
   const conv = under === 4 ? 280 : under === 5 ? -280 : 0;
   p.vx += conv;
   const wasGround = p.ground, pvy = p.vy, pvx = p.vx;
-  if (has("wind") && !p.ground && !trk("ancla")) p.vx += S.wind * 140 * dt;
+  if (has("wind") && !p.ground && !trk("ancla")) p.vx += S.wind * (has("ice") ? 30 : 60) * dt; // v100: was 140, it beat your air control
   move(p, dt);
   p.vx -= conv;
   holeAssist(p);
@@ -4811,7 +4811,7 @@ const EN_RULES = {
   broken: ["Broken screen", "You can't see your health, gold or time."],
   blackout: ["Blackout", "The screen goes black for 1 s every 5 s. The game keeps running."],
   liar: ["Liar", "One of the floor's rules is hidden for the first 15 s."],
-  vamp: ["Vampire", "You lose a heart every 8 s (never the last). Each enemy you defeat heals you."],
+  vamp: ["Vampire", "You lose a heart every 10 s (Easy 15 s, Hardcore 8 s; never the last). Each enemy you defeat heals you."],
   ammo: ["Ammo", "Only 5 attacks. They reload when you touch the ground."],
   shields: ["Shields", "Every enemy guards its front: hit them from behind or above."],
   recoil: ["Recoil", "Every hit knocks you hard the other way."],
@@ -7497,9 +7497,10 @@ sprDrawEnemy = function (e, p, white, bobY) {
 };
 sprDeathFx = function (e) {
   const out = sprb3PrevDeath(e);
-  if (e && e.boss && SPRB3[SPRB3_BOSS[sprZone()] + "_death"]) {
+  const dk = (e && e.bp && e.bp.kind) || SPRB3_BOSS[sprZone()];
+  if (e && e.boss && SPRB3[dk + "_death"]) {
     S._sprplCorpse = null;
-    S._sprb3Corpse = { key: SPRB3_BOSS[sprZone()] + "_death", x: e.x + e.w / 2, y: (S.gdir || 1) < 0 ? e.y : e.y + e.h, vf: (S.gdir || 1) < 0, face: Math.sign((S.player ? S.player.x : 0) - e.x) || 1, t0: S.t, floor: S.floor };
+    S._sprb3Corpse = { key: dk + "_death", x: e.x + e.w / 2, y: (S.gdir || 1) < 0 ? e.y : e.y + e.h, vf: (S.gdir || 1) < 0, face: Math.sign((S.player ? S.player.x : 0) - e.x) || 1, t0: S.t, floor: S.floor };
   }
   return out;
 };
@@ -7507,6 +7508,7 @@ sprDrawPlayer = function (p, flipped) {
   const c = S._sprb3Corpse;
   if (c) { if (c.floor !== S.floor) S._sprb3Corpse = null; else { const dt = S.t - c.t0, f = Math.floor(dt / 0.15);
     if (f >= 8 + 4) S._sprb3Corpse = null;
+    if (f !== c._lf) { c._lf = f; if (f < 6) { const bx = c.x + rnd(-22, 22), byy = c.y - rnd(8, 44); burst(bx, byy, f % 2 ? "#ffffff" : "#f2c14e", 10); S.rings.push({ x: bx, y: byy, r: 0, max: 36 }); S.shake = Math.max(S.shake || 0, 0.25); } } /* v100: death blasts */
     else { sprb3Draw(c.key, Math.min(7, f), c.x, c.y, c.face < 0, c.vf, f >= 8 ? 1 - (f - 7) / 5 : 1);
       if (f >= 3 && f < 8 && S.parts && Math.random() < 0.7) S.parts.push({ x: c.x + (Math.random() - 0.5) * 50, y: c.y - Math.random() * 40, vx: (Math.random() - 0.5) * 60, vy: -80 * Math.random(), life: 0.5, c: SPR_RAMP5[sprZone()][Math.random() < 0.5 ? 0 : 1], s: 3 }); } } }
   return sprb3PrevPlayer(p, flipped);
@@ -8652,9 +8654,10 @@ function bpDrawBoss(e, p, white) {
   if (b.s && b.s.hook > 0 && b.kind === "bell") { const R = S.bpRoom, hx = bpX(6) + 12, hy = (R.C + 1) * TS; const tx = cx, ty = by - fh + 6; for (let i = 0; i <= 12 * b.s.hook; i++) { const k = i / 12; bpBlit("link", hx + (tx - hx) * k - 3, hy + (ty - hy) * k, 1.5); } }
   // underground: clipped into the floor, a moving mound while hidden
   if (b.hidden) { bpBlit("mound", cx - 18, bpFloorY() - 12, 1.5); return true; }
+  const AF = bpAnimFx(e, b, p, fw, fh, cx, by, flip);
   const draw = (img, dx, dy, tint, alpha) => {
     let src = img, sx = f * fw; if (tint) { const t = bpTmp(fw, fh); const c2 = t.getContext("2d"); c2.clearRect(0, 0, fw, fh); c2.drawImage(img, sx, 0, fw, fh, 0, 0, fw, fh); c2.globalCompositeOperation = "source-atop"; c2.fillStyle = tint; c2.fillRect(0, 0, fw, fh); c2.globalCompositeOperation = "source-over"; src = t; sx = 0; }
-    ctx.save(); ctx.globalAlpha *= alpha == null ? 1 : alpha; ctx.imageSmoothingEnabled = false; ctx.translate(cx + dx, by + dy); ctx.scale(flip ? -1 : 1, 1);
+    ctx.save(); ctx.globalAlpha *= alpha == null ? 1 : alpha; ctx.imageSmoothingEnabled = false; ctx.translate(cx + dx + AF.dx, by + dy + AF.dy); ctx.scale((flip ? -1 : 1) * AF.sx, AF.sy);
     if (b.clip) { ctx.beginPath(); ctx.rect(-fw / 2 - 4, -fh, fw + 8, fh * (1 - b.clip) + 0.5); ctx.clip(); ctx.translate(0, fh * b.clip); }
     ctx.drawImage(src, sx, 0, fw, fh, -Math.round(fw / 2), -fh, fw, fh); ctx.restore();
   };
@@ -8675,6 +8678,33 @@ function bpDrawBoss(e, p, white) {
   if (b.look) { const ex = cx, ey = top + fh * 0.4, a = Math.atan2(b.look[1] - ey, b.look[0] - ex); ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(ex + Math.cos(a) * 4) - 3, Math.round(ey + Math.sin(a) * 4) - 3, 6, 6); ctx.fillStyle = Math.floor(S.t * 12) % 2 ? "rgba(255,224,138,.7)" : "rgba(242,169,59,.5)"; for (let d = 14; d < 400; d += 12) { const x = ex + Math.cos(a) * d, y = ey + Math.sin(a) * d; if (solid(x, y)) break; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); } }
   if (b.anim === "roar" && Math.random() < 0.5) S.parts.push({ x: cx + rnd(-30, 30), y: top + rnd(0, fh), vx: rnd(-200, 200), vy: rnd(-200, 50), life: 0.3, c: "#f2c14e", s: 2 });
   return true;
+}
+/* v100 (user: "Los boses agrégales más animaciones"): extra boss motion, always on whole pixels: entrance drop with a thud, breathing,
+   wind-up crouch and tremble, release stretch with dust, hit recoil with chips, walk bob and dust, a pixel shadow, and a wounded leak per boss */
+const BP_HURTC = { bell: ["#f2c14e", "#a8742a"], root: ["#7ab35e", "#3f6b35"], bellows: ["#c8ccd4", "#6a7080"], notary: ["#2a2f6a", "#5a62b0"], seal: ["#e0566b", "#8a2a3a"] };
+function bpQ(v, n) { return Math.max(2, Math.round(v * n / 2) * 2) / n; }
+function bpAnimFx(e, b, p, fw, fh, cx, by, flip) {
+  const t = S.t, C = BP_HURTC[b.kind] || BP_HURTC.bell, o = { dx: 0, dy: 0, sx: 1, sy: 1 }, dust = "#9a8f86";
+  const et = t - (e.bpT0 == null ? -9 : e.bpT0);
+  if (et >= 0 && et < 0.45) o.dy = -Math.round(Math.pow(1 - et / 0.45, 2) * 160);
+  else if (et >= 0.45 && et < 0.75) { const k = 1 - (et - 0.45) / 0.3; o.sx = bpQ(1 + 0.18 * k, fw); o.sy = bpQ(1 - 0.16 * k, fh);
+    if (!b._landed) { b._landed = 1; S.shake = Math.max(S.shake || 0, 0.35); for (let i = 0; i < 14; i++) S.parts.push({ x: cx + rnd(-30, 30), y: by - 2, vx: rnd(-160, 160), vy: -rnd(20, 90), life: rnd(0.3, 0.6), c: dust, s: 3 }); } }
+  if (b._hp == null) b._hp = e.hp;
+  if (e.hp < b._hp) { b._hitT = t; b._hitDir = -(Math.sign(p.x - e.x) || 1); for (let i = 0; i < 6; i++) S.parts.push({ x: cx + rnd(-14, 14), y: by - fh * rnd(0.3, 0.8), vx: b._hitDir * rnd(60, 200), vy: -rnd(60, 200), g: 600, life: rnd(0.3, 0.55), c: C[i % 2], s: 3 }); }
+  b._hp = e.hp;
+  const ht = t - (b._hitT == null ? -9 : b._hitT), at = t - (b._animT0 == null ? t : b._animT0);
+  if (ht < 0.22) { const k = 1 - ht / 0.22; o.dx += Math.round(b._hitDir * 5 * k) + (Math.floor(t * 40) % 2 ? 1 : -1) * Math.round(2 * k); o.sx = bpQ(1 + 0.1 * k, fw); o.sy = bpQ(1 - 0.08 * k, fh); }
+  else if (b.anim === "warn") { const k = clamp(at / Math.max(0.3, b.W || 0.8), 0, 1); o.sx = bpQ(1 + 0.1 * k, fw); o.sy = bpQ(1 - 0.1 * k, fh); if (k > 0.6) o.dx += Math.floor(t * 30) % 2 ? 1 : -1; }
+  else if (b.anim === "attack" && at < 0.14) { const k = 1 - at / 0.14; o.sx = bpQ(1 - 0.1 * k, fw); o.sy = bpQ(1 + 0.14 * k, fh);
+    if (b._relT !== b._animT0) { b._relT = b._animT0; for (let i = 0; i < 8; i++) S.parts.push({ x: cx + rnd(-20, 20), y: by - 2, vx: rnd(-200, 200), vy: -rnd(10, 60), life: 0.35, c: "#cfc6bb", s: 2 }); } }
+  else if (b.anim === "idle" || b.anim === "stun") { o.sy = bpQ(1 + (Math.floor(t * 2.2) % 2 ? 0.04 : 0), fh); if (b.anim === "stun") o.dx += [0, 1, 2, 1, 0, -1, -2, -1][Math.floor(t * 10) % 8]; }
+  else if (b.anim === "walk") { const ph = Math.floor(t * 8) % 4; if (ph % 2) o.dy -= 2; if (ph !== b._stepPh) { b._stepPh = ph; if (ph % 2 === 0) S.parts.push({ x: cx + (flip ? 10 : -10) + rnd(-4, 4), y: by - 2, vx: flip ? 30 : -30, vy: -20, life: 0.35, c: dust, s: 3 }); } }
+  else if (b.anim === "roar") { const k = Math.floor(t * 14) % 2; o.sx = bpQ(1 + 0.08 * k, fw); o.sy = bpQ(1 + 0.08 * k, fh); }
+  const fy = Math.round(bpFloorY()), air = Math.max(0, fy - (by + o.dy)), sw = Math.max(8, Math.round((fw * 0.6 - air * 0.25) / 2) * 2);
+  if (!b.ghost && air < 220) { ctx.fillStyle = "rgba(10,8,20,.35)"; ctx.fillRect(cx - sw / 2, fy - 3, sw, 3); ctx.fillRect(cx - sw / 2 + 4, fy, Math.max(2, sw - 8), 2); }
+  if (e.hp / e.maxhp < 0.34 && Math.random() < 0.25) { const Q = { bell: [-60, 300, "#f2c14e"], root: [20, 40, "#7ab35e"], bellows: [-50, -20, "rgba(220,224,230,.7)"], notary: [10, 500, "#1c2050"], seal: [0, 400, "#c03a4a"] }[b.kind] || [-60, 300, "#f2c14e"];
+    S.parts.push({ x: cx + rnd(-fw * 0.3, fw * 0.3), y: by - fh + rnd(4, fh * 0.6), vx: rnd(-30, 30), vy: Q[0], g: Q[1], life: rnd(0.5, 0.9), c: Q[2], s: b.kind === "bellows" ? 4 : 2 }); }
+  return o;
 }
 let bpTmpC = null; function bpTmp(w, h) { if (!bpTmpC) bpTmpC = document.createElement("canvas"); if (bpTmpC.width < w) bpTmpC.width = w; if (bpTmpC.height < h) bpTmpC.height = h; return bpTmpC; }
 { const pe = sprDrawEnemy; sprDrawEnemy = function (e, p, white, bobY) { if (e && e.bp && !e.dead) { try { if (bpDrawBoss(e, p, white)) return true; } catch (_) {} } return pe(e, p, white, bobY); }; }
@@ -10551,7 +10581,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v99";
+var OMF_VER = "Escape v100";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11687,6 +11717,16 @@ var dlyTH0 = escTitleHTML; escTitleHTML = function () { let h = dlyTH0.apply(thi
 Object.assign(EN_TEXT, { "DESAFÍO DIARIO": "DAILY CHALLENGE", "Llega a": "Reach", "con estos modificadores. No cambian en toda la subida.": "with these modifiers. They stay the whole climb.",
   "Hoy": "Today", "superado": "done", "Mañana, otro reto": "A new one tomorrow", "EMPEZAR": "START", "¡DESAFÍO SUPERADO!": "CHALLENGE DONE!", "Desafío": "Challenge" });
 
+// v100 (user: "Los modificadores en la de prueba deberían desactivarse no solo parar el tiempo"): every PRUEBAS run
+// (boss, secret rooms, biomes, platforms, mob and object rooms) starts with no modifiers and none ever arrive.
+// Boss rules that belong to the fight itself (El Sello's clauses) still apply.
+function testNoMods() { if (!S || !S.test) return; S.escMods = []; S.rules = []; S.escNextMod = 1e9; S.escNextId = null; S.noMods = true; lastHud = ""; try { updateHud(true); } catch (_) {} }
+{ const w = f => function () { const r = f.apply(this, arguments); testNoMods(); return r; };
+  testBoss = w(testBoss); testRoom = w(testRoom); testBiome = w(testBiome); testPlats = w(testPlats); mobLab = w(mobLab); itemLab = w(itemLab); }
+{ const a0 = escAddMod; escAddMod = function (id, el) { if (S && S.noMods && S.test) return; return a0.apply(this, arguments); }; }
+
+// v100 (user): Vampiro drains a heart every 10 s in Normal, 15 s in Easy, 8 s in Hardcore
+function vampEvery() { return S && S.easy ? 15 : S && S.hard ? 8 : 10; }
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
