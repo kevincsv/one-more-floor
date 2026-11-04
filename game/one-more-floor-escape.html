@@ -10587,7 +10587,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v112";
+var OMF_VER = "Escape v113";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12061,6 +12061,229 @@ function testWipe() {
       box.innerHTML = `<div style="background:#1d1830;box-shadow:0 0 0 3px #e0566b;padding:16px 18px;text-align:center;max-width:300px"><p style="color:#ece8f5;font-size:12px;line-height:1.6">${Lx("¿BORRAR TODO EL PROGRESO?<br>Récords, monedas, aspectos, logros, historia e iCloud. No se puede deshacer.", "RESET ALL PROGRESS?<br>Records, coins, skins, feats, story and iCloud. This can't be undone.")}</p><div class="ctlsel"><button id="tWipeYes" style="color:#e0566b">${Lx("SÍ, BORRAR", "YES, RESET")}</button><button id="tWipeNo">NO</button></div></div>`;
       ov.appendChild(box); box.querySelector("#tWipeNo").onclick = () => box.remove(); box.querySelector("#tWipeYes").onclick = () => { box.querySelector("p").textContent = Lx("Borrando…", "Resetting…"); testWipe(); }; };
     return r; }; }
+
+
+// ===== v113 (user approved 2026-11-04 11:42, spec /mnt/project-files/arte/menu/menu-a3-spec.md): NEW MAIN MENU "A" + background 3.
+// The old title HTML is still built (all its buttons keep their ids and wiring), then re-arranged here into: coin pill + retos on top,
+// logo, hero with a dithered spotlight, name + wardrobe button, skull difficulty chips with one short line, the big ESCALAR button,
+// three mode tiles and a bottom tab bar with labels. No level on the menu (it resets every climb). Behind it, an animated
+// low-res canvas climbs through the 5 biomes (a new one rises every 7 s). The wardrobe now also sells the hero's shop looks.
+function fmtDot(n) { return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, LANG === "en" ? "," : "."); }
+if (typeof ESC_PI === "object") {
+  if (!ESC_PI.skull) ESC_PI.skull = ["..#####..", ".#######.", "#########", "##..#..##", "##..#..##", "#########", ".###.###.", "..#.#.#..", "..#####.."];
+  if (!ESC_PI.bag) ESC_PI.bag = ["...###...", "..#...#..", "..#...#..", "#########", "#.......#", "#...#...#", "#..###..#", "#...#...#", "#########"];
+}
+const A3_DIF = { e: ["Todas las plataformas se cruzan desde abajo.", "Every platform can be crossed from below."], n: ["Algunas plataformas se cruzan desde abajo.", "Some platforms can be crossed from below."], h: ["Ninguna se cruza y la cámara va más rápido.", "None can be crossed and the camera is faster."] };
+function a3HoursLeft() { const d = new Date(), m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); return Math.max(1, Math.ceil((m - d) / 3600000)); }
+function a3Btn(src, cls, inner) { if (!src) return ""; const b = src.cloneNode(false); b.className = cls; b.innerHTML = inner; b.removeAttribute("title"); return b.outerHTML; }
+{ const a30 = escTitleHTML; escTitleHTML = function (ch0, db) { const h = a30.apply(this, arguments);
+    try {
+      const tp = document.createElement("template"); tp.innerHTML = h; const R = tp.content, $ = s => R.querySelector(s);
+      const view = CHARS.find(c => c.id === S.titleView) || ch0, ok = charOk(view.id), d = META.easy ? "e" : META.hard ? "h" : "n";
+      const keep = s => { const e = $(s); return e ? e.outerHTML : ""; };
+      // top bar
+      const reto = $("#retoBtn"), tests = $("#testsBtn");
+      const top = `<div class="a3top"><span class="a3coin" id="a3coin"><i class="cn"></i>${fmtDot(META.bank || 0)}</span><span class="a3sp"></span>${tests ? a3Btn(tests, "a3ib", pxi("flask", "#9a94b8")) : ""}${reto ? a3Btn(reto, "a3ib", pxi("target", "#e0566b") + retoBadge()) : ""}</div>`;
+      // hero
+      const ped = $(".ped"); if (ped) ped.insertAdjacentHTML("afterbegin", `<i class="a3glow"></i>`);
+      const nm = $(".ename"), wb = $("#wardBtn"), ds = $(".edesc");
+      const nameRow = `<div class="a3name">${nm ? nm.outerHTML : ""}${wb ? wb.outerHTML : ""}</div>${!ok && ds ? ds.outerHTML : ""}`;
+      // difficulty chips with skulls
+      const dif = `<div class="difsel a3dif" role="group" aria-label="${T("Dificultad")}">${[["e", "FÁCIL", 1], ["n", "NORMAL", 2], ["h", "HARDCORE", 3]].map(([k, n, s]) => `<button data-dif="${k}" class="${d === k ? "on" : ""}${k === "h" ? " hc" : ""}"><span class="sk">${Array.from({ length: s }, () => pxi("skull", d === k ? (k === "h" ? "#ffffff" : "#1a1206") : (k === "h" ? "#e0566b" : "#9a94b8"), 1)).join("")}</span>${T(n)}</button>`).join("")}</div><p class="difinfo a3hint">${Lx(...A3_DIF[d])}</p>`;
+      // play
+      const go = $("#goBtn"), best = bestOf(escDifKind());
+      const play = a3Btn(go, "a3play", `<span class="ar">${pxi("up", "#1a1206", 3)}</span><span class="pt"><span class="t">${T("ESCALAR")}</span><span class="s">${T("Torre sin fin")}</span></span><span class="rec">${T("MEJOR")}<b>${best} m</b></span>`);
+      // tiles
+      let M = null; try { M = huM(); } catch (_) {}
+      const dk = String(todayKey()) + (META.easy ? "e" : META.hard ? "h" : ""), dDone = (() => { try { return dailyDone(dk); } catch (_) { return false; } })();
+      const hOk = hordeOk();
+      const tiles = `<div class="a3tiles">${a3Btn($("#storyBtn"), "a3tile", `${M && !(M.end && M.end.length) ? `<span class="new">${T("NUEVO")}</span>` : ""}${pxi("book", "#5fd1c4", 3)}<span class="tl">${T("HISTORIA")}</span><span class="ts">La Huida</span>`).replace('class="a3tile"', 'class="a3tile" style="--c:#5fd1c4"')}
+        ${a3Btn($("#dailyBtn"), "a3tile", `${pxi("sun", "#f2c14e", 3)}<span class="tl">${T("DIARIO")}</span><span class="ts">${dDone ? "✓ " + Lx("Hecho", "Done") : Lx("Quedan ", "") + a3HoursLeft() + Lx(" h", " h left")}</span>`).replace('class="a3tile"', 'class="a3tile" style="--c:#f2c14e"')}
+        ${a3Btn($("#hordeBtn"), "a3tile" + (hOk ? "" : " lk"), `${pxi(hOk ? "swords" : "lock", hOk ? "#e0566b" : "#f2c14e", 3)}<span class="tl">${T("HORDA")}</span><span class="ts">${hOk ? Lx("Mejor ", "Best ") + bestOf("escape-horde") + " m" : Lx("Bloqueada", "Locked")}</span>`).replace(/class="a3tile( lk)?"/, m => m + ' style="--c:#e0566b"')}</div>`;
+      // tab bar
+      const shop = $("#shopBtn"), canBuy = shop && /shopblink/.test(shop.className);
+      const tab = (src, ic, col, lab, extra) => src ? a3Btn(src, "a3tab" + (extra || ""), `${pxi(ic, col, 2)}<span>${lab}</span>`) : "";
+      const achSrc = $("#achBtn") || $("#pgsAch"), lbSrc = $("#lbBtn") || $("#pgsLb");
+      const tabs = `<div class="a3tabs">${tab(shop, "bag", "#f2c14e", T("TIENDA"), canBuy ? " shopblink" : "")}${tab($("#codexBtn"), "book", "#c9c3e6", T("CÓDICE"))}${tab(achSrc, "star", "#5fd1c4", Lx("LOGROS", "FEATS"))}${tab(lbSrc, "trophy", "#f2c14e", $("#lbBtn") ? T("RÉCORDS") : T("Ranking").toUpperCase())}${tab($("#setBtn"), "gear", "#9a94b8", Lx("AJUSTES", "SETUP"))}</div>`;
+      const box = keep("#testsBox");
+      return `<div class="menu etitle a3"><canvas class="a3bg" id="a3bg" width="100" height="208" aria-hidden="true"></canvas>${top}${keep(".lslot")}${keep(".ehero")}${nameRow}${dif}<div class="emodes a3modes${ok ? "" : " off"}">${play}${tiles}</div>${tabs}${box}</div>`;
+    } catch (er) { errLog(er.message, "a3title"); return h; } }; }
+{ const a3w0 = escTitleWire; escTitleWire = function () { const r = a3w0.apply(this, arguments);
+    try { const t = ov.querySelector(".etitle.a3"); if (!t) return r; a3BgStart();
+      [...t.children].forEach((el, i) => { if (!el.classList.contains("a3bg")) { el.classList.add("a3in"); el.style.animationDelay = Math.min(0.4, i * 0.04) + "s"; } });
+      if (!window.__a3seen) window.__a3seen = 1; else t.querySelectorAll(".a3in").forEach(e => e.classList.remove("a3in"));
+      const view = CHARS.find(c => c.id === S.titleView) || S.char;
+      if (!document.getElementById("wardBtn") && charOk(view.id) && heroesOn()) { /* the wardrobe button is always there now: shop looks can be bought from it */
+        const n = t.querySelector(".a3name"); if (n) { n.insertAdjacentHTML("beforeend", `<button class="eskin" id="wardBtn">${pxi("hanger", "#5fd1c4")}<span>${T(HERO_SKINS[heroSkinOf(view.id)] ? HERO_SKINS[heroSkinOf(view.id)].name : view.name).toUpperCase()}</span><small>${heroSkinsOf(view.id).filter(skinOwned).length}/${heroSkinsOf(view.id).length}</small></button>`); paintPxi(n); document.getElementById("wardBtn").onclick = () => escWardrobe(view); } }
+      if (!charOk(view.id)) t.querySelectorAll(".a3modes button").forEach(b => b.disabled = true);
+    } catch (er) { errLog(er.message, "a3wire"); }
+    return r; }; }
+// "?" (how to play) moved into Settings
+{ const ss3 = showSettings; showSettings = function () { const r = ss3.apply(this, arguments);
+    try { if (!ESCAPE || document.getElementById("howBtnS")) return r; const bk = ov.querySelector("#backBtn") || ov.querySelector(".menu button:last-of-type");
+      const html = `<div class="tools a3how"><button id="howBtnS">${pxi("q", "#e0566b")} ${T("Cómo se juega")}</button></div>`;
+      if (bk && bk.parentNode && bk.parentNode !== ov) bk.parentNode.insertAdjacentHTML("beforebegin", html); else { const m = ov.querySelector(".menu"); if (m) m.insertAdjacentHTML("beforeend", html); }
+      paintPxi(ov); const b = document.getElementById("howBtnS"); if (b) b.onclick = () => { omfSfx("click"); showHow(); };
+    } catch (er) { errLog(er.message, "a3how"); } return r; }; }
+
+// ---------- background 3: the five biomes, climbing ----------
+const A3_BIO = [
+  { b: ["#211b35", "#241e3a", "#2b2444", "#141024"], led: ["#4a4470", "#8a83b8"] },
+  { b: ["#132a2a", "#163230", "#1d3d38", "#0a1616"], led: ["#2f5a44", "#6cc06a"] },
+  { b: ["#2a221c", "#30271f", "#3a2f24", "#140f0b"], led: ["#6a5a48", "#c99a3a"] },
+  { b: ["#0e0b1a", "#110d20", "#160f2a", "#06050c"], led: ["#3a2a6a", "#9a7aff"] },
+  { b: ["#2a0f2a", "#1a1030", "#301838", "#0a0612"], led: ["#6a2a6a", "#ff7ad8"] },
+];
+function a3h(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+let A3_WALL = null;
+function a3Walls() { if (A3_WALL) return A3_WALL; A3_WALL = A3_BIO.map((B, z) => { const c = document.createElement("canvas"); c.width = c.height = 32; const g = c.getContext("2d"); const P = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+    for (let y = 0; y < 32; y++) for (let xx = 0; xx < 32; xx++) {
+      if (z === 2) { const plate = xx % 16 === 15 || y % 16 === 15, riv = (xx % 16 === 2 || xx % 16 === 13) && (y % 16 === 2 || y % 16 === 13); P(xx, y, plate ? B.b[3] : riv ? "#8a7a60" : (a3h(Math.floor(xx / 16), Math.floor(y / 16)) > 0.5 ? B.b[1] : B.b[0])); continue; }
+      if (z === 3) { const v = a3h(xx, y); P(xx, y, v > 0.985 ? "#6a5aa8" : v > 0.6 ? B.b[1] : B.b[0]); continue; }
+      const row = Math.floor(y / 4), off = row % 2 ? 4 : 0, bx = Math.floor((xx + off) / 8), mort = y % 4 === 3 || (xx + off) % 8 === 7, v = a3h(bx * 7 + row + z * 13, row * 3 + 1);
+      P(xx, y, mort ? B.b[3] : v > 0.75 ? B.b[2] : v > 0.4 ? B.b[1] : B.b[0]);
+      if (z === 1 && !mort && y % 4 === 0 && v > 0.55) P(xx, y, "#2f6a48"); }
+    return c; }); return A3_WALL; }
+function a3Star(x, sx, sy, t, k) { const tw = (Math.sin(t * 2 + k * 7) + 1) / 2; x.fillStyle = tw > 0.8 ? "#ffffff" : tw > 0.4 ? "#c9c3e6" : "#5a5486"; x.fillRect(sx, sy, 1, 1); if (tw > 0.93) { x.fillRect(sx - 1, sy, 1, 1); x.fillRect(sx + 1, sy, 1, 1); x.fillRect(sx, sy - 1, 1, 1); x.fillRect(sx, sy + 1, 1, 1); } }
+function a3Biome(x, W, H, t, z) {
+  const WL = a3Walls(), cam = t * 9, oy = ((cam % 32) + 32) % 32; for (let yy = -32; yy < H + 32; yy += 32) for (let xx = 0; xx < W; xx += 32) x.drawImage(WL[z], xx, yy + oy);
+  const B = A3_BIO[z];
+  for (let r = Math.floor(cam / 8) - 1; r < Math.floor(cam / 8) + H / 8 + 2; r++) { const y = Math.round(H - ((r + 1) * 8 - cam));
+    if (((r % 6) + 6) % 6 === 0) { const len = 3 + Math.floor(a3h(r, 1) * 4), left = a3h(r, 2) < 0.5, c0 = left ? 1 : Math.ceil(W / 8) - 1 - len;
+      for (let c = c0; c < c0 + len; c++) { x.fillStyle = "#0b0912"; x.fillRect(c * 8, y - 1, 8, 9); x.fillStyle = B.led[0]; x.fillRect(c * 8, y, 8, 8); x.fillStyle = B.led[1]; x.fillRect(c * 8, y, 8, 2);
+        if (z === 1 && a3h(r, c) > 0.4) { x.fillStyle = "#3f8f4a"; for (let k = 0; k < 3 + a3h(c, r) * 6; k++) x.fillRect(c * 8 + 3, y + 8 + k, 1, 1); } } }
+    if (z === 0 && ((r % 11) + 11) % 11 === 5) { const lx = 10 + Math.floor(a3h(r, 9) * (W - 20)), fl = Math.sin(t * 9 + r) > 0; x.fillStyle = "#3e3960"; x.fillRect(lx, y - 2, 3, 6); x.fillStyle = fl ? "#ffd77a" : "#ff9d2e"; x.fillRect(lx, y - 6, 3, 4); x.fillStyle = "rgba(242,193,78,.13)"; x.fillRect(lx - 6, y - 12, 15, 15); }
+    if (z === 2 && ((r % 9) + 9) % 9 === 3) { const gx = 14 + Math.floor(a3h(r, 4) * (W - 28)), a = t * 1.5 * (r % 2 ? 1 : -1); x.fillStyle = "#5a4a38"; for (let k = 0; k < 8; k++) { const ang = a + k * Math.PI / 4; x.fillRect(Math.round(gx + Math.cos(ang) * 6) - 1, Math.round(y + Math.sin(ang) * 6) - 1, 3, 3); }
+      for (let j = -5; j <= 5; j++) for (let i = -5; i <= 5; i++) { const dd = i * i + j * j; if (dd <= 25 && dd > 4) { x.fillStyle = dd > 16 ? "#6a5a48" : "#8a7a60"; x.fillRect(gx + i, y + j, 1, 1); } } }
+  }
+  for (let k = 0; k < 16; k++) { const px = Math.floor(a3h(k, z + 20) * W);
+    if (z === 0) { const py = Math.floor((a3h(k, 3) * H + t * 5) % H); x.fillStyle = "rgba(201,195,230,.3)"; x.fillRect(px, py, 1, 1); }
+    if (z === 1) { const py = Math.floor(H - ((a3h(k, 3) * H + t * (8 + k % 5)) % H)); x.fillStyle = "#5fd1c4"; x.fillRect(px + Math.round(Math.sin(t * 2 + k)), py, 1, 1); if (k % 3 === 0) { x.fillStyle = "rgba(95,209,196,.5)"; x.fillRect(px + Math.round(Math.sin(t * 2 + k)) - 1, py - 1, 3, 3); } }
+    if (z === 2) { const py = Math.floor((a3h(k, 3) * H + t * (18 + k % 6)) % H); x.fillStyle = k % 2 ? "#ff9d2e" : "#ffd77a"; x.fillRect(px, py, 1, 2); }
+    if (z === 3) { const py = Math.floor((a3h(k, 3) * H + t * 2) % H); a3Star(x, px, py, t, k); if (k % 5 === 0) { x.fillStyle = "#2a2050"; x.fillRect(px - 3, Math.floor((py + 40) % H), 7, 4); x.fillStyle = "#4a3a80"; x.fillRect(px - 3, Math.floor((py + 40) % H), 7, 1); } }
+    if (z === 4) { if (a3h(k, Math.floor(t * 6)) > 0.7) { x.fillStyle = k % 2 ? "rgba(255,122,216,.55)" : "rgba(95,209,196,.55)"; x.fillRect(px, Math.floor(a3h(k, Math.floor(t * 6) + 1) * H), 4 + k % 8, 1 + k % 2); } }
+  }
+  x.fillStyle = "rgba(10,8,18,.40)"; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 50; i += 2) { x.fillStyle = `rgba(12,10,20,${(0.85 * (1 - i / 50)).toFixed(2)})`; x.fillRect(0, i, W, 2); }
+  for (let i = 0; i < 40; i += 2) { x.fillStyle = `rgba(12,10,20,${(0.85 * (1 - i / 40)).toFixed(2)})`; x.fillRect(0, H - i - 2, W, 2); }
+}
+var A3BG = { raf: 0, t0: 0, last: 0, tmp: null };
+function a3BgFrame(ms) {
+  const cv = document.getElementById("a3bg"); if (!cv || ov.hidden || !cv.isConnected) { A3BG.raf = 0; return; }
+  A3BG.raf = requestAnimationFrame(a3BgFrame); if (ms - A3BG.last < 55) return; A3BG.last = ms;
+  const W = 100, H = Math.max(140, Math.min(260, Math.round(100 * innerHeight / Math.max(1, innerWidth)))); if (cv.height !== H) cv.height = H;
+  const x = cv.getContext("2d"); x.imageSmoothingEnabled = false;
+  const RM = matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, t = RM ? 3 : Math.max(0, (ms - A3BG.t0) / 1000);
+  const per = 7, z = Math.floor(t / per) % 5, ph = (t % per) / per, nz = (z + 1) % 5;
+  a3Biome(x, W, H, t, z);
+  if (ph > 0.82 && !RM) { const p = (ph - 0.82) / 0.18; if (!A3BG.tmp) A3BG.tmp = document.createElement("canvas"); const tm = A3BG.tmp; tm.width = W; tm.height = H; const tx = tm.getContext("2d"); a3Biome(tx, W, H, t, nz); const edge = H * (1 - p);
+    for (let i = 0; i < W; i += 2) { const e = Math.max(0, Math.floor(edge + (a3h(i, Math.floor(t * 8)) * 6 - 3))); if (e < H) x.drawImage(tm, i, e, 2, H - e, i, e, 2, H - e); x.fillStyle = A3_BIO[nz].led[1]; x.fillRect(i, e, 2, 1); } }
+  if (RM) { cancelAnimationFrame(A3BG.raf); A3BG.raf = 0; }
+}
+function a3BgStart() { if (A3BG.raf) return; if (!A3BG.t0) A3BG.t0 = performance.now() - 0; A3BG.last = 0; A3BG.raf = requestAnimationFrame(a3BgFrame); }
+
+// ---------- wardrobe: owned, then the shop looks in colour with their price, then the locked feat looks ----------
+escWardrobe = function (ch) {
+  const old = document.getElementById("wardrobe"); if (old) old.remove();
+  const all = heroSkinsOf(ch.id).filter(id => !(HERO_SKINS[id].tier === "heroe" && id !== ch.id)), cur = heroSkinOf(ch.id), off = shopOffer();
+  const owned = all.filter(skinOwned), shop = all.filter(id => !skinOwned(id) && HERO_SKINS[id].shop).sort((a, b) => HERO_SKINS[a].shop - HERO_SKINS[b].shop), feat = all.filter(id => !skinOwned(id) && !HERO_SKINS[id].shop);
+  const el = document.createElement("div"); el.className = "wardrobe a3ward"; el.id = "wardrobe";
+  const nm = id => T(HERO_SKINS[id].name);
+  const tile = (id, i) => { const mine = skinOwned(id), k = HERO_SKINS[id], sh = !mine && k.shop, cost = sh ? shopCost(id) : 0;
+    return `<button class="wtile${mine ? " own" : sh ? " shop" : " lockd"}${id === cur ? " sel" : ""}" data-w="${id}"><canvas class="pv" width="32" height="52" data-cid="${ch.id}" data-skin="${id}" data-lock="${mine || sh ? 0 : 1}" data-off="${i * 0.6}"></canvas>${id === cur ? `<i class="wchk">✓</i>` : ""}${sh && id === off ? `<i class="sale">-25%</i>` : ""}${!mine && !sh ? pxi("lock", "#9a94b8", 1) : ""}<span>${mine || sh ? nm(id).slice(0, 10) : "???"}</span>${sh ? `<b class="wpr${(META.bank || 0) < cost ? " poor" : ""}"><i class="cn"></i>${fmtDot(cost)}</b>` : ""}</button>`; };
+  el.innerHTML = `<h2>${pxi("hanger", "#5fd1c4")} ${ch.name.toUpperCase()} · ${T("ASPECTOS")} <span class="a3coin"><i class="cn"></i>${fmtDot(META.bank || 0)}</span></h2>
+    <p class="wleg"><i class="lo"></i>${Lx("TUYOS", "YOURS")} <i class="ls"></i>${Lx("TIENDA", "SHOP")} <i class="lf"></i>${Lx("POR LOGRO", "BY FEAT")}</p>
+    <div class="wgrid a3grid">${owned.concat(shop, feat).map(tile).join("")}</div>
+    <div class="winfo" id="wInfo">${T("Listo para usar")}: ${nm(cur)}</div>
+    ${feat.length && typeof PAY_ON !== "undefined" && PAY_ON && !fullOwned() ? `<button class="fullcta" id="wFull">${pxi("lock", "#f2c14e", 1)} ${Lx("LOS DE LOGRO, YA CON ESCAPE COMPLETO", "FEAT LOOKS NOW WITH FULL ESCAPE")}</button>` : ""}
+    <div class="wbtns"><button id="wShop">${pxi("bag", "#f2c14e")} ${T("TIENDA")}</button><button class="wok" id="backBtn">OK</button></div>`;
+  document.body.appendChild(el); paintPxi(el); animPortraits();
+  const info = el.querySelector("#wInfo");
+  el.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { const id = b.dataset.w, k = HERO_SKINS[id];
+    if (skinOwned(id)) { META.skin[ch.id] = id; saveMeta(); omfSfx("pick"); escWardrobe(ch); return; }
+    if (k.shop) { const cost = shopCost(id), bank = META.bank || 0;
+      if (bank < cost) { omfSfx("click"); info.innerHTML = `<b>${nm(id).toUpperCase()}</b> · <i class="cn"></i>${fmtDot(cost)}<br>${Lx("Te faltan", "You need")} <i class="cn"></i>${fmtDot(cost - bank)} ${Lx("monedas. El oro que te sobra al caer va a tu bolsa.", "more coins. The gold left when you fall goes to your bag.")}<span class="pbar"><u style="width:${Math.floor(100 * bank / cost)}%"></u></span>`; return; }
+      if (!charOk(ch.id)) { omfSfx("hurt"); info.textContent = Lx("Necesitas a ", "You need ") + ch.name + "."; return; }
+      omfSfx("click"); info.innerHTML = `${Lx("¿COMPRAR", "BUY")} ${nm(id).toUpperCase()} ${Lx("POR", "FOR")} <i class="cn"></i>${fmtDot(cost)}?<div class="ctlsel"><button id="wYes">${Lx("SÍ", "YES")}</button><button id="wNo">NO</button></div>`;
+      info.querySelector("#wNo").onclick = () => { omfSfx("click"); info.textContent = T("Listo para usar") + ": " + nm(cur); };
+      info.querySelector("#wYes").onclick = () => { if ((META.bank || 0) < cost || skinOwned(id)) return; META.bank -= cost; META.shop = (META.shop || []).concat(id); META.skin[ch.id] = id; saveMeta(); omfSfx("buy"); toast("✓ " + nm(id)); escWardrobe(ch); };
+      return; }
+    omfSfx("click"); info.innerHTML = lockHTML(nm(id), lockInfo("skin", id)); });
+  el.querySelector("#backBtn").onclick = () => { el.remove(); omfSfx("click"); showTitle(); };
+  el.querySelector("#wShop").onclick = () => { el.remove(); omfSfx("click"); showCoinShop("title"); };
+  { const fb = el.querySelector("#wFull"); if (fb) fb.onclick = () => { el.remove(); showFull(); }; }
+};
+(() => { const st = document.createElement("style"); st.textContent = `
+.etitle.a3{gap:8px;padding:6px 12px 0;min-height:100vh;min-height:100svh;position:relative}
+.etitle.a3 .lslot{height:150px}
+.etitle .emodes.a3modes{display:flex;flex-direction:column;gap:8px}
+.etitle.a3 .a3dif{margin:0 auto}
+.etitle.a3 .a3dif button{min-width:0;padding:6px 9px;font-size:10px;letter-spacing:.5px}
+.etitle.a3 .a3hint{font-size:12px;margin:-4px auto 0}
+.overlay .etitle.a3 .a3tab{border:0;clip-path:none;box-shadow:none;background:none;padding:2px 0;min-height:0;width:auto}
+.overlay .etitle.a3 .a3tab:active:not(:disabled){transform:translateY(1px);box-shadow:none}
+.overlay .etitle.a3 .a3ib{border:0;clip-path:none;background:rgba(10,8,18,.85);box-shadow:0 0 0 2px #3a3358}
+.overlay .etitle.a3 .a3play{background:linear-gradient(#f7d06a,#f2c14e 55%,#d9a531);clip-path:none;border:3px solid #fff1b8;box-shadow:inset -4px -4px 0 #a8781c;color:#1a1206;font-family:inherit}
+.overlay .etitle.a3 .a3tile{background:rgba(21,18,31,.95);border:2px solid var(--c,#3a3358);clip-path:none;padding:8px 2px 7px;margin:0;width:auto}
+.etitle.a3::before{display:none}
+.a3bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;image-rendering:pixelated;pointer-events:none;background:#0d0b17}
+.a3top{display:flex;align-items:center;gap:6px;width:100%}
+.a3top .a3sp{flex:1}
+.a3coin{display:inline-flex;align-items:center;gap:2px;background:rgba(10,8,18,.85);box-shadow:0 0 0 2px #3a3358;padding:3px 8px 3px 5px;color:#f2c14e;font:700 11px Silkscreen,monospace;letter-spacing:.5px}
+.a3ib{position:relative;width:32px;height:32px;padding:0;display:grid;place-items:center;background:rgba(10,8,18,.85);box-shadow:0 0 0 2px #3a3358;border:0}
+.a3ib .rbadge{position:absolute;top:-6px;right:-6px}
+.etitle.a3 .ped{position:relative}
+.a3glow{position:absolute;left:50%;bottom:6px;width:96px;height:80px;transform:translateX(-50%);background:repeating-linear-gradient(90deg,rgba(242,193,78,.10) 0 2px,transparent 2px 4px);pointer-events:none;z-index:0}
+.etitle.a3 .pedhero{position:relative;z-index:1}
+.a3name{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.a3name .ename{margin:0}
+.a3name .eskin{margin:0}
+.a3dif{display:flex;justify-content:center;gap:0}
+.a3dif button{display:inline-flex;align-items:center;gap:5px}
+.a3dif button .sk{display:inline-flex;gap:1px}
+.a3hint{margin:-2px auto 0;background:rgba(10,8,18,.6);padding:1px 6px;text-align:center}
+.a3modes{display:flex;flex-direction:column;gap:8px}
+.a3play{position:relative;width:100%;display:flex;align-items:center;gap:12px;background:linear-gradient(#f7d06a,#f2c14e 55%,#d9a531);color:#1a1206;border:3px solid #fff1b8;outline:3px solid #05040a;box-shadow:inset -4px -4px 0 #a8781c;padding:10px 14px;text-align:left;cursor:pointer}
+.a3play .ar{animation:a3bob 1s steps(2) infinite;display:inline-flex}
+.a3play .pt{display:flex;flex-direction:column;gap:2px}
+.a3play .t{font:700 22px Silkscreen,monospace;letter-spacing:2px;line-height:1}
+.a3play .s{font-size:12px;opacity:.8}
+.a3play .rec{margin-left:auto;text-align:right;font:700 9px Silkscreen,monospace}
+.a3play .rec b{display:block;font-size:15px}
+.a3play:disabled{filter:grayscale(.7) brightness(.6)}
+@keyframes a3bob{50%{transform:translateY(-3px)}}
+.a3tiles{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.a3tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px 7px;background:rgba(21,18,31,.95);border:2px solid var(--c,#3a3358);box-shadow:inset -3px -3px 0 rgba(0,0,0,.4);min-width:0;cursor:pointer}
+.a3tile .tl{font:700 11px Silkscreen,monospace;color:var(--c);letter-spacing:1px}
+.a3tile .ts{font-size:11px;line-height:1.1;color:#a59cbd;white-space:nowrap}
+.a3tile .new{z-index:2;position:absolute;top:-6px;right:-4px;font:700 8px Silkscreen,monospace;background:#f2c14e;color:#1a1206;padding:1px 3px;animation:a3blink 1s steps(2) infinite}
+.a3tile.lk .tl{color:#a59cbd}
+.a3tile:disabled{opacity:.55}
+@keyframes a3blink{50%{opacity:.25}}
+.a3tabs{position:sticky;bottom:0;margin:auto -12px 0;width:calc(100% + 24px);display:grid;grid-template-columns:repeat(5,1fr);background:#0d0b17;border-top:3px solid #3a3358;padding:7px 2px calc(9px + env(safe-area-inset-bottom,0px));z-index:3}
+.a3tab{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;box-shadow:none;padding:2px 0;font:700 8px Silkscreen,monospace;color:#a59cbd;letter-spacing:.5px;cursor:pointer;min-width:0}
+.overlay .etitle.a3 .a3tab.shopblink{animation:none;color:#f2c14e} .a3tab.shopblink::after{content:"";position:absolute;top:0;right:calc(50% - 16px);width:6px;height:6px;background:#f2c14e;box-shadow:0 0 0 1px #1a1206;animation:a3blink 1s steps(2) infinite}
+.a3in{animation:a3drop .32s steps(4) both}
+@keyframes a3drop{from{transform:translateY(-14px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.a3play .ar,.a3tile .new,.a3in,.a3tab.shopblink{animation:none}}
+.a3how{justify-content:center;margin:8px 0}
+.a3ward .a3grid{grid-template-columns:repeat(4,1fr);gap:6px}
+.a3ward h2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+.a3ward h2 .a3coin{font-size:10px;margin-left:6px}
+.a3ward .wleg{display:flex;gap:10px;justify-content:center;align-items:center;font:700 8px Silkscreen,monospace;color:#a59cbd;margin:2px 0 6px}
+.a3ward .wleg i{display:inline-block;width:8px;height:8px;margin-right:-6px}
+.a3ward .wleg .lo{background:#5fd1c4} .a3ward .wleg .ls{background:#f2c14e} .a3ward .wleg .lf{background:#5a5486}
+.a3ward .wtile{position:relative}
+.a3ward .wtile.own{box-shadow:0 0 0 2px #2f6a66} .a3ward .wtile.sel{box-shadow:0 0 0 2px #5fd1c4;background:#163230}
+.a3ward .wtile.shop{box-shadow:0 0 0 2px #b8862a}
+.a3ward .wtile.lockd{opacity:.8}
+.a3ward .wchk{position:absolute;top:2px;left:4px;font-style:normal;color:#5fd1c4;font:700 10px Silkscreen,monospace}
+.a3ward .sale{position:absolute;top:2px;right:2px;font-style:normal;font:700 7px Silkscreen,monospace;background:#e0566b;color:#fff;padding:1px 2px;animation:a3blink 1s steps(2) infinite}
+.a3ward .wpr{font:700 9px Silkscreen,monospace;color:#f2c14e;white-space:nowrap} .a3ward .wpr.poor{color:#6b6690} .a3ward .wpr.poor .cn{filter:grayscale(1)}
+.a3ward .winfo{min-height:34px;line-height:1.4}
+.a3ward .winfo .ctlsel{margin-top:6px;justify-content:center}
+.a3ward .wbtns{display:flex;gap:8px;justify-content:center}
+.a3ward .wbtns button{min-width:120px}`; document.head.appendChild(st); })();
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
