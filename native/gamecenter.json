@@ -156,8 +156,8 @@
    "id": "midnight",
    "es": "Medianoche",
    "en": "Midnight",
-   "cond_es": "Vence a 10 enemigos en los primeros 30 s",
-   "cond_en": "Defeat 10 enemies in the first 30 s",
+   "cond_es": "Derrota 10 enemigos en los primeros 40 s",
+   "cond_en": "Defeat 10 enemies in the first 40 s",
    "points": 15,
    "hidden": false
   },
