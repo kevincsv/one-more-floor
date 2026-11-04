@@ -3186,7 +3186,7 @@ function update(dt) {
     } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && ((p.wjCd || 0) <= 0 || p.stuck) && !(S.escape && p.wjUsed)) {
       p.wjSide = p.wallDir; p.wjUsed = true; // Escape: one wall kick per jump (no slide, no grab), so walls can't be climbed
       p.vy = -JUMP_V * 0.97 * (has("shrink") ? 0.9 : 1) * S.gdir; p.vx = -p.wallDir * 185; p.face = -p.wallDir;
-      p.launchT = 0.1; p.buf = 0; p.wallT = 0; p.wjCd = 0.7; omfSfx("walljump");
+      p.launchT = 0; p.buf = 0; p.wallT = 0; p.wjCd = 0; omfSfx("walljump"); /* v105 (user, test): instant wall jump, no control lock (was 0.1 s) and no cooldown (was 0.7 s); Escape still allows one kick per jump */
       if (has("inertia")) p.lock = -p.wallDir;
       puff(p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 5); noise(p.x, p.y);
     } else if (p.buf > 0 && canJump && perk("salto") && !p.ground && !p.climb && (p.airJ || 0) < perk("salto")) {
@@ -10584,7 +10584,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v104";
+var OMF_VER = "Escape v105";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
