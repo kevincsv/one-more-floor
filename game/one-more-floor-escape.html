@@ -612,7 +612,14 @@ body.esc .overlay .codex .lk b { color: #9a94b8; }
 .hurew .card.hupact { border-color: #ff5a6a; } .hurew .card.hupact .tag { color: #ff5a6a; } .hurew .card.hupact .hudown, .hurew .card.hupact .hudn { display: none; }
 .hurew .card.hupact.arm .hudown { display: block; font-size: 11px; color: #ff9aa4; margin-top: 4px; } .hurew .card.hupact.arm .hudn { display: inline-block; margin-top: 6px; padding: 6px 12px; background: #ff5a6a; color: #1b1829; font-family: var(--font-display); box-shadow: 0 0 0 2px #0a0812, 0 3px 0 2px #0a0812; }
 #fullMsg small.sterr { display: block; margin-top: 4px; font-size: 10px; color: #ff9aa4; word-break: break-word; }
-.dlyintro .dlygoal, .menu .dlygoal { text-align: center; color: #f2c14e; margin: 8px 0 12px; } .dlyintro .dlycards { display: flex; flex-direction: column; gap: 8px; margin: 0 auto 10px; max-width: 420px; } .dlyintro .dlycards .card { cursor: default; width: auto; min-height: 0; padding: 8px 10px; } .dlyintro .dlycards .card .ds { margin-top: 2px; }
+.dlyintro .dlygoal, .menu .dlygoal { text-align: center; color: #f2c14e; margin: 8px 0 12px; } .dlyintro .dlycards { display: flex; flex-direction: column; gap: 8px; margin: 0 auto 10px; max-width: 420px; } .dlyintro .dlycards .card { cursor: default; width: auto; min-height: 0; padding: 8px 10px; } .dlyintro .dlycards .card .ds { margin-top: 2px; } /* v107 (user): daily screen fits without scrolling: modifiers smaller, 2 per row */
+.menu.dlyintro { overflow: hidden; } .menu.dlyintro h2 { margin-bottom: 2px; } .menu.dlyintro .tagline { margin: 2px 0; } .menu.dlyintro .dlygoal { margin: 6px 0 8px; font-size: 12px; line-height: 1.35; }
+.dlyintro .dlycards { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-width: 440px; width: 100%; margin: 0 auto 8px; }
+.dlyintro .dlycards .card { padding: 6px 7px; gap: 2px; text-align: left; align-items: flex-start; }
+.dlyintro .dlycards .card .ic { font-size: 16px; line-height: 1; } .dlyintro .dlycards .card .nm { font-size: 10px; letter-spacing: 0.5px; line-height: 1.2; }
+.dlyintro .dlycards .card .tag { font-size: 8px; } .dlyintro .dlycards .card .ds { font-size: 10px; line-height: 1.3; margin-top: 2px; }
+.dlyintro .dlycards .card .skulls, .dlyintro .dlycards .card [class*="skull"] { transform: scale(.8); transform-origin: left center; }
+.dlyintro .dlycards .card:last-child:nth-child(odd) { grid-column: 1 / -1; } .menu.dlyintro .hust { margin: 4px 0 8px; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -10287,7 +10294,7 @@ function escTitleHTML(ch0, db) {
     <div class="emodes${ok ? "" : " off"}">
       <button class="mode main" id="goBtn"><span class="mi">${pxi("up", "#f2c14e")}</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin</span><span class="mv"><small>MEJOR</small>${bestOf(escDifKind())} m</span></button>
       <button class="mode half" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e")}</span><span class="mt">DIARIO</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
-      <button class="mode half${fullOwned() ? "" : " paid"}" id="hordeBtn"><span class="mi">${pxi(fullOwned() ? "swords" : "lock", fullOwned() ? "#e0566b" : "#f2c14e")}</span><span class="mt">HORDA</span><span class="mv">${fullOwned() ? `<small>MEJOR</small>${bestOf("escape-horde")} m` : ""}</span></button>
+      <button class="mode half${hordeOk() ? "" : " paid"}" id="hordeBtn"><span class="mi">${pxi(hordeOk() ? "swords" : "lock", hordeOk() ? "#e0566b" : "#f2c14e")}</span><span class="mt">HORDA</span><span class="mv">${hordeOk() ? `<small>MEJOR</small>${bestOf("escape-horde")} m` : ""}</span></button>
     </div>
     <div class="eicons">${gcOnly() ? "" : `<button id="lbBtn" title="${T("Récords")}" aria-label="${T("Récords")}">${pxi("trophy", "#f2c14e")}</button>`}<button id="codexBtn" title="${T("Códice")}" aria-label="${T("Códice")}">${pxi("book", "#c9c3e6")}</button>${ach}${PGS ? `<button id="pgsLb" title="${T("Ranking")}" aria-label="${T("Ranking")}">${pxi("trophy", "#f2c14e")}</button>` : ""}<button id="retoBtn" title="${T("Retos")}" aria-label="${T("Retos")}">${pxi("target", "#e0566b")}${retoBadge()}</button><button id="setBtn" title="${T("Ajustes")}" aria-label="${T("Ajustes")}">${pxi("gear", "#c9c3e6")}</button><button id="howBtn" title="${T("Cómo se juega")}" aria-label="${T("Cómo se juega")}">${pxi("q", "#e0566b")}</button>${store ? "" : `<button id="testsBtn" title="PRUEBAS" aria-label="PRUEBAS">${pxi("flask", "#9a94b8")}</button>`}</div>
     ${store ? "" : `<details class="how bt" id="testsBox"><summary>PRUEBAS</summary>
@@ -10307,7 +10314,7 @@ function escTitleWire() {
   on("heroPrev", () => go(-1)); on("heroNext", () => go(1));
   { const c = document.getElementById("payChk"); if (c) c.onchange = () => { try { localStorage.setItem("omf-paytest", c.checked ? "1" : "0"); } catch (_) {} location.reload(); }; }
   on("payReset", () => { META.fullTest = false; saveMeta(); showTitle(); });
-  on("fullBtn", () => showFull()); if (!fullOwned()) on("hordeBtn", () => showFull());
+  on("fullBtn", () => showFull()); if (!hordeOk()) on("hordeBtn", () => showFull("horde"));
   on("heroTap", () => { if (!charOk(view.id) || !heroesOn()) return; const ids = heroSkinsOf(view.id).filter(skinOwned); if (ids.length < 2) return;
     const cur = heroSkinOf(view.id); META.skin[view.id] = ids[(ids.indexOf(cur) + 1) % ids.length]; saveMeta(); omfSfx("pick"); showTitle(); });
   on("wardBtn", () => escWardrobe(view)); on("retoBtn", () => { omfSfx("click"); showRetos(); }); on("pgsLb", () => pgsShow("leaderboard"));
@@ -10584,7 +10591,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v106";
+var OMF_VER = "Escape v108";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10980,13 +10987,14 @@ if (PAY_ON && !PAY_TEST && STOREP) {
 function fullCharFix() { if (S && S.char && !charOk(S.char.id)) S.char = CHARS.find(c => c.id === "velo") || S.char; }
 var showTitle1 = showTitle;
 showTitle = function () { fullCharFix(); return showTitle1.apply(this, arguments); };
-function showFull() {
+function showFull(why) {
   omfSfx("click"); const got = fullOwned();
   const row = (ic, c, es, en) => `<li>${pxi(ic, c, 2)}<span>${Lx(es, en)}</span></li>`;
   ov.hidden = false; ov.classList.remove("dead");
   ov.innerHTML = `<div class="menu setpage fullpg"><h2>${pxi("star", "#f2c14e", 2)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</h2>
     <p class="rsub">${Lx("Un solo pago. Sin anuncios y sin suscripciones.", "One payment. No ads, no subscriptions.")}</p>
-    <ul class="fulllist">${row("swords", "#e0566b", "Modo HORDA", "HORDE mode")}${row("up", "#f2c14e", "Kai y Nyx, con sus armas", "Kai and Nyx, with their weapons")}${row("hanger", "#5fd1c4", "Todos los aspectos del armario", "Every look in the wardrobe")}${row("check", "#9be07a", "Todo lo que llegue en el futuro", "Everything that comes later")}</ul>
+    ${why === "horde" ? `<p class="hordelock">${pxi("lock", "#f2c14e", 2)}<span>${Lx("HORDA se desbloquea al terminar La Huida (modo historia) en Normal o Hardcore. O ahora mismo, con Escape completo.", "HORDE unlocks when you finish La Huida (story mode) on Normal or Hardcore. Or right now, with Full Escape.")}</span></p>` : ""}
+    <ul class="fulllist">${row("swords", "#e0566b", "Modo HORDA (también se gana con la historia)", "HORDE mode (also earned through the story)")}${row("up", "#f2c14e", "Kai y Nyx, con sus armas", "Kai and Nyx, with their weapons")}${row("hanger", "#5fd1c4", "Todos los aspectos del armario", "Every look in the wardrobe")}${row("check", "#9be07a", "Todo lo que llegue en el futuro", "Everything that comes later")}</ul>
     <p class="rsub">${Lx("Gratis para siempre: Escape, Fácil, Reto diario, Velo y los aspectos que ganas con logros.", "Free forever: Escape, Easy, Daily, Velo and the looks you earn with feats.")}</p>
     ${got ? `<p class="fullok">${pxi("check", "#9be07a", 2)} ${Lx("¡Ya lo tienes todo!", "You have it all!")}</p>` : `<div class="rowbig"><button class="go" id="buyBtn">${Lx("COMPRAR", "BUY")} · ${fullPrice}</button></div>`}
     <p class="bkmsg" id="fullMsg"></p>
@@ -11808,6 +11816,9 @@ function dgHit(e, dir) {
       ctx.drawImage(cv, -4 * k, -4 * k, 8 * k, 8 * k); ctx.restore(); } catch (er) { errLog(er.message, "dgDraw"); } }; }
 (() => { const st = document.createElement("style"); st.textContent = '#gAtk[data-dg]::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;background:#5fd6c4;box-shadow:0 0 0 2px #0a0812;opacity:.3}#gAtk[data-dg=""]::after{display:none}#gAtk[data-dg="rdy"]::after{opacity:1;animation:dgblink .5s steps(1) infinite}@keyframes dgblink{50%{opacity:.35}}'; document.head.appendChild(st); })();
 
+// v108 (user): HORDA unlocks by finishing La Huida on Normal or Hardcore, or with Full Escape; a locked tap says so
+function hordeOk() { if (fullOwned()) return true; try { const M = huM(); return !!(M.best && (M.best.n || M.best.h)) || !!M.hardDone; } catch (_) { return false; } }
+(() => { const st = document.createElement("style"); st.textContent = '.fullpg .hordelock{display:flex;gap:10px;align-items:center;text-align:left;margin:8px auto 12px;max-width:420px;padding:8px 10px;background:#2a1f12;box-shadow:0 0 0 2px #f2c14e;color:#f2c14e;font-size:12px;line-height:1.4}.fullpg .hordelock .pxi,.fullpg .hordelock canvas,.fullpg .hordelock img{flex:none}'; document.head.appendChild(st); })();
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
