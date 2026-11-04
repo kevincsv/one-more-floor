@@ -1766,7 +1766,7 @@ function escPlaceCrack(startRow, R) {
     if (!solidCode(g[y][inn]) || g[y - 1][inn] !== 0 || g[y - 2][inn] !== 0 || g[y - 1][side] !== 1 || g[y - 2][side] !== 1) continue;
     if (S.spikes.some(sp => sp.tx === inn && sp.ty === y - 1)) continue;
     { const nx = side ? inn - 1 : inn + 1; if ([y - 4, y - 3, y - 2, y - 1, y].some(yy => g[yy] && (g[yy][nx] === 3 || g[yy][inn] === 3))) continue; }
-    g[y - 1][side] = 7; g[y - 2][side] = 7; eg.nextCrack = y - (S.easy ? 80 : 110) - Math.floor(R() * (S.easy ? 30 : 40)); // v117 (user: "hay demasiadas zonas ocultas"): one every 110-150 m in Normal and Hardcore, 80-110 m in Easy (was 55-75 m; v84 was 35-50)
+    g[y - 1][side] = 7; g[y - 2][side] = 7; eg.nextCrack = y - (S.hu ? 55 : S.easy ? 80 : 110) - Math.floor(R() * (S.hu ? 20 : S.easy ? 30 : 40)); /* v118: story keeps 55-75 m so its Ecos stay findable in 150 m stretches */ // v117 (user: "hay demasiadas zonas ocultas"): one every 110-150 m in Normal and Hardcore, 80-110 m in Easy (was 55-75 m; v84 was 35-50)
     (S.cracks = S.cracks || []).push({ side, inn, y0: y - 2, y1: y - 1 }); return;
   }
 }
@@ -1824,6 +1824,7 @@ function escEnterRoom(d, force) {
   else objs.push({ k: { fountain: "fountain", altar: "altar", merchant: "merchant", trial: "pedestal", cursed: "cursed", lore: "lore" }[kind], x: mid, st: 0 });
   if (!S.roomTest) achRoom(kind);
   S.secret = { d, kind, side, ex, camY: S.camY, objs, timer: 8, wave: 0, away: false, spikes: [] };
+  S.secret.held = S.rules.slice(); S.rules = []; // v118 (user): no modifiers inside secret rooms; the ones you had come back when you leave
   if (kind === "trial") for (const tx of [Math.floor(mid / TS) - 2, Math.floor(mid / TS) - 1, Math.floor(mid / TS) + 1, Math.floor(mid / TS) + 2]) { const sp = { tx, ty: Q.F - 1, phase: tx * 0.7, cyc: true, room: true }; S.spikes.push(sp); }
   p.x = (side < 0 ? Q.a : Q.b) * TS + 4; p.y = Q.F * TS - p.h - 0.01; p.vx = p.vy = 0; p.ground = true; p.climb = false; p.inv = Math.max(p.inv, 0.6); p.face = -side;
   S.camY = Math.max(0, (Q.F + 1) * TS - CH * 0.65);
@@ -1843,7 +1844,7 @@ function escLeaveRoom() {
   escReserveRooms(S.grid, S.LW);
   p.x = (d.tx === 0 ? 1 : S.LW - 2) * TS + 4; p.y = (d.y1 + 1) * TS - p.h - 0.01; p.vx = p.vy = 0; p.inv = Math.max(p.inv, 1); p.face = d.tx === 0 ? 1 : -1;
   // back where you were, with the hero at a fair height on screen and a short breather before the camera pushes again
-  S.camY = Math.max(R.camY, p.y + p.h - CH * 0.6); S.banner = Math.max(S.banner || 0, 1.5); S.bannerSmall = true; S.secret = null; lastHud = "";
+  S.camY = Math.max(R.camY, p.y + p.h - CH * 0.6); S.banner = Math.max(S.banner || 0, 1.5); S.bannerSmall = true; if (R.held) S.rules = [...new Set(R.held.concat(S.rules))]; S.secret = null; lastHud = "";
 }
 function escRoomCoins(n, lo, hi, x) { const Q = ESC_ROOM; for (let i = 0; i < n; i++) S.coinsL.push({ x: x - 30 + (i % 6) * 11 + Math.random() * 4, y: (Q.F - 1) * TS + 6 - Math.floor(i / 6) * 14, w: 10, h: 12, v: lo + Math.floor(Math.random() * (hi - lo + 1)) }); }
 // perks that can still be given; relic perks only when their modifier is around (Linterna needs Oscuridad, Crampones Hielo, Búho invisibles)
@@ -3702,6 +3703,9 @@ function updateEnemy(e, dt, p) {
     }
     e.vy += G * S.gdir * dt; e.vy = clamp(e.vy, -MAXF, MAXF); move(e, dt);
     e.face = Math.sign(dx) || 1; e.cd -= dt;
+    // v118 (user): in Escape an archer above (or below) the screen never shoots; once it comes into view it waits 0.7 s first
+    if (S.escape && !S.secret && !(S.arena && S.arena.state === "lab")) { const vis = e.y >= S.camY + 24 && e.y + e.h <= S.camY + CH;
+      if (!vis) { e.seen = false; e.tele = 0; return; } if (!e.seen) { e.seen = true; e.cd = Math.max(e.cd, 0.7); } }
     if (e.tele > 0) {
       e.tele -= dt; e.flash = 0.2;
       if (e.tele <= 0) {
@@ -10609,7 +10613,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v117";
+var OMF_VER = "Escape v118";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11392,7 +11396,7 @@ Object.assign(EN_TEXT, { "PARA DESBLOQUEAR": "TO UNLOCK", "Llega a 75 m en una p
 // closed arena with that biome's boss (bosses live only here). Each boss: its lines, a memory (RECUERDO n/5), a pick of
 // 1 of 2 rare items, a checkpoint (not in Hardcore) and the next biome's vignette. 15 Ecos hide in secret rooms (3 per biome).
 // After El Sello: ending UN PISO MÁS, or BAJAR with 15/15 Ecos. Free in every version, any unlocked hero.
-var HU_L = 200;
+var HU_L = 150; // v118 (user): 150 m per biome stretch (was 200)
 const HU_B = [
   { n: "La Campana", t: "La campana", c: "#c9a36a", v: ["Despiertas en una escalera que no recuerdas. Abajo, algo gris se traga los escalones.", "En el bolsillo, una nota con tu letra: «Subí para olvidar lo que dejé abajo.»", "Muy arriba, una campana suena sin parar."],
     i: "Esta vez sí aviso. Esta vez nadie sale.", o: "...¿Quién tenía que tocarme aquella noche?", m: "Tú eras quien tocaba la campana. Aquella noche no la tocaste.",
