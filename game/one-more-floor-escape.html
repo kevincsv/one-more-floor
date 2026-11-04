@@ -10298,6 +10298,7 @@ function escTitleHTML(ch0, db) {
       <div class="mlabel">${T("BIOMAS")}</div><div class="tools">${BIOMES.slice(0, 5).map((B, z) => `<button data-bz="${z}">${z + 1} · ${B.name}</button>`).join("")}<button id="platBtn">${T("Plataformas")}</button></div>
       <div class="mlabel">SALAS SECRETAS</div><div class="tools">${ESC_ROOM_TYPES.map(([k]) => `<button data-rt="${k}">${T(ESC_ROOM_NAME[k])}</button>`).join("")}</div>
       <div class="tools"><label class="flsel"><input id="payChk" type="checkbox" ${(() => { try { return localStorage.getItem("omf-paytest") === "1" ? "checked" : ""; } catch (_) { return ""; } })()}> ${T("Simular versión gratis")}</label><button id="payReset">${T("Quitar compra simulada")}</button></div>
+      <div class="tools"><button id="tCoins">${Lx("+999.999 MONEDAS", "+999,999 COINS")}</button><button id="tWipe" style="color:#e0566b">${Lx("BORRAR TODO EL PROGRESO", "RESET ALL PROGRESS")}</button></div>
       <p>Vas directo a la pelea o a una sala cerrada para sacar enemigos. No cuenta para los récords.</p>
     </details>`}</div>`;
 }
@@ -10586,7 +10587,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v111";
+var OMF_VER = "Escape v112";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11987,7 +11988,7 @@ function showCoinShop(from) {
     <div class="sgrid">${L.slice(CSHOP.page * 9, CSHOP.page * 9 + 9).map(cell).join("")}</div>
     <div class="spager"><button id="shopPrev" ${CSHOP.page ? "" : "disabled"} aria-label="${T("Anterior")}">${pxi("left", "#f2c14e", 2)}</button><span class="sdots">${Array.from({ length: pages }, (_, i) => `<i class="${i === CSHOP.page ? "on" : ""}"></i>`).join("")}</span><small>${Lx("PÁG", "PG")} ${CSHOP.page + 1}/${pages}</small><button id="shopNext" ${CSHOP.page < pages - 1 ? "" : "disabled"} aria-label="${T("Siguiente")}">${pxi("right", "#f2c14e", 2)}</button></div>
     <div class="sdet"><canvas class="spv big" width="96" height="84" data-skin="${s}" data-a="run"></canvas><div><b>${nm(s)}</b><small>${SHOP_HERO[k.ch]} · ${Lx(...(SHOP_DESC[s] || ["", ""]))}</small>${!heroOk && k.tier !== "heroe" && mine ? `<small class="sneed">${Lx("Necesitas a", "You need")} ${SHOP_HERO[k.ch]}</small>` : ""}${act}</div></div>
-    <p class="bkmsg" id="shopMsg">${Lx("Las monedas salen del oro que te queda al morir (Fácil ×0,5 · Hardcore ×1,5), de los retos y del desafío diario. Nada se vende por dinero real.", "Coins come from the gold left when you die (Easy ×0.5 · Hardcore ×1.5), challenges and the daily climb. Nothing is sold for real money.")}</p>
+    <p class="bkmsg" id="shopMsg">${Lx("Las monedas salen del oro que te queda al morir (Fácil ×0,5 · Hardcore ×1,5), de los retos y del desafío diario.", "Coins come from the gold left when you die (Easy ×0.5 · Hardcore ×1.5), challenges and the daily climb.")}</p>
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div>
     <div class="smodal" id="shopAsk" hidden><div><p>${Lx("¿COMPRAR", "BUY")} ${nm(s)}?<br><b><i class="cn"></i>${shopFmt(cost)}</b></p><div class="ctlsel"><button id="shopYes">${Lx("SÍ", "YES")}</button><button id="shopNo">NO</button></div></div></div></div>`;
   paintPxi(ov);
@@ -12040,7 +12041,25 @@ if (typeof ESC_PI === "object" && !ESC_PI.coin) ESC_PI.coin = ["..#####..", ".#.
 // so it always follows the App Store account's current storefront; the button shows no price until StoreKit answers.
 var fullPriceInfo = null;
 { const sfp0 = showFull; showFull = function () { const r = sfp0.apply(this, arguments);
-    try { if (PAY_ON && !PAY_TEST && STOREP) storeCall("products").then(p => { if (!p || !p.price) return; fullPrice = String(p.price); fullPriceInfo = p; const b = document.getElementById("buyBtn"); if (b) b.textContent = Lx("COMPRAR", "BUY") + " · " + fullPrice; }).catch(() => {}); } catch (_) {}
+    try { if (PAY_ON && !PAY_TEST && STOREP) storeCall("products").then(p => { if (!p || !p.price) return; fullPrice = String(p.price); fullPriceInfo = p; const b = document.getElementById("buyBtn"); if (b) b.textContent = Lx("COMPRAR", "BUY") + " · " + fullPrice; if (b && (p.storefront || p.currency) && !window.OMF_STORE) b.insertAdjacentHTML("afterend", `<small class="sfdbg" style="display:block;font-size:9px;color:#8a83a8;margin-top:4px">PRUEBAS · App Store: ${String(p.storefront || "?")} · ${String(p.currency || "?")}</small>`); }).catch(() => {}); } catch (_) {}
+    return r; }; }
+
+// v112 (user): PRUEBAS buttons to test the shop (999,999 coins in the bag) and to wipe all progress, iCloud copy included.
+// Only in test builds: the PRUEBAS box is not drawn when OMF_STORE is set.
+function testWipe() {
+  try { cloudAvail = false; clearTimeout(cloudT); } catch (_) {} /* no last push of the old save while leaving */
+  const keep = ["omf-paytest", "omf-ctl", "omf-lang", "omf-speed", "omf-portrait"], kill = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && /^omf/.test(k) && !keep.includes(k)) kill.push(k); } kill.forEach(k => localStorage.removeItem(k)); } catch (_) {}
+  const go = () => { try { location.reload(); } catch (_) {} };
+  try { if (CLOUD) { const r = CLOUD.set({ key: "omf-save", value: JSON.stringify({ v: 1, at: Date.now(), meta: { unlocked: START_DECK.slice(), chars: ["velo"], survive: {}, combos: [], best: 0, daily: {}, saveAt: Date.now() }, runs: [] }) });
+      if (r && r.then) { r.then(() => { try { const q = CLOUD.synchronize(); if (q && q.then) return q; } catch (_) {} }).catch(() => {}).then(() => setTimeout(go, 400)); return; } } } catch (_) {}
+  go();
+}
+{ const tw1 = escTitleWire; escTitleWire = function () { const r = tw1.apply(this, arguments);
+    const c = document.getElementById("tCoins"); if (c) c.onclick = () => { META.bank = 999999; saveMeta(); omfSfx("buy"); toast("+999.999 " + Lx("monedas", "coins")); showTitle(); };
+    const w = document.getElementById("tWipe"); if (w) w.onclick = () => { omfSfx("click"); const box = document.createElement("div"); box.className = "smodal"; box.style.cssText = "position:fixed;inset:0;background:rgba(10,8,18,.85);display:flex;align-items:center;justify-content:center;z-index:60";
+      box.innerHTML = `<div style="background:#1d1830;box-shadow:0 0 0 3px #e0566b;padding:16px 18px;text-align:center;max-width:300px"><p style="color:#ece8f5;font-size:12px;line-height:1.6">${Lx("¿BORRAR TODO EL PROGRESO?<br>Récords, monedas, aspectos, logros, historia e iCloud. No se puede deshacer.", "RESET ALL PROGRESS?<br>Records, coins, skins, feats, story and iCloud. This can't be undone.")}</p><div class="ctlsel"><button id="tWipeYes" style="color:#e0566b">${Lx("SÍ, BORRAR", "YES, RESET")}</button><button id="tWipeNo">NO</button></div></div>`;
+      ov.appendChild(box); box.querySelector("#tWipeNo").onclick = () => box.remove(); box.querySelector("#tWipeYes").onclick = () => { box.querySelector("p").textContent = Lx("Borrando…", "Resetting…"); testWipe(); }; };
     return r; }; }
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
