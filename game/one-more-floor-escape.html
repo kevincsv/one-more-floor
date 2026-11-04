@@ -907,7 +907,7 @@ const UNLOCKS = {
   quake: { es: "Vence al Robot fuelle con Nyx · En Escape: aguanta 3:45 con Nyx", en: "Defeat the Bellows robot as Nyx · Escape: survive 3:45 as Nyx", goal: 1, prog: () => Math.max(AF("b_bellows_nyx"), AF("e_nyx345")) },
   liar: { es: "Vence al Notario", en: "Defeat the Notary", goal: 1, prog: () => AF("b_notary") },
   maze: { es: "Vence a El Sello", en: "Defeat the Seal", goal: 1, prog: () => AF("b_seal") },
-  midnight: { es: "Vence a un jefe en menos de 30 s · En Escape: 10 enemigos en los primeros 30 s", en: "Defeat a boss in under 30 s · Escape: 10 enemies in the first 30 s", goal: 1, prog: () => Math.max(AF("bossFast"), AC("earlyBest") / 10) },
+  midnight: { es: "Vence a un jefe en menos de 30 s · En Escape: 10 enemigos en los primeros 40 s", en: "Defeat a boss in under 30 s · Escape: 10 enemies in the first 40 s", goal: 1, prog: () => Math.max(AF("bossFast"), AC("earlyBest") / 10) },
   right: { es: "Consigue el final «Un piso más»", en: "Get the \"One More Floor\" ending", goal: 1, m: "H", prog: () => (META.endings || []).includes("normal") ? 1 : 0 },
   noback: { es: "Consigue el final «Bajar»", en: "Get the \"Go Down\" ending", goal: 1, m: "H", star: true, prog: () => (META.endings || []).includes("true") ? 1 : 0 },
   swap: { es: "Consigue el final «Conste en acta»", en: "Get the \"Let the Record Show\" ending", goal: 1, m: "H", star: true, prog: () => (META.endings || []).includes("secret") ? 1 : 0 },
@@ -1001,7 +1001,7 @@ function achKill(e, src) {
   if (sw && sw.pogo) achAdd("pogo");
   if (sw && sw.fin) { A.fk.push(S.t); if (S.escape) A.fk = A.fk.filter(t => t > S.t - 60); achMax("finBest", A.fk.length); }
   A.kt.push(S.t); A.kt = A.kt.filter(t => t > S.t - 5); achMax("killWin", A.kt.length);
-  if (S.escape && S.t - S.escT0 < 30) { A.early++; achMax("earlyBest", A.early); }
+  if (S.escape && S.t - S.escT0 < 40) { A.early++; /* v102 (user): Midnight unlock window is 40 s */ achMax("earlyBest", A.early); }
   if (e.mimic) achAdd("mimics");
   if (e.bp) {
     const k = e.bp.kind; achMark("b_" + k); achMark("b_" + k + "_" + ch);
@@ -10581,7 +10581,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v101";
+var OMF_VER = "Escape v102";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11212,7 +11212,7 @@ function trkTick(dt) {
   if (trk("luciernagas")) {
     S.trkFlyA = (S.trkFlyA || 0) + dt * 3.2;
     for (let i = 0; i < 3; i++) { const a = S.trkFlyA + i * Math.PI * 2 / 3, fx = p.x + p.w / 2 + Math.cos(a) * 30, fy = p.y + p.h / 2 + Math.sin(a) * 26;
-      for (const e of S.enemies) if (!e.dead && (e.type === "bat" || e.type === "ghost" || e.type === "wisp") && !(e.trkFlyCd > S.t) && Math.abs(e.x + e.w / 2 - fx) < e.w / 2 + 6 && Math.abs(e.y + e.h / 2 - fy) < e.h / 2 + 6) { e.trkFlyCd = S.t + 0.6; damage(e, 1, "hit"); burst(fx, fy, "#ffcf5a", 6); } }
+      for (const e of S.enemies) if (!e.dead && (e.type === "bat" || e.type === "ghost" || e.type === "wisp") && !(e.trkFlyCd > S.t) && Math.abs(e.x + e.w / 2 - fx) < e.w / 2 + 6 && Math.abs(e.y + e.h / 2 - fy) < e.h / 2 + 6) { e.trkFlyCd = S.t + 0.4; damage(e, 2, "hit"); burst(fx, fy, "#ffcf5a", 8); } /* v101 (user): fireflies hit harder, 2 damage every 0.4 s (was 1 every 0.6 s) */ }
   }
   for (const it of S.items) if (it.kind === "trk") { const near = Math.abs(it.x - p.x) < 80 && Math.abs(it.y - p.y) < 60; it.label = near ? (TRK[it.id].r === "maldito" ? "↓ " : "") + T(TRK[it.id].n) : null; }
 }
@@ -11341,7 +11341,7 @@ function escBossFix() {
   U(UNLOCKS, "quake", "Aguanta 3:45 con Nyx", "Survive 3:45 as Nyx", () => AF("e_nyx345"));
   U(UNLOCKS, "liar", "Llega a El vacío", "Reach the Void", () => AF("e_z3"));
   U(UNLOCKS, "maze", "Llega a Lo desconocido", "Reach the Unknown", () => AF("e_z4"));
-  U(UNLOCKS, "midnight", "Vence a 10 enemigos en los primeros 30 s", "Defeat 10 enemies in the first 30 s", () => AC("earlyBest") / 10);
+  U(UNLOCKS, "midnight", "Vence a 10 enemigos en los primeros 40 s", "Defeat 10 enemies in the first 40 s", () => AC("earlyBest") / 10);
   U(GOOD_UNLOCKS, "o_campanilla", "Llega a Profundidades vivas", "Reach the Living Depths", () => AF("e_z1"));
   U(GOOD_UNLOCKS, "o_corona", "Llega al Reino de las máquinas", "Reach the Machine Kingdom", () => AF("e_z2"));
   U(GOOD_UNLOCKS, "o_pacto", "Llega a El vacío", "Reach the Void", () => AF("e_z3"));
