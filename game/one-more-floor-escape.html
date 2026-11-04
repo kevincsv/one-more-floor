@@ -2938,7 +2938,7 @@ function holeAssist(p) {
       if (!bl && !br) continue;
       if (bl && br) return;
       let shift = bl ? (l + 1) * TS - p.x + 0.01 : -(p.x + p.w - r * TS + 0.01);
-      if (Math.abs(shift) > 13) return;
+      if (Math.abs(shift) > 6) return; // REGLA INTOCABLE (user, v98): never more than 6 px of corner help; 13 px slid the hero to the nearest side (qa/suites/regla_techo.js)
       if (steer && Math.sign(shift) !== (input.right ? 1 : -1) * (mirOn() ? -1 : 1)) return;
       const step = clamp(shift, -3, 3), ox = p.x;
       p.x += step;
@@ -10547,7 +10547,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v97";
+var OMF_VER = "Escape v98";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10884,7 +10884,7 @@ function shareCard(D) {
   const extra = [D.daily ? Lx("RETO DIARIO ", "DAILY ") + D.daily : "", D.mode, D.boss ? Lx("JEFE: ", "BOSS: ") + D.boss : ""].filter(Boolean).join(" · ");
   if (extra) out(extra, 540, 942, 28, "#5fd1c4", 3);
   if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; g.fillText(RULE[id] ? RULE[id].icon : "?", x0 + i * w, 340); }); }
-  out("One More Floor: Escape", 540, 1008, 26, "#a39cc4", 3);
+  out("One More Floor Escape", 540, 1008, 26, "#a39cc4", 3);
   return c;
 }
 function runCardData() {
@@ -10906,7 +10906,7 @@ async function shareRun() {
   const file = blob ? new File([blob], "one-more-floor-escape.png", { type: "image/png" }) : null, msg = el.querySelector("#shMsg");
   const canShare = !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
   if (!canShare) el.querySelector("#shGo").hidden = true;
-  el.querySelector("#shGo").onclick = async () => { try { await navigator.share({ files: [file], text: "One More Floor: Escape" }); } catch (e) { if (!(e && e.name === "AbortError")) msg.textContent = Lx("No se pudo compartir; guárdala.", "Couldn't share; save it."); } };
+  el.querySelector("#shGo").onclick = async () => { try { await navigator.share({ files: [file], text: "One More Floor Escape" }); } catch (e) { if (!(e && e.name === "AbortError")) msg.textContent = Lx("No se pudo compartir; guárdala.", "Couldn't share; save it."); } };
   el.querySelector("#shSave").onclick = () => { try { const a = document.createElement("a"); a.href = blob ? URL.createObjectURL(blob) : url; a.download = "one-more-floor-escape.png"; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); }, 1500); msg.textContent = Lx("Imagen guardada en Descargas.", "Image saved to Downloads."); } catch (_) {} };
   el.querySelector("#shClose").onclick = () => { omfSfx("click"); el.remove(); };
 }
