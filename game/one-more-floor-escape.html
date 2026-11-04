@@ -8865,6 +8865,7 @@ document.addEventListener("click", ev => { const b = ev.target.closest && ev.tar
 //   bass: R root, 3 third, 5 fifth, 7 seventh, 8 octave up, r octave down, - hold, . rest
 //   arp : a b c d = chord tones (d = 7th/octave), A B C D = one octave higher, - hold, . rest
 // drums: k kick, s snare, h closed hat, o open hat, - / . rest. A list cycles bar by bar.
+const L = (o) => Object.assign({ a: 0.003, d: 0.12, s: 0.6, r: 0.05 }, o); // default envelope
 const SONGS = {
   // Title screen: inviting, a bit mysterious. A minor, mid tempo.
   menu: {
@@ -8902,21 +8903,21 @@ const SONGS = {
     },
   },
 
-  // Biome 2, Living Depths: organic, swampy, swung groove with dripping echoes. E dorian.
+  // Depths B: slow offbeat groove, like something breathing under the roots. G minor.
   profundidades: {
-    title: "Profundidades Vivas", bpm: 100, steps: 16, loop: true, swing: 0.3,
-    lead: { wave: "pulse", duty: 0.5, vol: 0.13, a: 0.01, d: 0.2, s: 0.5, r: 0.1, vib: 0.3, echo: { steps: 3, fb: 0.42, mix: 0.38 } },
-    arp: { wave: "tri", vol: 0.12, oct: 4, a: 0.002, d: 0.15, s: 0.0, r: 0.05, pat: "a..c..B.....c..." },
-    bass: { vol: 0.34, oct: 2, pat: "R..5..R.8..5..R." },
-    drums: { vol: 0.38, pat: ["k.....h.s.....h.", "k.....h.s.....h.", "k.....h.s.....h.", "k..k..h.s...s.hh"] },
+    title: "Raíces", bpm: 88, steps: 16, loop: true, swing: 0.25,
+    lead: L({ wave: "pulse", duty: 0.5, vol: 0.13, a: 0.01, d: 0.25, s: 0.5, r: 0.12, vib: 0.3, echo: { steps: 3, fb: 0.4, mix: 0.36 } }),
+    arp: L({ wave: "tri", vol: 0.11, oct: 4, a: 0.002, d: 0.12, s: 0.0, r: 0.04, pat: "....bc......bc.." }),
+    bass: { vol: 0.35, oct: 2, pat: "R.....5.R.....8." },
+    drums: { vol: 0.36, pat: ["k.h...h.s.h...h.", "k.h...h.s.h...h.", "k.h...h.s.h...h.", "k.h..kh.s.h.s.ss"] },
     order: "AB",
     sections: {
-      A: { chords: ["Em7", "A", "Em7", "A", "Cmaj7", "D", "Em", "Em"],
-        lead: "B4:3 E5:3 F#5:2 G5:4 F#5:4 | E5:6 C#5:2 A4:8 | B4:3 E5:3 G5:2 B5:4 A5:2 G5:2 | F#5:6 E5:2 C#5:8 |" +
-              "E5:4 G5:4 B5:6 A5:2 | F#5:4 D5:4 A4:4 D5:4 | E5:3 F#5:3 G5:2 F#5:4 D5:4 | E5:12 r:4" },
-      B: { chords: ["Am7", "D", "G", "Cmaj7", "Am7", "B7", "Em7", "A"],
-        lead: "C5:4 E5:4 G5:4 E5:4 | F#5:6 A5:2 F#5:4 D5:4 | B4:4 D5:4 G5:8 | E5:6 D5:2 B4:8 |" +
-              "A4:3 C5:3 E5:2 A5:4 G5:4 | F#5:4 D#5:4 B4:4 F#5:4 | G5:6 F#5:2 E5:4 B4:4 | C#5:8 E5:4 A5:4" },
+      A: { chords: ["Gm", "Eb", "Cm", "D", "Gm", "Eb", "Cm", "D7"],
+        lead: "D5:6 G5:2 Bb5:4 A5:4 | G5:6 Eb5:2 Bb4:8 | C5:4 Eb5:4 G5:4 F5:2 Eb5:2 | D5:8 F#5:4 A5:4 |" +
+              "Bb5:4 A5:2 G5:2 D5:4 G5:4 | Eb5:4 G5:2 Bb5:2 Eb6:8 | D6:2 C6:2 Bb5:2 G5:2 Eb5:4 C5:4 | D5:12 r:4" },
+      B: { chords: ["Cm", "Gm", "Ab", "Eb", "Cm", "Gm", "Eb", "D"],
+        lead: "C5:4 Eb5:4 G5:8 | F5:2 G5:2 Bb5:4 D5:8 | C5:4 Eb5:4 Ab5:4 G5:2 F5:2 | G5:8 Bb4:8 |" +
+              "Eb5:3 F5:3 G5:2 C6:8 | Bb5:4 A5:2 G5:2 D5:8 | Eb5:2 G5:2 Bb5:2 Eb6:2 D6:4 Bb5:4 | A5:4 F#5:4 D5:8" },
     },
   },
 
@@ -8938,37 +8939,37 @@ const SONGS = {
     },
   },
 
-  // Biome 4, the Void: sparse and floating, long notes, heavy echo, almost no drums. C lydian.
+  // Void B: a constant starry arpeggio with a slow melody on top. Ab lydian.
   vacio: {
-    title: "El Vacío", bpm: 76, steps: 16, loop: true,
-    lead: { wave: "pulse", duty: 0.5, vol: 0.12, a: 0.08, d: 0.4, s: 0.7, r: 0.35, vib: 0.35, echo: { steps: 4, fb: 0.5, mix: 0.45 } },
-    arp: { wave: "pulse", duty: 0.125, vol: 0.045, oct: 4, a: 0.004, d: 0.5, s: 0.0, r: 0.2, pat: "a...c...B...c..." },
-    bass: { vol: 0.3, oct: 2, pat: "R---------------" },
-    drums: { vol: 0.25, pat: ["................", "........h.......", "................", "........h...h..."] },
+    title: "Estrellas mudas", bpm: 68, steps: 16, loop: true,
+    lead: L({ wave: "pulse", duty: 0.5, vol: 0.11, a: 0.1, d: 0.5, s: 0.7, r: 0.4, vib: 0.35, echo: { steps: 4, fb: 0.5, mix: 0.45 } }),
+    arp: L({ wave: "tri", vol: 0.1, oct: 4, a: 0.002, d: 0.25, s: 0.0, r: 0.1, pat: "abcBCBcb" }),
+    bass: { vol: 0.28, oct: 2, pat: "R---------------" },
+    drums: { vol: 0.2, pat: ["................", "................", "................", "............h..."] },
     order: "AB",
     sections: {
-      A: { chords: ["Cmaj7", "D", "Bm", "Em", "Cmaj7", "D", "Am7", "Bsus4"],
-        lead: "E5:8 G5:4 F#5:4 | A5:12 r:4 | F#5:8 D5:4 B4:4 | E5:16 | G5:8 B5:4 A5:4 | F#5:8 D6:8 | C6:6 B5:2 A5:4 E5:4 | F#5:16" },
-      B: { chords: ["Fmaj7", "G", "Em7", "Am", "Fmaj7", "G", "Am", "B"],
-        lead: "A5:8 C6:4 B5:4 | D6:12 r:4 | B5:8 G5:4 E5:4 | A5:16 | C6:6 A5:2 F5:8 | G5:6 B5:2 D6:8 | E6:8 B5:8 | D#5:8 F#5:8" },
+      A: { chords: ["Ab", "Bb", "Cm", "Bb", "Ab", "Bb", "Fm", "Eb"],
+        lead: "C5:8 Eb5:8 | D5:12 F5:4 | G5:8 Eb5:4 C5:4 | D5:16 | C6:8 Bb5:4 Ab5:4 | Bb5:8 F5:8 | Ab5:6 G5:2 F5:4 C5:4 | Eb5:12 r:4" },
+      B: { chords: ["Db", "Ab", "Bb", "Cm", "Db", "Eb", "Fm", "Bb"],
+        lead: "F5:8 Ab5:4 C6:4 | Eb6:12 r:4 | D6:8 Bb5:8 | G5:8 C6:8 | Ab5:6 F5:2 Db5:8 | Eb5:4 G5:4 Bb5:8 | C6:6 Ab5:2 F5:8 | D5:16" },
     },
   },
 
-  // Biome 5, the Unknown: restless 7/8, fast, tritones. B minor/locrian.
+  // Unknown B: lopsided 5/4, like a signal that keeps cutting out. C# minor.
   desconocido: {
-    title: "Lo Desconocido", bpm: 168, steps: 14, loop: true,
-    lead: { wave: "pulse", duty: 0.25, vol: 0.14, a: 0.002, d: 0.1, s: 0.6, r: 0.03, vib: 0.2, echo: { steps: 2, fb: 0.3, mix: 0.25 } },
-    arp: { wave: "pulse", duty: 0.125, vol: 0.05, oct: 4, a: 0.001, d: 0.06, s: 0.2, r: 0.02, pat: "aBcaBcaBcabcBc" },
-    bass: { vol: 0.33, oct: 2, pat: "R.R8.R.R8.R5.5" },
-    drums: { vol: 0.42, pat: ["k.h.s.hk.h.s.h", "k.h.s.hk.h.s.h", "k.h.s.hk.h.s.h", "k.h.s.hk.hss.s"] },
+    title: "Señal perdida", bpm: 150, steps: 20, loop: true,
+    lead: L({ wave: "pulse", duty: 0.25, vol: 0.14, vib: 0.25, echo: { steps: 3, fb: 0.35, mix: 0.3 } }),
+    arp: L({ wave: "pulse", duty: 0.125, vol: 0.05, oct: 4, a: 0.001, d: 0.06, s: 0.2, r: 0.02, pat: "a.b.c.a.b.c.a.b.c.B." }),
+    bass: { vol: 0.33, oct: 2, pat: "R..R..5.R.R..R..8.5." },
+    drums: { vol: 0.42, pat: ["k..h..s.h.k..h..s.h.", "k..h..s.h.k..h..s.h.", "k..h..s.h.k..h..s.h.", "k..h..s.h.k..s..s.ss"] },
     order: "AB",
     sections: {
-      A: { chords: ["Bm", "C", "Bm", "F", "Bm", "C", "G", "F#"],
-        lead: "B4:2 D5:2 F5:2 B5:2 A5:2 F5:2 D5:2 | C5:2 E5:2 G5:2 C6:4 B5:2 G5:2 | B5:2 A5:2 F#5:2 D5:2 B4:2 D5:2 F#5:2 | F5:4 A5:2 C6:4 B5:2 A5:2 |" +
-              "B5:2 r:2 B5:2 D6:2 C6:2 B5:2 F5:2 | E5:4 G5:2 C6:4 E6:4 | D6:2 B5:2 G5:2 D5:2 G5:2 B5:2 D6:2 | C#6:6 A#5:4 F#5:4" },
-      B: { chords: ["Em", "F", "Bm", "C", "Em", "F", "F#", "F#"],
-        lead: "E5:4 G5:2 B5:4 A5:2 G5:2 | F5:4 A5:2 C6:4 B5:2 A5:2 | B5:6 F#5:4 D5:4 | E5:2 G5:2 C6:2 E6:4 D6:2 C6:2 |" +
-              "B5:2 G5:2 E5:2 B4:2 E5:2 G5:2 B5:2 | C6:2 A5:2 F5:2 C5:2 F5:2 A5:2 C6:2 | C#6:4 A#5:2 F#5:4 C#5:4 | F#5:6 r:8" },
+      A: { chords: ["C#m", "D", "C#m", "G", "C#m", "D", "A", "G#"],
+        lead: "C#5:3 E5:3 G#5:4 C#6:4 B5:2 G#5:2 E5:2 | D5:3 F#5:3 A5:4 D6:6 r:4 | G#5:2 F#5:2 E5:2 C#5:2 E5:2 G#5:2 C#6:4 B5:4 | G5:3 B5:3 D6:4 F6:6 D6:4 |" +
+              "E6:4 C#6:2 G#5:2 E5:4 G#5:2 C#6:2 E6:4 | F#6:4 D6:2 A5:2 F#5:4 A5:4 D6:4 | C#6:3 E6:3 C#6:2 A5:4 E5:4 A5:4 | G#5:8 C5:4 D#5:4 G#5:4" },
+      B: { chords: ["A", "G", "F#m", "G#", "A", "B", "C", "G#"],
+        lead: "A5:4 C#6:4 E6:6 C#6:3 A5:3 | G5:4 B5:4 D6:6 B5:3 G5:3 | F#5:3 A5:3 C#6:4 F#6:6 r:4 | G#5:4 C6:4 D#6:4 G#6:8 |" +
+              "E6:2 C#6:2 A5:2 E5:2 A5:2 C#6:2 E6:4 A6:4 | F#6:2 D#6:2 B5:2 F#5:2 B5:2 D#6:2 F#6:8 | G6:4 E6:4 C6:4 G5:4 E5:4 | G#5:12 r:8" },
     },
   },
 
@@ -8990,48 +8991,40 @@ const SONGS = {
     },
   },
 
-  // Secret rooms and the merchant: cozy music-box waltz. F major, 3/4.
+  // Secret room B: jaunty shuffle for the merchant. D major.
   secreta: {
-    title: "Sala Secreta", bpm: 132, steps: 12, loop: true,
-    lead: { wave: "pulse", duty: 0.5, vol: 0.13, a: 0.004, d: 0.2, s: 0.45, r: 0.08, vib: 0.25, echo: { steps: 3, fb: 0.3, mix: 0.3 } },
-    arp: { wave: "pulse", duty: 0.25, vol: 0.05, oct: 4, a: 0.002, d: 0.1, s: 0.2, r: 0.04, pat: "....bC..bC.." },
-    bass: { vol: 0.32, oct: 2, pat: "R---5---5---" },
-    drums: { vol: 0.3, pat: ["k...h...h...", "k...h...h...", "k...h...h...", "k...h...h.h."] },
+    title: "El mercader", bpm: 116, steps: 16, loop: true, swing: 0.35,
+    lead: L({ wave: "pulse", duty: 0.5, vol: 0.13, a: 0.004, d: 0.15, s: 0.45, r: 0.06, vib: 0.2, echo: { steps: 3, fb: 0.25, mix: 0.25 } }),
+    arp: L({ wave: "pulse", duty: 0.25, vol: 0.05, oct: 4, a: 0.002, d: 0.08, s: 0.15, r: 0.03, pat: "..bc....bc....bC" }),
+    bass: { vol: 0.32, oct: 2, pat: "R...5...8...5..." },
+    drums: { vol: 0.32, pat: ["k.h.s.h.k.h.s.h.", "k.h.s.h.k.h.s.h.", "k.h.s.h.k.h.s.h.", "k.h.s.h.k.hks.ss"] },
     order: "AB",
     sections: {
-      A: { chords: ["F", "Dm", "Gm", "C", "F", "Am", "Bb", "C"],
-        lead: "A5:4 C6:2 A5:2 F5:4 | D5:4 F5:2 A5:2 D6:4 | Bb5:4 A5:2 G5:2 D5:4 | E5:8 C5:4 | F5:4 A5:2 C6:2 F6:4 | E6:4 C6:2 A5:2 E5:4 | D5:4 F5:2 Bb5:2 D6:4 | C6:8 r:4" },
-      B: { chords: ["Bb", "F", "Gm", "Dm", "Bb", "F", "C", "F"],
-        lead: "D6:4 Bb5:2 F5:2 D5:4 | C5:4 F5:2 A5:2 C6:4 | Bb5:4 G5:2 D5:2 Bb4:4 | A4:4 D5:2 F5:2 A5:4 | Bb5:6 A5:2 G5:4 | A5:6 G5:2 F5:4 | G5:4 Bb5:4 E5:4 | F5:8 r:4" },
+      A: { chords: ["D", "Bm", "G", "A", "D", "Bm", "Em", "A"],
+        lead: "F#5:2 A5:2 D6:4 C#6:2 B5:2 A5:4 | B5:4 F#5:2 D5:2 B4:8 | G5:2 B5:2 D6:4 B5:2 G5:2 E5:4 | A5:6 G5:2 E5:4 C#5:4 |" +
+              "D5:2 F#5:2 A5:2 D6:2 F#6:4 E6:4 | D6:4 B5:2 F#5:2 D5:8 | E5:2 G5:2 B5:2 E6:2 D6:4 B5:4 | C#6:4 A5:4 E5:4 G5:4" },
+      B: { chords: ["G", "D", "Em", "A", "G", "D", "A", "D"],
+        lead: "B5:4 G5:2 D5:2 G5:4 B5:4 | A5:4 F#5:2 D5:2 F#5:4 A5:4 | G5:2 F#5:2 E5:2 B4:2 E5:4 G5:4 | A5:8 C#6:4 E6:4 |" +
+              "D6:2 B5:2 G5:2 D5:2 G5:2 B5:2 D6:4 | C#6:2 A5:2 F#5:2 D5:2 F#5:2 A5:2 D6:4 | E6:4 C#6:4 A5:4 G5:4 | F#5:8 D5:4 r:4" },
     },
   },
 
-  // ---- jingles (play once)
   muerte: {
-    title: "Jingle: muerte", bpm: 120, steps: 32, loop: false,
-    lead: { wave: "pulse", duty: 0.5, vol: 0.16, a: 0.004, d: 0.2, s: 0.6, r: 0.25, vib: 0.3, echo: { steps: 3, fb: 0.3, mix: 0.25 } },
-    arp: { wave: "pulse", duty: 0.25, vol: 0.07, oct: 4, a: 0.004, d: 0.2, s: 0.5, r: 0.25 },
-    bass: { vol: 0.32, oct: 2 },
-    drums: { vol: 0.35 },
-    order: "A",
-    sections: { A: { chords: ["Am"],
-      lead: "E5:2 D#5:2 D5:2 C#5:2 C5:4 B4:4 A4:16",
-      arpNotes: "C5:2 B4:2 A#4:2 A4:2 G#4:4 F4:4 E4:16",
-      bassNotes: "A2:8 G#2:8 F2:4 E2:4 A1:8",
-      drums: "k...............................".slice(0, 32) } },
+    title: "Jingle: muerte", bpm: 90, steps: 32, loop: false,
+    lead: L({ wave: "pulse", duty: 0.5, vol: 0.15, a: 0.01, d: 0.3, s: 0.6, r: 0.4, vib: 0.35, echo: { steps: 3, fb: 0.35, mix: 0.3 } }),
+    arp: L({ wave: "tri", vol: 0.12, oct: 4, a: 0.005, d: 0.3, s: 0.5, r: 0.4 }),
+    bass: { vol: 0.32, oct: 2 }, drums: { vol: 0.3 }, order: "A",
+    sections: { A: { chords: ["Dm"], lead: "A5:4 F5:4 D5:4 C#5:4 D5:16",
+      arpNotes: "F5:4 D5:4 A4:4 G4:4 F4:16", bassNotes: "D3:8 Bb2:8 A2:8 D2:8", drums: "k...............s..............." } },
   },
+  // ---- alternative jingles
   nivel: {
-    title: "Jingle: subir de nivel", bpm: 150, steps: 16, loop: false,
-    lead: { wave: "pulse", duty: 0.25, vol: 0.16, a: 0.002, d: 0.1, s: 0.6, r: 0.2, vib: 0.25, echo: { steps: 2, fb: 0.25, mix: 0.2 } },
-    arp: { wave: "pulse", duty: 0.5, vol: 0.08, oct: 4, a: 0.002, d: 0.1, s: 0.5, r: 0.2 },
-    bass: { vol: 0.3, oct: 2 },
-    drums: { vol: 0.4 },
-    order: "A",
-    sections: { A: { chords: ["C"],
-      lead: "G5:1 C6:1 E6:1 G6:3 E6:2 G6:8",
-      arpNotes: "E5:1 G5:1 C6:1 E6:3 C6:2 E6:8",
-      bassNotes: "C3:6 G2:2 C3:8",
-      drums: "k.....s.k......." } },
+    title: "Jingle: subir de nivel", bpm: 140, steps: 16, loop: false,
+    lead: L({ wave: "pulse", duty: 0.125, vol: 0.16, a: 0.002, d: 0.1, s: 0.6, r: 0.2, vib: 0.25, echo: { steps: 2, fb: 0.3, mix: 0.25 } }),
+    arp: L({ wave: "pulse", duty: 0.5, vol: 0.08, oct: 4, a: 0.002, d: 0.1, s: 0.5, r: 0.2 }),
+    bass: { vol: 0.3, oct: 2 }, drums: { vol: 0.4 }, order: "A",
+    sections: { A: { chords: ["F"], lead: "C5:1 F5:1 A5:1 C6:1 r:1 A5:1 C6:6 r:4",
+      arpNotes: "A4:1 C5:1 F5:1 A5:1 r:1 F5:1 A5:6 r:4", bassNotes: "F2:4 C3:2 F3:6 r:4", drums: "k...k.s........." } },
   },
   jefe_vencido: {
     title: "Jingle: jefe vencido", bpm: 140, steps: 32, loop: false,
@@ -10593,7 +10586,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v109";
+var OMF_VER = "Escape v110";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
