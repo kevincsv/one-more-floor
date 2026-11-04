@@ -10584,7 +10584,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v103";
+var OMF_VER = "Escape v104";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11756,6 +11756,61 @@ function omfAudioRebuild() {
 document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(omfAudioCheck, 50); });
 addEventListener("pageshow", () => setTimeout(omfAudioCheck, 50));
 for (const ev of ["touchend", "pointerup", "keydown"]) addEventListener(ev, () => { omfAudioRebuild(); setTimeout(() => { for (const a of omfAudioCtxs()) if (a.state !== "running" && !document.hidden) omfAudioDead = true; }, 600); }, true);
+
+// ===== v104 (user approved spec /mnt/project-files/objetos/autoataque/daga-errante-spec.md): DAGA ERRANTE (o_daga), a rare tower item.
+// A dagger floats behind the hero's shoulder; every 2 s it flies at the nearest visible enemy within 5 tiles, does 1 damage
+// and comes back. HIT while it is ready sends it at once. Kills count as kills but never as stomp/pogo/combo feats.
+TRK.o_daga = { n: "Daga errante", r: "raro", d: "Una daga flota a tu espalda. Cada 2 s sale disparada contra el enemigo más cercano, hace 1 de daño y vuelve. Si pulsas HIT con ella lista, sale contigo.",
+  rows: ["...........o", "..........os", ".........osw", "........osws", ".......osws.", "..oo..osws..", "..oyoosws...", "...oyyws....", "....oyyo....", "...obooyo...", "..obbo.oo...", "..ooo......."] };
+GOOD_UNLOCKS.o_daga = { es: "Vence 150 enemigos en total", en: "Defeat 150 enemies in total", goal: 150, m: "E", prog: () => AC("kills") };
+Object.assign(EN_TEXT, { "Daga errante": "Wandering dagger", "Una daga flota a tu espalda. Cada 2 s sale disparada contra el enemigo más cercano, hace 1 de daño y vuelve. Si pulsas HIT con ella lista, sale contigo.": "A dagger floats behind you. Every 2 s it shoots at the nearest enemy, deals 1 damage and comes back. Press HIT while it is ready and it flies with you.", "Vence 150 enemigos en total": "Defeat 150 enemies in total" });
+OMF_SFX.dgfly = [[1400, 2600, 0.07, "square", 0, 0.18]];
+OMF_SFX.dgtick = [[2200, 1700, 0.04, "square", 0, 0.22], [3300, 3000, 0.03, "square", 0.02, 0.12]];
+var DG_ROWS = ["......os", "....osws", "...osws.", "o.osws..", ".oyws...", "..oyo...", ".obooo..", "oboo...."];
+function dgHome(p) { return { x: p.x + p.w / 2 - (p.face || 1) * 14, y: p.y + 2 + Math.round(Math.sin(S.t * 4) * 2) }; }
+function dgSees(x0, y0, x1, y1) { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L / 6); for (let i = 1; i < n; i++) if (solid(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false; return true; }
+function dgTarget(p, prefer) {
+  const hx = p.x + p.w / 2, hy = p.y + p.h / 2, R = 5 * TS; let best = null;
+  for (const e of S.enemies) { if (e.dead || e.critter || e.decoy || e.corpse || (e.bp && (e.bp.hidden || e.bp.ghost || e.bp.roar > 0))) continue;
+    const ex = e.x + e.w / 2, ey = e.y + e.h / 2; if (ey < S.camY - 8 || ey > S.camY + CH + 8) continue;
+    let d = Math.hypot(ex - hx, ey - hy); if (d > R || !dgSees(hx, hy, ex, ey)) continue;
+    if (prefer && Math.sign(ex - hx) === (p.face || 1)) d *= 0.6; /* with HIT: the enemy in front of you first */
+    if (!best || d < best.d) best = { e, d }; }
+  return best && best.e;
+}
+function dgLaunch(D, e) { D.st = "out"; D.e = e; D.t = 0; D.cd = 2; omfSfx("dgfly"); }
+function dgTick(dt) {
+  if (!S || !S.escape || S.mode !== "play" || !trk("daga")) { if (S) S.dg = null; return; }
+  const p = S.player, H = dgHome(p); let D = S.dg; if (!D) D = S.dg = { st: "home", x: H.x, y: H.y, cd: 1, trail: [] };
+  D.trail.push([Math.round(D.x), Math.round(D.y)]); if (D.trail.length > 5) D.trail.shift();
+  if (D.st === "home") { D.x += (H.x - D.x) * Math.min(1, dt * 12); D.y += (H.y - D.y) * Math.min(1, dt * 12); D.cd = Math.max(0, D.cd - dt); D.trail.length = 0;
+    if (D.cd <= 0) { const e = dgTarget(p, false); if (e) dgLaunch(D, e); } return; }
+  if (D.st === "out") { const e = D.e; if (!e || e.dead) { D.st = "back"; return; }
+    const tx = e.x + e.w / 2, ty = e.y + e.h / 2, dx = tx - D.x, dy = ty - D.y, d = Math.hypot(dx, dy), v = 900 * dt; D.t += dt; D.ang = Math.atan2(dy, dx);
+    if (d > v && D.t < 0.4) { D.x += dx / d * v; D.y += dy / d * v; return; }
+    D.x = tx; D.y = ty; D.st = "back"; dgHit(e, Math.sign(dx) || 1); return; }
+  if (D.st === "back") { const dx = H.x - D.x, dy = H.y - D.y, d = Math.hypot(dx, dy), v = 700 * dt; D.ang = Math.atan2(dy, dx);
+    if (d > v) { D.x += dx / d * v; D.y += dy / d * v; } else { D.x = H.x; D.y = H.y; D.st = "home"; } }
+}
+function dgHit(e, dir) {
+  if ((e.type === "knight" || e.shielded) && !e.boss && e.stun <= 0 && -dir === (e.face || 1)) { burst(e.x + e.w / 2 - dir * 8, e.y + 10, "#c9cde0", 6); omfSfx("dgtick"); return; } /* frontal shield: clink */
+  omfSfx("dgtick"); burst(e.x + e.w / 2, e.y + e.h / 2, "#5fd6c4", 6);
+  if (has("noatk")) { if (!e.boss) { e.vx = dir * 260; e.vy = -120 * S.gdir; e.stun = 0.4; } return; }
+  const sw = S.swing; S.swing = null; try { damage(e, 1, "dagger"); } finally { S.swing = sw; }
+}
+{ const u0 = update; update = function (dt) {
+    try { if (S && S.escape && S.mode === "play" && trk("daga") && pressed.attack && S.dg && S.dg.st === "home" && S.dg.cd <= 0) { const e = dgTarget(S.player, true); if (e) dgLaunch(S.dg, e); } } catch (er) { errLog(er.message, "dgHit"); }
+    const r = u0.apply(this, arguments);
+    try { dgTick(dt); const btn = document.getElementById("gAtk"); if (btn) { const st = !S || !S.dg ? "" : S.dg.st === "home" && S.dg.cd <= 0 ? "rdy" : "cd"; if (btn.dataset.dg !== st) btn.dataset.dg = st; } } catch (er) { errLog(er.message, "dgTick"); }
+    return r; }; }
+{ const pd0 = platDraw; platDraw = function (cx, cy) { pd0(cx, cy);
+    try { const D = S && S.dg; if (!D || !trk("daga") || S.mode !== "play") return; const cv = trkCanvas("dg_comp", DG_ROWS), k = 2;
+      ctx.save(); ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = "#5fd6c4"; D.trail.forEach(([x, y], i) => { const z = 1 + i % 2; ctx.globalAlpha = 0.25 + i * 0.12; ctx.fillRect(x - z, y - z, z * 2, z * 2); }); ctx.globalAlpha = 1;
+      ctx.translate(Math.round(D.x), Math.round(D.y));
+      if (D.st === "home") ctx.scale(S.player.face < 0 ? -1 : 1, 1); else { const q = Math.round(((D.ang || 0) + Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2); ctx.rotate(q); } /* 90-degree steps keep it pixel-sharp */
+      ctx.drawImage(cv, -4 * k, -4 * k, 8 * k, 8 * k); ctx.restore(); } catch (er) { errLog(er.message, "dgDraw"); } }; }
+(() => { const st = document.createElement("style"); st.textContent = '#gAtk[data-dg]::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;background:#5fd6c4;box-shadow:0 0 0 2px #0a0812;opacity:.3}#gAtk[data-dg=""]::after{display:none}#gAtk[data-dg="rdy"]::after{opacity:1;animation:dgblink .5s steps(1) infinite}@keyframes dgblink{50%{opacity:.35}}'; document.head.appendChild(st); })();
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
