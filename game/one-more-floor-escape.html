@@ -10584,7 +10584,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v105";
+var OMF_VER = "Escape v106";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10701,12 +10701,10 @@ showSettings = function () {
   box.innerHTML = `<div class="mlabel">${Lx("GRÁFICOS", "GRAPHICS")}</div>
     <div class="ctlsel"><button data-hq="0" aria-pressed="${!META.hq}">${Lx("FLUIDO", "SMOOTH")}</button><button data-hq="1" aria-pressed="${!!META.hq}">${Lx("NÍTIDO", "SHARP")}</button></div>
     <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p>
-    <div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>
+    ${CLOUD ? `<div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>` : ""}
     ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}${window.OMF_STORE ? "" : cloudDbgHTML()}` : ""}
-    <p class="ctldesc">${Lx("Exporta un código para pasar tu progreso a otro aparato. Al importar se suma lo de los dos, nunca se borra nada.", "Export a code to move your progress to another device. Importing joins both, nothing is ever erased.")}</p>
-    <div class="ctlsel"><button id="expBtn">${Lx("EXPORTAR", "EXPORT")}</button><button id="impBtn">${Lx("IMPORTAR", "IMPORT")}</button></div>
     <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
-      <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button><button id="bkApply" hidden>${Lx("APLICAR", "APPLY")}</button></div><p class="bkmsg" id="bkMsg"></p></div>
+      <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button></div></div><p class="bkmsg" id="bkMsg"></p>
     ${window.OMF_STORE ? "" : `<div class="mlabel">INFO</div>
     <p class="infoln">${OMF_VER} · ${Lx("Errores", "Errors")}: <b>${errs.length}</b></p>
     ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`}`; // v96 (user): no debug lines in the store build
@@ -10714,15 +10712,13 @@ showSettings = function () {
   box.querySelectorAll("[data-hq]").forEach(b => b.onclick = () => { META.hq = b.dataset.hq === "1"; saveMeta(); omfSfx("click"); box.querySelectorAll("[data-hq]").forEach(o => o.setAttribute("aria-pressed", String(o === b))); fitView(true); });
   const $b = id => box.querySelector("#" + id), bk = $b("bkBox"), ta = $b("bkCode"), msg = $b("bkMsg");
   const say = t => { msg.textContent = t; };
-  $b("expBtn").onclick = async () => { omfSfx("click"); bk.hidden = false; $b("bkApply").hidden = true; $b("bkCopy").hidden = false; ta.readOnly = true; ta.value = await exportCode(); say(""); };
-  $b("impBtn").onclick = () => { omfSfx("click"); bk.hidden = false; $b("bkApply").hidden = false; $b("bkCopy").hidden = true; ta.readOnly = false; ta.value = ""; ta.focus(); say(Lx("Pega aquí tu código y pulsa APLICAR.", "Paste your code here and press APPLY.")); };
+  /* v106 (user: "eliminar el exportado manual con codigo"): no more export/import code; progress is backed up by iCloud only */
   $b("bkCopy").onclick = () => copyText(ta.value, ta).then(ok => { omfSfx("click"); say(ok ? Lx("Copiado.", "Copied.") : Lx("Selecciónalo y cópialo.", "Select it and copy it.")); });
-  $b("bkApply").onclick = async () => { try { await importCode(ta.value); omfSfx("levelup"); say(Lx("Progreso importado y sumado.", "Progress imported and joined.")); } catch (_) { omfSfx("hurt"); say(Lx("Ese código no es válido.", "That code isn't valid.")); } };
   const cg = $b("cloudGet"); if (cg) cg.onclick = () => { omfSfx("click"); say(Lx("Buscando en iCloud…", "Checking iCloud…"));
     try { const q = CLOUD.synchronize(); if (q && q.catch) q.catch(() => {}); } catch (_) {}
     setTimeout(() => cloudPull(b => { if (b) { omfSfx("levelup"); say(Lx("Copia de iCloud del ", "iCloud copy from ") + new Date(b.at || Date.now()).toLocaleString() + Lx(" sumada a tu progreso.", " joined into your progress.")); cloudSetReady(); }
       else say(Lx("No hay ninguna copia en iCloud para esta app todavía.", "There's no iCloud copy for this app yet.") + (cloudEv.length ? " (" + cloudEv.join(", ") + ")" : "")); }), 800); };
-  const ec = $b("errCopy"); if (ec) ec.onclick = () => { bk.hidden = false; $b("bkApply").hidden = true; $b("bkCopy").hidden = false; const t = errList().map(e => `${e.at} ${e.v} [${e.s}] ${e.m} @ ${e.w}`).join("\n"); ta.readOnly = true; ta.value = t; copyText(t, ta).then(ok => say(ok ? Lx("Errores copiados.", "Errors copied.") : Lx("Selecciónalos y cópialos.", "Select and copy them."))); };
+  const ec = $b("errCopy"); if (ec) ec.onclick = () => { bk.hidden = false; $b("bkCopy").hidden = false; const t = errList().map(e => `${e.at} ${e.v} [${e.s}] ${e.m} @ ${e.w}`).join("\n"); ta.readOnly = true; ta.value = t; copyText(t, ta).then(ok => say(ok ? Lx("Errores copiados.", "Errors copied.") : Lx("Selecciónalos y cópialos.", "Select and copy them."))); };
 };
 if (ov && ov.querySelector(".setpage") && !ov.querySelector(".setx")) showSettings();
 
