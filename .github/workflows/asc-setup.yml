@@ -34,6 +34,7 @@ jobs:
           REGISTER_PLACEHOLDER_DEVICE: "0"
         run: |
           python3 -m pip install --quiet pyjwt cryptography requests
+          python3 scripts/asc_builds.py
           python3 scripts/asc_gamecenter.py
       - if: always()
         run: rm -rf ~/keys
