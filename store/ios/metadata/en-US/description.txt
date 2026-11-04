@@ -2,6 +2,9 @@ Climb. Don't look down.
 
 One More Floor Escape is an endless 8-bit climb up a tower that builds itself as you go. The camera only moves up and keeps pushing: fall below the screen and the run is over.
 
+STORY MODE: LA HUIDA
+Velo wakes at the foot of a tower with no roof and a note in their own handwriting. Climb through the biomes, find 15 Echoes of lost memories and face the bosses for the true ending. Play it on Normal or Hardcore.
+
 NEW RULES EVERY 15 SECONDS
 Darkness, wind, ice, mirrored controls, invisible enemies... A new modifier joins the run and the oldest one leaves. Skulls tell you how nasty each one is, and two rules together can make a new combo.
 
@@ -22,4 +25,4 @@ MORE TO PLAY
 • Touch controls built for phones: D-pad, invisible stick or classic layout
 
 FREE TO CLIMB
-The endless climb is free. One optional purchase, Full Escape, unlocks Horde mode, Kai, Nyx and every look, for good. No ads, no accounts, no tracking, and it plays offline.
+The endless climb is free. One optional purchase, Full Escape, unlocks Horde mode, Kai, Nyx and every look, for good. Horde mode also unlocks for free when you finish La Huida on Normal or Hardcore. No ads, no accounts, no tracking, and it plays offline.
