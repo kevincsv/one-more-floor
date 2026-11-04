@@ -9344,6 +9344,9 @@ G.omfMusic = {
   refresh() { if (master) applyGain(0.2); },
   duckSfx(sec) { if (!master) return; sfxK = 0.5; applyGain(0.03); clearTimeout(sfxT); sfxT = setTimeout(() => { sfxK = 1; applyGain(0.35); }, (sec || 0.35) * 1000); }, // music dips under an important sound // call after toggling META.music
   unlock() { getCtx(); if (ctx.state !== "running") { try { ctx.resume(); } catch (e) {} } },
+  /* v102: take over a fresh AudioContext when iOS killed the old one, and restart the song that was playing */
+  adopt(nc) { const name = wantName; try { if (cur) cur.src.stop(); } catch (e) {} try { if (jingleSrc) jingleSrc.stop(); } catch (e) {} cur = null; jingleSrc = null; wantName = null; duck = 1;
+    ctx = nc; master = ctx.createGain(); master.connect(ctx.destination); applyGain(0); applyGain(0.2); if (name) play(name, 0.3); },
   preloadAll() { idlePreload(["menu", "castillo", "nivel", "muerte"]); },
   get current() { return cur ? cur.name : null; },
   songs: SONGS, biomeSongs: BIOME_SONGS,
@@ -10581,7 +10584,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v102";
+var OMF_VER = "Escape v103";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11727,6 +11730,33 @@ function testNoMods() { if (!S || !S.test) return; S.escMods = []; S.rules = [];
 
 // v100 (user): Vampiro drains a heart every 10 s in Normal, 15 s in Easy, 8 s in Hardcore
 function vampEvery() { return S && S.easy ? 15 : S && S.hard ? 8 : 10; }
+// ===== v102 (user: "Se bug el sonido de nuevo al salir"; error log "Failed to start the audio device"): when iOS refuses to
+// restart the audio device after the app was left, that WebAudio context never makes sound again, however often it is resumed.
+// So: any refused resume (or a context that is still not running 0.6 s after coming back) marks the sound as dead, and the
+// next touch builds a brand-new context inside that gesture, hands it to the effects and to the music, and restarts the song.
+// REGLA INTOCABLE 3: leaving the app and coming back must never leave the game without sound.
+var omfAudioDead = false;
+addEventListener("unhandledrejection", e => { const r = e && e.reason; if (/audio device/i.test(String(r && r.message || r))) omfAudioDead = true; });
+function omfAudioCheck() {
+  for (const a of omfAudioCtxs()) { if (a.state === "closed") { omfAudioDead = true; continue; }
+    try { const r = a.resume(); if (r && r.catch) r.catch(() => { omfAudioDead = true; }); } catch (e) { omfAudioDead = true; }
+    setTimeout(() => { if (!document.hidden && a.state !== "running") omfAudioDead = true; }, 600); }
+}
+function omfAudioRebuild() {
+  if (!omfAudioDead) return; omfAudioDead = false;
+  const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+  const old = omfAudioCtxs(); let n; try { n = new A(); } catch (e) { return; }
+  bpAC = n; omfAC = n;
+  try { const r = n.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+  try { const b = n.createBuffer(1, 1, 22050), s = n.createBufferSource(); s.buffer = b; s.connect(n.destination); s.start(0); } catch (e) {}
+  if (window.omfMusic && omfMusic.adopt) { try { omfMusic.adopt(n); } catch (e) {} }
+  for (const a of old) if (a !== n) { try { const q = a.close(); if (q && q.catch) q.catch(() => {}); } catch (e) {} }
+  setTimeout(() => { if (n.state !== "running" && !document.hidden) omfAudioDead = true; }, 600);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(omfAudioCheck, 50); });
+addEventListener("pageshow", () => setTimeout(omfAudioCheck, 50));
+for (const ev of ["touchend", "pointerup", "keydown"]) addEventListener(ev, () => { omfAudioRebuild(); setTimeout(() => { for (const a of omfAudioCtxs()) if (a.state !== "running" && !document.hidden) omfAudioDead = true; }, 600); }, true);
+
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
