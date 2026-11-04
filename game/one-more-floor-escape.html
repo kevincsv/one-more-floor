@@ -186,8 +186,10 @@ body.portrait details.lab { max-height: 30vh; overflow: auto; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .overlay .tools button { font-size: 12px; padding: 7px 10px; }
 details.bt .tools button { font-size: 11px; }
-#labBar { position: fixed; left: 0; right: 0; top: 0; z-index: 40; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; padding: 4px; background: rgba(15,13,28,.82); }
-#labBar button { font: 600 11px system-ui, sans-serif; color: #ece8f5; background: #2c2842; border: 2px solid #4a4470; padding: 4px 6px; border-radius: 0; }
+#labBar { position: fixed; left: 0; right: 0; top: 0; z-index: 40; display: flex; flex-wrap: nowrap; gap: 4px; justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 4px; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); background: rgba(15,13,28,.82); }
+#labBar::-webkit-scrollbar { display: none; }
+body:has(#ov:not([hidden])) #labBar { display: none; }
+#labBar button { flex: 0 0 auto; white-space: nowrap; font: 400 9px Silkscreen, monospace; color: #ece8f5; background: #2c2842; border: 2px solid #4a4470; padding: 4px 6px; border-radius: 0; }
 #labBar button[data-x] { border-color: #f2c14e; }
 details.how { font-size: 12px; color: var(--muted); max-width: 40ch; text-align: left; }
 details.how summary { cursor: pointer; font-family: var(--font-display); font-size: 11px; letter-spacing: .1em; text-align: center; list-style: none; }
@@ -619,7 +621,7 @@ body.esc .overlay .codex .lk b { color: #9a94b8; }
 .dlyintro .dlycards .card .ic { font-size: 16px; line-height: 1; } .dlyintro .dlycards .card .nm { font-size: 10px; letter-spacing: 0.5px; line-height: 1.2; }
 .dlyintro .dlycards .card .tag { font-size: 8px; } .dlyintro .dlycards .card .ds { font-size: 10px; line-height: 1.3; margin-top: 2px; }
 .dlyintro .dlycards .card .skulls, .dlyintro .dlycards .card [class*="skull"] { transform: scale(.8); transform-origin: left center; }
-.dlyintro .dlycards .card:last-child:nth-child(odd) { grid-column: 1 / -1; } .menu.dlyintro .hust { margin: 4px 0 8px; }
+.dlyintro .dlycards .card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 3px); justify-self: center; box-sizing: border-box; } .dlyintro .dlyprize { text-align: center; color: #f2c14e; font-size: 12px; margin: 2px 0 4px; } .menu.dlyintro .hust { margin: 4px 0 8px; }
 img.pxe { width: 1.15em; height: 1.15em; vertical-align: -0.2em; image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
 .achban .ai img.pxe { width: 26px; height: 26px; vertical-align: 0; }
 </style>
@@ -1756,7 +1758,7 @@ const ESC_ROOM_NAME = { treasure: "Tesoro", fountain: "Fuente", altar: "Altar de
 function escReserveRooms(g, LW) { for (let y = 14; y <= 46; y++) for (let x = 0; x < LW; x++) g[y][x] = 1; }
 function escPlaceCrack(startRow, R) {
   const g = S.grid, eg = S.eg, LW = S.LW;
-  if (eg.nextCrack == null) eg.nextCrack = startRow - 25 - Math.floor(R() * 15);
+  if (eg.nextCrack == null) eg.nextCrack = startRow - (S.easy ? 30 : 50) - Math.floor(R() * 20);
   if (eg.row > eg.nextCrack) return;
   for (let y = startRow - 1; y > eg.row + 2; y--) for (const side of R() < 0.5 ? [0, LW - 1] : [LW - 1, 0]) {
     const inn = side ? LW - 2 : 1;
@@ -1764,7 +1766,7 @@ function escPlaceCrack(startRow, R) {
     if (!solidCode(g[y][inn]) || g[y - 1][inn] !== 0 || g[y - 2][inn] !== 0 || g[y - 1][side] !== 1 || g[y - 2][side] !== 1) continue;
     if (S.spikes.some(sp => sp.tx === inn && sp.ty === y - 1)) continue;
     { const nx = side ? inn - 1 : inn + 1; if ([y - 4, y - 3, y - 2, y - 1, y].some(yy => g[yy] && (g[yy][nx] === 3 || g[yy][inn] === 3))) continue; }
-    g[y - 1][side] = 7; g[y - 2][side] = 7; eg.nextCrack = y - 55 - Math.floor(R() * 20); // v84 (user): rarer secret rooms (was every 35-50 rows)
+    g[y - 1][side] = 7; g[y - 2][side] = 7; eg.nextCrack = y - (S.easy ? 80 : 110) - Math.floor(R() * (S.easy ? 30 : 40)); // v117 (user: "hay demasiadas zonas ocultas"): one every 110-150 m in Normal and Hardcore, 80-110 m in Easy (was 55-75 m; v84 was 35-50)
     (S.cracks = S.cracks || []).push({ side, inn, y0: y - 2, y1: y - 1 }); return;
   }
 }
@@ -3138,7 +3140,15 @@ function update(dt) {
   if (p.climb) {
     // still on the ladder when no button is held; ease toward its centre so you don't slip off the side
     p.vy = (input.jump || input.up ? -150 : input.down ? 170 : 0) * S.gdir;
-    if (!(input.left || input.right)) { const lx = Math.floor((p.x + p.w / 2) / TS) * TS + (TS - p.w) / 2; p.x += clamp(lx - p.x, -120 * dt, 120 * dt); p.vx *= 0.5; }
+    let hold = !(input.left || input.right);
+    if (!hold && S.escape && S.gdir > 0) { // v117 (user): left/right only steps off the ladder when there is floor on that side; otherwise you stay on it
+      const d = (input.right ? 1 : -1) * (mirOn() ? -1 : 1), lc = Math.floor((p.x + p.w / 2) / TS), nc = lc + d, g = S.grid;
+      const fy = Math.floor((p.y + p.h + 10) / TS), row = g[fy], body = g[Math.floor((p.y + p.h - 4) / TS)];
+      const floor = row && solidCode(row[nc]) && !solidCode(body && body[nc]) && fy * TS - (p.y + p.h) <= 10 && fy * TS - (p.y + p.h) >= -12;
+      if (floor) { p.y = fy * TS - p.h - 0.01; p.vy = 0; p.climb = false; p.ladCd = 0.25; p.ground = true; p.vx = d * RUN * 0.6; p.face = d; }
+      else hold = true;
+    }
+    if (hold) { const lx = Math.floor((p.x + p.w / 2) / TS) * TS + (TS - p.w) / 2; p.x += clamp(lx - p.x, -120 * dt, 120 * dt); p.vx *= S.escape ? 0 : 0.5; }
     p.buf = 0;
   } else {
     // FEEL v2: releasing jump cuts the rise smoothly, a short hang at the apex, a firmer fall
@@ -3191,17 +3201,17 @@ function update(dt) {
       if (S.mem) S.mem.jumps++; achJump(); omfSfx("jump");
       p.vy = (water ? -330 : -JUMP_V) * (has("shrink") ? 0.9 : 1) * (has("moon") ? 0.75 : 1) * (trk("ancla") ? 0.95 : 1) * S.gdir; p.buf = 0; p.coyote = 0;
       puff(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h : p.y, 4); noise(p.x, p.y);
-    } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && ((p.wjCd || 0) <= 0 || p.stuck) && !(S.escape && p.wjUsed)) {
-      p.wjSide = p.wallDir; p.wjUsed = true; // Escape: one wall kick per jump (no slide, no grab), so walls can't be climbed
+    } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && (S.escape ? ((p.wjN || 0) < 2 || (p.wjCd || 0) <= 0) : ((p.wjCd || 0) <= 0 || p.stuck))) {
+      p.wjSide = p.wallDir; p.wjUsed = true; if (S.escape) { if ((p.wjCd || 0) <= 0 && (p.wjN || 0) >= 2) p.wjN = 0; p.wjN = (p.wjN || 0) + 1; } // v117 (user): Escape gives two instant wall kicks in a row, then the old 0.7 s wait before the next pair; landing resets it
       p.vy = -JUMP_V * 0.97 * (has("shrink") ? 0.9 : 1) * S.gdir; p.vx = -p.wallDir * 185; p.face = -p.wallDir;
-      p.launchT = 0; p.buf = 0; p.wallT = 0; p.wjCd = 0; omfSfx("walljump"); /* v105 (user, test): instant wall jump, no control lock (was 0.1 s) and no cooldown (was 0.7 s); Escape still allows one kick per jump */
+      p.launchT = 0; p.buf = 0; p.wallT = 0; p.wjCd = S.escape && p.wjN >= 2 ? 0.7 : 0; omfSfx("walljump"); /* v105 (user, test): instant wall jump, no control lock (was 0.1 s) and no cooldown (was 0.7 s); Escape still allows one kick per jump */
       if (has("inertia")) p.lock = -p.wallDir;
       puff(p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 5); noise(p.x, p.y);
     } else if (p.buf > 0 && canJump && perk("salto") && !p.ground && !p.climb && (p.airJ || 0) < perk("salto")) {
       p.vy = -JUMP_V * 0.9 * (has("shrink") ? 0.9 : 1) * S.gdir; p.buf = 0; p.airJ = (p.airJ || 0) + 1; p.launchT = 0.05; omfSfx("jump");
       puffC(p.x + p.w / 2, p.y + p.h, "#ece8f5", 6); noise(p.x, p.y);
     }
-    if (p.ground || p.climb) { p.airJ = 0; p.wjSide = 0; p.wjUsed = false; }
+    if (p.ground || p.climb) { p.airJ = 0; p.wjSide = 0; p.wjUsed = false; p.wjN = 0; p.wjCd = 0; }
     if (has("blink") && !has("frozen") && p.buf > 0) { p.buf = 0; if (beatOK) doBlink(p); else missBeat(p); }
   }
   if (p.ground || p.climb) p.blinkUsed = false;
@@ -4913,7 +4923,7 @@ const EN_TEXT = {
   "TORRE SUPERADA": "TOWER CLEARED", "Un piso más": "One more floor", "Menú": "Menu", "Reglas a la vez en este piso: hasta": "Rules at once on this floor: up to",
   "REGLAS (sobrevive 3 pisos con una regla para desbloquear otra)": "RULES (survive 3 floors with a rule to unlock another)", "Bloqueado: Llega al piso 5": "Locked: Reach floor 5", "Bloqueado: Vence a un jefe": "Locked: Defeat a boss",
 };
-Object.assign(EN_TEXT, { "SALA SECRETA · TIEMPO DETENIDO": "SECRET ROOM · TIME STOPPED", "LA GEMA SE ROMPE EN": "THE GEM BREAKS IN", "Sala secreta:": "Secret room:", "Tesoro": "Treasure", "Fuente": "Fountain", "Altar de pacto": "Pact altar", "Mercader": "Merchant", "¡Emboscada!": "Ambush!", "Reto de la gema": "Gem trial", "Ídolo maldito": "Cursed idol", "Eco de Velo": "Echo of Velo", "Una pared agrietada: golpéala dos veces": "A cracked wall: hit it twice", "¡Un pasadizo! Entra en el hueco": "A passage! Step into the gap", "¡Tesoro!": "Treasure!", "¡Era un mímico!": "It was a mimic!", "El mímico suelta el doble": "The mimic drops double", "La fuente te cura": "The fountain heals you", "Pacto de sangre": "Blood pact", "Una mejora al azar a cambio de 1 corazón.": "A random bonus for 1 heart.", "Pacto de oro": "Gold pact", "de oro": "gold", "ALTAR DE PACTO": "PACT ALTAR", "Curar 1 corazón": "Heal 1 heart", "10 de oro": "10 gold", "25 de oro": "25 gold", "35 de oro": "35 gold", "Mejora al azar": "Random bonus", "Ya lo tienes todo": "You have everything", "MERCADER": "MERCHANT", "No te llega el oro": "Not enough gold", "Irse": "Leave", "No hacer nada.": "Do nothing.", "¡Superada! Las rejas suben": "Cleared! The bars lift", "¡Segunda oleada!": "Second wave!", "¡Gema! +12 de oro": "Gem! +12 gold", "La gema se rompe": "The gem shatters", "Bendición:": "Blessing:", "Maldición… pero +60 de oro": "Cursed… but +60 gold", "«Subí para olvidar lo que dejé abajo.» · +15 de oro": "“I climbed to forget what I left below.” · +15 gold", "+20 de oro": "+20 gold",  "TIEMPO": "TIME", "ALTURA": "HEIGHT", "NV": "LV", "NV MÁX": "LV MAX",  "¡NIVEL": "LEVEL", "Elige solo una.": "Pick only one.", "Mejora": "Bonus", "Quitar": "Remove", "Quita un modificador malo": "Removes a bad modifier", "Fuera:": "Gone:", "¡Escudo!": "Shield!", "Salto doble": "Double jump", "Un salto extra en el aire.": "One extra jump in the air.", "Pies ligeros": "Light feet", "Corres un 10% más rápido.": "You run 10% faster.", "+1 de vida máxima y te cura 1.": "+1 max health and heals 1.", "Respiro": "Breather", "Recuperas toda la vida.": "Restores all health.", "Filo afilado": "Sharp edge", "Tus golpes hacen +1 de daño.": "Your hits deal +1 damage.", "Escudo que vuelve": "Returning shield", "Bloquea un golpe. Se recarga en 25 s.": "Blocks one hit. Recharges in 25 s.", "Imán de oro": "Gold magnet", "Las monedas cercanas vuelan hacia ti.": "Nearby coins fly to you.", "Freno de cámara": "Camera brake", "La cámara sube un 15% más despacio.": "The camera rises 15% slower.", "Botín": "Loot", "Ganas un 50% más de oro.": "You earn 50% more gold.", "Sed": "Thirst", "Cada 12 enemigos vencidos recuperas 1 corazón.": "Every 12 enemies defeated heals 1 heart.", "Linterna": "Lantern", "Ves mucho más lejos en la Oscuridad.": "You see much farther in Darkness.", "Ojo de búho": "Owl eye", "Ves enemigos invisibles a 3 casillas.": "You see invisible enemies within 3 tiles.", "Hoja eco": "Echo blade", "Cada tercer ataque golpea otra vez un instante después.": "Every third attack strikes again a moment later.", "Crampones": "Crampons", "Te agarras mucho mejor sobre el Hielo.": "Much better grip on Ice.",  "PRUEBAS": "TESTS", "🧪 Sala de mobs": "🧪 Mob room", "Vas directo a la pelea o a una sala cerrada para sacar enemigos. No cuenta para los récords.": "Straight into a fight, or into a closed room to spawn enemies. It does not count for records.", "Caminante": "Walker", "Saltarín": "Hopper", "Murciélago": "Bat", "Tirador": "Shooter", "Embestidor": "Charger", "Araña": "Spider", "Fuego fatuo": "Wisp", "Fantasma": "Ghost", "Erizo": "Urchin", "Caballero": "Knight", "Bombardero": "Bomber", "Rata": "Rat", "Jefe": "Boss", "Limpiar": "Clear", "No hay una plataforma flotante cerca para el erizo": "No floating ledge nearby for the urchin", "Inmortal": "Immortal", "Salir": "Exit",  "PROBAR JEFES": "TEST BOSSES", "Vas directo a la pelea. No cuenta para los récords.": "Straight into the fight. It does not count for records.", "Campana · Castillo": "Bell · Castle", "Bestia de raíces · Profundidades": "Root beast · Depths", "Robot fuelle · Máquinas": "Bellows robot · Machines", "Notario · Vacío": "Notary · Void", "Notario · Desconocido": "Notary · Unknown", "El Sello · Desconocido": "The Seal · Unknown", "El Sello": "The Seal",  "Estilo del piso: Fortaleza": "Floor style: Fortress", "Estilo del piso: Cavernas": "Floor style: Caverns", "Estilo del piso: Abismo": "Floor style: Abyss", "Estilo del piso: Maquinaria": "Floor style: Machinery" });
+Object.assign(EN_TEXT, { "SALA SECRETA · TIEMPO DETENIDO": "SECRET ROOM · TIME STOPPED", "LA GEMA SE ROMPE EN": "THE GEM BREAKS IN", "Sala secreta:": "Secret room:", "Tesoro": "Treasure", "Fuente": "Fountain", "Altar de pacto": "Pact altar", "Mercader": "Merchant", "¡Emboscada!": "Ambush!", "Reto de la gema": "Gem trial", "Ídolo maldito": "Cursed idol", "Eco de Velo": "Echo of Velo", "Una pared agrietada: golpéala dos veces": "A cracked wall: hit it twice", "¡Un pasadizo! Entra en el hueco": "A passage! Step into the gap", "¡Tesoro!": "Treasure!", "¡Era un mímico!": "It was a mimic!", "El mímico suelta el doble": "The mimic drops double", "La fuente te cura": "The fountain heals you", "Pacto de sangre": "Blood pact", "Una mejora al azar a cambio de 1 corazón.": "A random bonus for 1 heart.", "Pacto de oro": "Gold pact", "de oro": "gold", "ALTAR DE PACTO": "PACT ALTAR", "Curar 1 corazón": "Heal 1 heart", "10 de oro": "10 gold", "25 de oro": "25 gold", "35 de oro": "35 gold", "Mejora al azar": "Random bonus", "Ya lo tienes todo": "You have everything", "MERCADER": "MERCHANT", "No te llega el oro": "Not enough gold", "Irse": "Leave", "No hacer nada.": "Do nothing.", "¡Superada! Las rejas suben": "Cleared! The bars lift", "¡Segunda oleada!": "Second wave!", "¡Gema! +12 de oro": "Gem! +12 gold", "La gema se rompe": "The gem shatters", "Bendición:": "Blessing:", "Maldición… pero +60 de oro": "Cursed… but +60 gold", "«Subí para olvidar lo que dejé abajo.» · +15 de oro": "“I climbed to forget what I left below.” · +15 gold", "+20 de oro": "+20 gold",  "TIEMPO": "TIME", "ALTURA": "HEIGHT", "NV": "LV", "NV MÁX": "LV MAX",  "¡NIVEL": "LEVEL", "Elige solo una.": "Pick only one.", "Mejora": "Bonus", "Quitar": "Remove", "Quita un modificador malo": "Removes a bad modifier", "Fuera:": "Gone:", "¡Escudo!": "Shield!", "Salto doble": "Double jump", "Un salto extra en el aire.": "One extra jump in the air.", "Pies ligeros": "Light feet", "Corres un 10% más rápido.": "You run 10% faster.", "+1 de vida máxima y te cura 1.": "+1 max health and heals 1.", "Respiro": "Breather", "Recuperas toda la vida.": "Restores all health.", "Filo afilado": "Sharp edge", "Tus golpes hacen +1 de daño.": "Your hits deal +1 damage.", "Escudo que vuelve": "Returning shield", "Bloquea un golpe. Se recarga en 25 s.": "Blocks one hit. Recharges in 25 s.", "Imán de oro": "Gold magnet", "Las monedas cercanas vuelan hacia ti.": "Nearby coins fly to you.", "Freno de cámara": "Camera brake", "La cámara sube un 15% más despacio.": "The camera rises 15% slower.", "Botín": "Loot", "Ganas un 50% más de oro.": "You earn 50% more gold.", "Sed": "Thirst", "Cada 12 enemigos vencidos recuperas 1 corazón.": "Every 12 enemies defeated heals 1 heart.", "Linterna": "Lantern", "Ves mucho más lejos en la Oscuridad.": "You see much farther in Darkness.", "Ojo de búho": "Owl eye", "Ves enemigos invisibles a 3 casillas.": "You see invisible enemies within 3 tiles.", "Hoja eco": "Echo blade", "Cada tercer ataque golpea otra vez un instante después.": "Every third attack strikes again a moment later.", "Crampones": "Crampons", "Te agarras mucho mejor sobre el Hielo.": "Much better grip on Ice.",  "PRUEBAS": "TESTS", "🧪 Sala de mobs": "🧪 Mob room", "Vas directo a la pelea o a una sala cerrada para sacar enemigos. No cuenta para los récords.": "Straight into a fight, or into a closed room to spawn enemies. It does not count for records.", "Caminante": "Walker", "Saltarín": "Hopper", "Murciélago": "Bat", "Tirador": "Shooter", "Embestidor": "Charger", "Araña": "Spider", "Fuego fatuo": "Wisp", "Fantasma": "Ghost", "Erizo": "Urchin", "Caballero": "Knight", "Bombardero": "Bomber", "Rata": "Rat", "Jefe": "Boss", "Limpiar": "Clear", "No hay una plataforma flotante cerca para el erizo": "No floating ledge nearby for the urchin", "Inmortal": "Immortal", "Salir": "Exit", "Repisa": "Ledge", "Escalón": "Step", "Se rompe": "Crumbles", "Parpadea": "Blinks", "Gira": "Flips", "Escalera": "Ladder", "Móvil": "Moving", "Hongo": "Mushroom", "Raíz": "Root", "Pistón": "Piston", "Luz": "Light", "Peldaños fantasma": "Ghost steps", "Fin": "Top", "Plataformas: todas las que salen en la torre": "Platforms: every one the tower uses",  "PROBAR JEFES": "TEST BOSSES", "Vas directo a la pelea. No cuenta para los récords.": "Straight into the fight. It does not count for records.", "Campana · Castillo": "Bell · Castle", "Bestia de raíces · Profundidades": "Root beast · Depths", "Robot fuelle · Máquinas": "Bellows robot · Machines", "Notario · Vacío": "Notary · Void", "Notario · Desconocido": "Notary · Unknown", "El Sello · Desconocido": "The Seal · Unknown", "El Sello": "The Seal",  "Estilo del piso: Fortaleza": "Floor style: Fortress", "Estilo del piso: Cavernas": "Floor style: Caverns", "Estilo del piso: Abismo": "Floor style: Abyss", "Estilo del piso: Maquinaria": "Floor style: Machinery" });
 const EN_PATTERNS = [
   [/^Piso (\d+) · torre superada · (\d+) de oro · (.*)$/, "Floor $1 · tower beaten · $2 gold · $3"], [/^Piso (\d+) · (\d+) de oro · (.*)$/, "Floor $1 · $2 gold · $3"],
   [/^(.+) · Puesto (\d+) en tus récords$/, (m, a, b) => T(a) + " · #" + b + " in your records"], [/^(\d+)\. Jugador( \(tú\))?$/, (m, a, b) => a + ". Player" + (b ? " (you)" : "")], [/^(.+) \(tú\)$/, "$1 (you)"],
@@ -6600,7 +6610,7 @@ function draw() {
     if (it.kind === "heart") { ctx.fillStyle = "#e0566b"; ctx.font = "16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("\u2665", it.x + 7, it.y + 13 + bob); }
     else { ctx.fillStyle = "#5fd1c4"; ctx.beginPath(); ctx.arc(it.x + 7, it.y + 7 + bob, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#ece8f5"; ctx.fillRect(it.x + 5, it.y + 4 + bob, 2, 2); }
   }
-  if (S.lab && S.lab.items) { for (const c of S.coinsL) if (c.label) drawLabel(c); for (const L of S.labLabels || []) drawLabel(L); }
+  if ((S.lab && S.lab.items) || S.platLab) { for (const c of S.coinsL) if (c.label) drawLabel(c); for (const L of S.labLabels || []) drawLabel(L); }
   for (const c of S.coinsL) {
     if (typeof sprDrawCoin === "function" && sprDrawCoin(c)) continue;
     const sq = Math.abs(Math.sin(S.t * 4 + c.x)) * 4 + 1;
@@ -10420,23 +10430,34 @@ function platDraw(cx, cy) {
     ctx.fillStyle = "#ffe0f4"; ctx.fillRect(cx0 + 4, cy0 + 3, 3, 2); ctx.fillRect(cx0 + cw - 9, cy0 + 2, 3, 2); if (!sq) ctx.fillRect(cx0 + cw / 2 - 1, cy0 + 4, 2, 2);
   }
 }
-// PRUEBAS · Plataformas: the five new pieces in one short climb over the start floor
+// PRUEBAS · Plataformas (v117, user: "no están todas"): every platform the Escape tower builds, in one labelled climb
 function testPlats() {
   newRun({ char: S.char.id, kind: "escape" }); S.test = true; startFloor(); S.test = true; S.roomTest = true; S.escNextMod = 1e9; S.rules = []; S.escMods = [];
-  const g = S.grid, LH = S.LH, LW = S.LW, F0 = LH - 2, top = F0 - 24;
+  const g = S.grid, LH = S.LH, LW = S.LW, F0 = LH - 2, top = Math.max(2, F0 - 46);
   for (let y = top; y < F0; y++) for (let x = 1; x < LW - 1; x++) g[y][x] = 0;
-  S.movers = S.movers.filter(m => m.y < top * TS || m.y > F0 * TS); S.enemies = []; S.spikes = S.spikes.filter(k => k.ty < top || k.ty > F0); S.items = []; S.coinsL = [];
-  for (let x = 1; x < LW - 1; x++) g[F0][x] = 1; g[F0][3] = 6;
-  for (let x = 1; x <= 3; x++) g[F0 - 6][x] = 1;
-  const mk = (kind, x0, row) => { const side = x0 === 1 ? 1 : -1, fx = x0 * TS, fw = 3 * TS; S.movers.push({ kind, side, x: side > 0 ? fx : fx + fw - TS / 2, y: row * TS, w: TS / 2, h: TS / 2, fx, fw, solid: false, st: "coil", t: 0, arm: true, clk: 0, esc: true }); };
-  mk("root", 1, F0 - 8);
-  for (let x = 5; x <= 7; x++) g[F0 - 10][x] = 1;
-  mk("piston", LW - 4, F0 - 12);
-  S.movers.push({ kind: "lightp", x: 6 * TS, y: (F0 - 14) * TS, w: 2 * TS, h: TS / 2, solid: false, vis: 0, esc: true });
-  const grp = []; [[4, 15], [2, 16], [4, 17], [6, 18]].forEach(([x, r], i) => { const m = { kind: "gstep", x: x * TS, y: (F0 - r) * TS, w: TS, h: TS / 2, solid: false, i, grp, off: 9, vis: 0, esc: true }; grp.push(m); S.movers.push(m); });
-  for (let x = 7; x <= 10; x++) g[F0 - 20][x] = 1;
+  S.movers = S.movers.filter(m => m.y < top * TS || m.y > F0 * TS); S.enemies = []; S.spikes = S.spikes.filter(k => k.ty < top || k.ty > F0); S.items = []; S.coinsL = []; S.torches = [];
+  for (let x = 1; x < LW - 1; x++) g[F0][x] = 1;
+  S.platLab = true; S.labLabels = [];
+  const lab = (t, x0, len, row) => S.labLabels.push({ label: T(t), lx: (x0 + len / 2) * TS, ly: row * TS - 6 });
+  const ledge = (x0, len, row) => { for (let k = 0; k < len; k++) g[row][x0 + k] = 1; };
+  const mov = (kind, x0, len, row) => S.movers.push({ kind, x: x0 * TS, y: row * TS, w: len * TS, h: TS / 2, solid: true, st: "ok", t: 0, per: 3, ph: 0, esc: true });
+  const wallP = (kind, x0, row) => { const side = x0 === 1 ? 1 : -1, fx = x0 * TS, fw = 3 * TS; S.movers.push({ kind, side, x: side > 0 ? fx : fx + fw - TS / 2, y: row * TS, w: TS / 2, h: TS / 2, fx, fw, solid: false, st: "coil", t: 0, arm: true, clk: 0, esc: true }); };
+  let r = F0 - 2; ledge(1, 3, r); lab("Repisa", 1, 3, r);
+  r -= 2; ledge(5, 2, r); lab("Escalón", 5, 2, r);
+  r -= 2; mov("crumble", 8, 3, r); lab("Se rompe", 8, 3, r);
+  r -= 2; mov("blink", 5, 3, r); lab("Parpadea", 5, 3, r);
+  r -= 2; mov("flip", 1, 3, r); lab("Gira", 1, 3, r);
+  const lr = r; r -= 4; ledge(3, 3, r); for (let y = r; y <= lr - 1; y++) g[y][3] = 3; lab("Escalera", 3, 3, r);
+  r -= 2; S.movers.push({ kind: "move", x: 6 * TS, y: r * TS, w: 3 * TS, h: TS / 2, bx: 5 * TS, by: r * TS, ax: 4 * TS, ay: 0, per: 3.5, ph: 0, solid: true, esc: true }); lab("Móvil", 6, 3, r);
+  r -= 2; ledge(9, 3, r); g[r][10] = 6; lab("Hongo", 9, 3, r);
+  r -= 4; wallP("root", 1, r); lab("Raíz", 1, 3, r);
+  r -= 2; ledge(5, 2, r);
+  r -= 2; wallP("piston", LW - 4, r); lab("Pistón", LW - 4, 3, r);
+  r -= 2; S.movers.push({ kind: "lightp", x: 6 * TS, y: r * TS, w: 2 * TS, h: TS / 2, solid: false, vis: 0, esc: true }); lab("Luz", 6, 2, r);
+  const grp = []; [[4, 2], [2, 3], [4, 4], [6, 5]].forEach(([x, d], i) => { const m = { kind: "gstep", x: x * TS, y: (r - d) * TS, w: TS, h: TS / 2, solid: false, i, grp, off: 9, vis: 0, esc: true }; grp.push(m); S.movers.push(m); });
+  lab("Peldaños fantasma", 3, 2, r - 3); r -= 7; ledge(7, 4, r); lab("Fin", 7, 4, r);
   S.player.x = 2 * TS; S.player.y = F0 * TS - 23; S.camY = F0 * TS - CH + DEV_RISE + 2 * TS;
-  toast("Plataformas: hongo · raíz · pistón · luz · peldaños");
+  toast(T("Plataformas: todas las que salen en la torre"));
 }
 
 // ===== v70 (user: "monstruo es malo, la lava que no ocupe mucho espacio"): THE RISING TIDE replaces the Devourer.
@@ -10562,12 +10583,13 @@ function showBoot(next) {
 // ===== pause (Escape): the II button, leaving the app (visibility/blur) and turning the phone sideways all pause the climb.
 // Time and the camera stop like in the level-up cards (S.pauseAt, then S.escT0 moves on by the paused time).
 function escPause() {
-  if (!S || !S.escape || S.mode !== "play" || S.test && S.lab) return;
+  if (!S || !S.escape || S.mode !== "play") return; // v117 (user): pause works in the test rooms too
   S.mode = "menu"; S.pauseAt = S.t; ov.hidden = false; ov.classList.remove("dead"); omfSfx("click");
   ov.innerHTML = `<div class="menu"><h1>${T("PAUSA")}</h1><p class="tagline">${S.escBest || 0} m · ${fmtTime(Math.max(0, S.pauseAt - S.escT0))}</p>
     <div class="rowbig"><button class="go" id="resBtn">${T("Seguir")}</button></div>
     <div class="tools"><button id="rstBtn">${T("Otra vez")}</button><button id="menuBtn">${T("Menú")}</button></div></div>`;
   document.getElementById("resBtn").onclick = escResume;
+  if (S.test) document.getElementById("rstBtn").hidden = true;
   document.getElementById("rstBtn").onclick = () => { const h = S.horde; newRun({ char: S.char.id, kind: S.run, horde: h }); if (h) startFloor(); else nextRuleStep(); };
   document.getElementById("menuBtn").onclick = showTitle;
 }
@@ -10587,7 +10609,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v114";
+var OMF_VER = "Escape v117";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11122,7 +11144,7 @@ function trkTake(it) {
     return true;
   }
   const D = TRK[it.id]; if (!D) return true;
-  if (D.r === "maldito" && !input.down) { if (!it.tip) { it.tip = true; toast(T("Objeto maldito: pulsa ABAJO para cogerlo")); } return false; }
+  // v117 (user): cursed items are taken on touch too, no DOWN press
   trkGive(it.id); return true;
 }
 function trkPz(n) { return Math.ceil(n * (trk("moneda") ? 1.5 : 1)); }
@@ -11680,11 +11702,15 @@ Object.assign(EN_TEXT, { "Campanero": "Bell-ringer", "Consigue el final BAJAR en
 // climb (nothing rotates, no biome clauses); the challenge is reaching 200 m with them. Easy 2 mods, Normal 3, Hardcore 4.
 const DAILY_GOAL = 200;
 const DAILY_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", "crumbs", "quake", "shields", "recoil", "decoy", "midnight", "inertia", "slow"];
-function dailyMods(seed, easy, hard) { const R = mulberry(seed * 13 + 4099), pool = DAILY_POOL.filter(id => RULE[id] && escModOk(id)), out = [];
+function dailyMods(seed, easy, hard) { const R = mulberry(seed * 13 + 4099), pool = DAILY_POOL.filter(id => RULE[id]), out = []; /* v115 (user): the same set for everyone, even modifiers you haven't unlocked */
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  const n = easy ? 2 : hard ? 4 : 3;
-  for (const id of pool) { if (out.length >= n) break; if (!out.some(x => RULE[x].cat === RULE[id].cat && !comboPair(x, id))) out.push(id); }
-  return out; }
+  const n = easy ? 2 : hard ? 4 : 3, cost = id => Math.max(1, Math.min(3, RULE[id].cost || 1));
+  const ok = id => !out.includes(id) && !out.some(x => RULE[x].cat === RULE[id].cat && !comboPair(x, id));
+  /* v115 (user: "todos son fáciles"): one of each difficulty, never more than one Easy (Easy 1+2, Normal 1+2+3, Hardcore 1+2+3+3) */
+  const want = easy ? [1, 2] : hard ? [1, 2, 3, 3] : [1, 2, 3];
+  for (const c of want) { const id = pool.find(x => cost(x) === c && ok(x)) || pool.find(x => cost(x) >= Math.max(2, c - 1) && ok(x)); if (id) out.push(id); }
+  for (const id of pool) { if (out.length >= n) break; if (cost(id) >= 2 && ok(id)) out.push(id); }
+  return out.slice(0, n).sort((a, b) => cost(a) - cost(b)); }
 function dailyKey() { return String(S.seed) + (S.easy ? "e" : S.hard ? "h" : ""); }
 function dailyDone(k) { return !!(META.dailyDone && META.dailyDone[k]); }
 function dailyIntro() {
@@ -11693,6 +11719,7 @@ function dailyIntro() {
   ov.innerHTML = `<div class="menu dlyintro"><h2>${pxi("sun", "#f2c14e", 2)} ${T("DESAFÍO DIARIO")}</h2><p class="tagline">${day} · ${T(S.easy ? "Fácil" : S.hard ? "Hardcore" : "Normal")}</p>
     <p class="dlygoal">${T("Llega a")} <b>${DAILY_GOAL} m</b> ${T("con estos modificadores. No cambian en toda la subida.")}</p>
     <div class="dlycards">${ids.map(id => { const r = RULE[id]; return `<div class="card"><span class="ic">${r.icon}</span><span class="nm">${T(r.name)}</span><span class="tag">${T(CATS[r.cat])}</span>${skullsHTML(r.cost, true)}<span class="ds">${T(r.desc)}</span></div>`; }).join("")}</div>
+    <p class="dlyprize"><i class="cn"></i>${dailyDone(k) ? Lx("Premio de hoy cobrado: 100 monedas", "Today's prize collected: 100 coins") : Lx("Premio al completarlo: 100 monedas", "Prize for completing it: 100 coins")}</p>
     <p class="hust">${T("Hoy")}: ${(META.daily[k] || 0)} m${dailyDone(k) ? " · ✓ " + T("superado") : ""} · ${T("Mañana, otro reto")}</p>
     <div class="rowbig"><button class="go" id="dlyGo">${T("EMPEZAR")}</button></div><div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov);
@@ -12087,7 +12114,7 @@ function a3Btn(src, cls, inner) { if (!src) return ""; const b = src.cloneNode(f
       // hero
       /* v114 (user): no striped spotlight box behind the hero */
       const nm = $(".ename"), wb = $("#wardBtn"), ds = $(".edesc");
-      const nameRow = `<div class="a3name">${nm ? nm.outerHTML : ""}${wb ? wb.outerHTML : ""}</div>${!ok && ds ? ds.outerHTML : ""}`;
+      const nameRow = `<div class="a3name">${nm ? nm.outerHTML : ""}${wb ? wb.outerHTML : ""}</div>${ds ? ds.outerHTML : ""}`; // v117 (user): the hero's ability is back under the name
       // difficulty chips with skulls
       const dif = `<div class="difsel a3dif" role="group" aria-label="${T("Dificultad")}">${[["e", "FÁCIL", 1], ["n", "NORMAL", 2], ["h", "HARDCORE", 3]].map(([k, n, s]) => `<button data-dif="${k}" class="${d === k ? "on" : ""}${k === "h" ? " hc" : ""}"><span class="sk">${Array.from({ length: s }, () => pxi("skull", d === k ? (k === "h" ? "#ffffff" : "#1a1206") : (k === "h" ? "#e0566b" : "#9a94b8"), 1)).join("")}</span>${T(n)}</button>`).join("")}</div><p class="difinfo a3hint">${Lx(...A3_DIF[d])}</p>`;
       // play
@@ -12104,7 +12131,7 @@ function a3Btn(src, cls, inner) { if (!src) return ""; const b = src.cloneNode(f
       const shop = $("#shopBtn"), canBuy = shop && /shopblink/.test(shop.className);
       const tab = (src, ic, col, lab, extra) => src ? a3Btn(src, "a3tab" + (extra || ""), `${pxi(ic, col, 2)}<span>${lab}</span>`) : "";
       const achSrc = $("#achBtn") || $("#pgsAch"), lbSrc = $("#lbBtn") || $("#pgsLb");
-      const tabs = `<div class="a3tabs">${tab(shop, "bag", "#f2c14e", Lx("TIENDA", "SHOP"), canBuy ? " shopblink" : "")}${tab($("#codexBtn"), "book", "#c9c3e6", Lx("CÓDICE", "CODEX"))}${tab(achSrc, "star", "#5fd1c4", Lx("LOGROS", "FEATS"))}${tab(lbSrc, "trophy", "#f2c14e", $("#lbBtn") ? Lx("RÉCORDS", "RECORDS") : Lx("RANKING", "RANKS"))}${tab($("#setBtn"), "gear", "#9a94b8", Lx("AJUSTES", "SETUP"))}</div>`;
+      const tabs = `<div class="a3tabs">${tab(shop, "bag", "#f2c14e", Lx("TIENDA", "SHOP"), canBuy ? " shopblink" : "")}${tab($("#codexBtn"), "book", "#c9c3e6", Lx("CÓDICE", "CODEX"))}${tab(achSrc, "star", "#5fd1c4", Lx("LOGROS", "FEATS"))}${tab(lbSrc, "trophy", "#f2c14e", $("#lbBtn") ? Lx("RÉCORDS", "RECORDS") : Lx("RANKING", "RANKS"))}${tab($("#setBtn"), "gear", "#9a94b8", Lx("AJUSTES", "SETTINGS"))}</div>`;
       const box = keep("#testsBox");
       return `<div class="menu etitle a3"><canvas class="a3bg" id="a3bg" width="100" height="208" aria-hidden="true"></canvas>${top}${keep(".lslot")}<div class="a3grp">${keep(".ehero")}${nameRow}</div><div class="a3grp">${dif}</div><div class="emodes a3modes${ok ? "" : " off"}">${play}${tiles}</div>${tabs}${box}</div>`;
     } catch (er) { errLog(er.message, "a3title"); return h; } }; }
@@ -12207,7 +12234,7 @@ escWardrobe = function (ch) {
     <div class="wbtns"><button id="wShop">${pxi("bag", "#f2c14e")} ${T("TIENDA")}</button><button class="wok" id="backBtn">OK</button></div>`;
   document.body.appendChild(el); paintPxi(el); animPortraits();
   const info = el.querySelector("#wInfo");
-  el.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { const id = b.dataset.w, k = HERO_SKINS[id]; { const fb = el.querySelector("#wFull"); if (fb) fb.hidden = true; }
+  el.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { const id = b.dataset.w, k = HERO_SKINS[id]; { const fb = el.querySelector("#wFull"); if (fb) fb.hidden = true; const ws = el.querySelector("#wShop"); if (ws) ws.hidden = !k.shop && !skinOwned(id); }
     if (skinOwned(id)) { META.skin[ch.id] = id; saveMeta(); omfSfx("pick"); escWardrobe(ch); return; }
     if (k.shop) { const cost = shopCost(id), bank = META.bank || 0;
       if (bank < cost) { omfSfx("click"); info.innerHTML = `<b>${nm(id).toUpperCase()}</b> · <i class="cn"></i>${fmtDot(cost)}<br>${Lx("Te faltan", "You need")} <i class="cn"></i>${fmtDot(cost - bank)} ${Lx("monedas. El oro que te sobra al caer va a tu bolsa.", "more coins. The gold left when you fall goes to your bag.")}<span class="pbar"><u style="width:${Math.floor(100 * bank / cost)}%"></u></span>`; return; }
@@ -12276,7 +12303,7 @@ escWardrobe = function (ch) {
 @media (prefers-reduced-motion: reduce){.a3play .ar,.a3tile .new,.a3in,.a3tab.shopblink{animation:none}}
 .a3how{justify-content:center;margin:8px 0}
 .overlay:has(> .etitle.a3){overflow:hidden;justify-content:flex-start;padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
-.etitle.a3 .a3grp{display:flex;flex-direction:column;gap:6px;align-items:stretch} .etitle.a3{min-height:0!important;margin:0 auto!important;flex:1 0 auto;justify-content:space-between}
+.overlay .etitle.a3 .a3tab span{font-size:10px;letter-spacing:0} @media (max-width:360px){.overlay .etitle.a3 .a3tab span{font-size:9px}} .etitle.a3 .edesc{font-size:12px;line-height:1.3;max-width:34ch;margin:0 auto;min-height:2.6em} .etitle.a3.a3t2 .edesc,.etitle.a3.a3t3 .edesc,.etitle.a3.a3t4 .edesc{font-size:11px;min-height:0} .etitle.a3 .a3grp{display:flex;flex-direction:column;gap:6px;align-items:stretch} .etitle.a3{min-height:0!important;margin:0 auto!important;flex:1 0 auto;justify-content:space-between}
 @media (max-width:360px){.etitle.a3 .a3dif button{padding:5px 5px;font-size:9px;gap:3px} .etitle.a3 .a3dif .sk{display:none}}
 .overlay .etitle.a3 .a3tabs{position:fixed;left:0;right:0;bottom:0;width:auto;margin:0;grid-template-columns:repeat(5,minmax(0,1fr));padding:7px 4px calc(8px + env(safe-area-inset-bottom,0px))}
 .overlay .etitle.a3 .a3tab{font-size:8px;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:clip;width:100%}
@@ -12304,7 +12331,32 @@ escWardrobe = function (ch) {
 .a3ward .winfo{min-height:34px;line-height:1.4}
 .a3ward .winfo .ctlsel{margin-top:6px;justify-content:center}
 .a3ward .wbtns{display:flex;gap:8px;justify-content:center}
-.a3ward .wbtns button{min-width:120px;color:#ece8f5;display:inline-flex;align-items:center;justify-content:center;gap:6px} .overlay .a3ward .wbtns #wShop, .a3ward .wbtns #wShop{color:#f2c14e;background:#1d1830;border:2px solid #f2c14e} .a3ward .wstore{position:absolute;top:3px;right:3px;font-style:normal} .a3ward .wstore canvas{display:block} .a3ward #wFull[hidden]{display:none}`; document.head.appendChild(st); })();
+.a3ward .wbtns button{min-width:120px;color:#ece8f5;display:inline-flex;align-items:center;justify-content:center;gap:6px} .overlay .a3ward .wbtns #wShop, .a3ward .wbtns #wShop{color:#f2c14e;background:#1d1830;border:2px solid #f2c14e} .a3ward .wstore{position:absolute;top:3px;right:3px;font-style:normal} .a3ward .wstore canvas{display:block} .a3ward #wFull[hidden],.a3ward #wShop[hidden]{display:none}`; document.head.appendChild(st); })();
+
+// v115 (user: "la torre debe generar igual a todos, una seed por día solo en el daily"): in the Daily Challenge each tower
+// segment is built from the day's seed and its height only, with difficulty and biome read from height (as if climbing at
+// 1 m/s), so every player gets the same tower that day. Normal climbs stay random.
+{ const gs0 = genEscSegment; genEscSegment = function () {
+    if (!(S && S.escape && S.daily && S.dailyFix && !S.test && !(typeof huOn === "function" && huOn()))) return gs0.apply(this, arguments);
+    const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, h = Math.max(0, (S.LH - 2) - (S.eg ? S.eg.row : 0)), r = mulberry((S.seed | 0) * 7919 + (S.eg ? S.eg.row : 0) * 31 + (S.easy ? 1 : S.hard ? 2 : 0));
+    Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h;
+    try { return gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; } }; }
+
+// v116 (user): the death title depends on what killed you. Lava / the camera / the tide = CAÍSTE (YOU FELL), an enemy = MORISTE
+// (YOU DIED), plus spikes, bosses and drowning. hurt() guesses the cause from what is touching the hero at that moment.
+function deathCauseNow(drown) { try { const p = S.player; if (drown) return "drown";
+    const P = { x: p.x - 3, y: p.y - 3, w: p.w + 6, h: p.h + 6 };
+    if ((S.spikes || []).some(s => spikeOn(s) && overlap(P, spikeBox(s)))) return "spike";
+    const e = (S.enemies || []).find(e => !e.dead && !e.decoy && overlap(P, e)); if (e) return e.boss || e.bp ? "boss" : "mob";
+    if ((S.shots || []).some(sh => sh.life > 0 && Math.hypot(p.x + p.w / 2 - sh.x, p.y + p.h / 2 - sh.y) < 40)) return S.arena && S.arena.state !== "done" ? "boss" : "mob";
+    return S.arena && S.arena.state === "fight" ? "boss" : "hit"; } catch (_) { return "hit"; } }
+{ const hu0 = hurt; hurt = function (dir, drown) { S.pendCause = deathCauseNow(drown); try { return hu0.apply(this, arguments); } finally { S.pendCause = null; } }; }
+{ const di0 = die; die = function () { if (S && !S.deathCause) S.deathCause = S.pendCause || "fell"; return di0.apply(this, arguments); }; }
+const DEATH_TITLE = { fell: ["CAÍSTE", "YOU FELL"], mob: ["MORISTE", "YOU DIED"], hit: ["MORISTE", "YOU DIED"], spike: ["TE PINCHASTE", "SPIKED"], boss: ["EL JEFE TE VENCIÓ", "THE BOSS GOT YOU"], drown: ["TE AHOGASTE", "YOU DROWNED"] };
+{ const sdc0 = showDead; showDead = function () { const r = sdc0.apply(this, arguments);
+    try { if (S.escape) { const h1 = ov.querySelector(".menu h1"), t = DEATH_TITLE[S.deathCause || "fell"] || DEATH_TITLE.fell; if (h1) h1.textContent = Lx(t[0], t[1]); } } catch (_) {} return r; }; }
+// v116 (user): the PRUEBAS box scrolls (only the menu itself never scrolls)
+(() => { const st = document.createElement("style"); st.textContent = `.overlay:has(> .etitle.a3 #testsBox[open]){overflow-y:auto}`; document.head.appendChild(st); })();
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
