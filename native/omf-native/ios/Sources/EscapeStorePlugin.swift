@@ -54,8 +54,10 @@ public class EscapeStorePlugin: CAPPlugin, CAPBridgedPlugin {
             do {
                 let ps = try await Product.products(for: [fullId])
                 if let p = ps.first {
+                    let store = await Storefront.current?.countryCode ?? ""
                     call.resolve(["ok": true, "id": "escape_full", "price": p.displayPrice,
-                                  "title": p.displayName, "description": p.description])
+                                  "title": p.displayName, "description": p.description,
+                                  "currency": p.priceFormatStyle.currencyCode, "storefront": store])
                 } else {
                     call.resolve(["ok": false, "error": "Producto no disponible"])
                 }
