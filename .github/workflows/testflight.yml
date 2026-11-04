@@ -31,7 +31,7 @@ on:
         default: false
 env:
   BUNDLE_ID: com.onemorefloor.escape
-  APP_NAME: OMF Escape
+  APP_NAME: One More Floor Escape
 jobs:
   testflight:
     runs-on: ${{ inputs.runner || 'macos-15' }}
