@@ -1104,11 +1104,15 @@ function pgsRun(meters, seconds) {
   // v124 (user): height only. The daily challenge has ONE board for every difficulty (resets each UTC day);
   // the climb ranks Normal ("height") and Hardcore ("height_hard"); Easy climbs are not ranked
   if (typeof S === "undefined") return;
-  if (S.daily) { if (!S.easy) pgsCall("submitScore", { board: S.hard ? "daily_hard" : "daily", score: Math.floor(meters) }); return; } // v126 (user): omf_daily (Normal) + omf_daily_hard, both recurring, reset 00:00 UTC; Easy dailies unranked
+  if (S.daily) { if (!S.easy) pgsScore(S.hard ? "daily_hard" : "daily", Math.floor(meters)); return; } // v126 (user): omf_daily (Normal) + omf_daily_hard, both recurring, reset 00:00 UTC; Easy dailies unranked
   if (S.horde || S.hu) return; // Horde and story runs are not climb rankings
   // v126 (user): Easy has its own height board (omf_height_easy), shown apart and not counted as a ranking
-  pgsCall("submitScore", { board: S.easy ? "height_easy" : S.hard ? "height_hard" : "height", score: Math.floor(meters) });
+  pgsScore(S.easy ? "height_easy" : S.hard ? "height_hard" : "height", Math.floor(meters));
 }
+// v128 (user: the daily board didn't work): a rejected score lands in Ajustes › INFO's error log, so failures are visible
+function pgsScore(board, score) {
+  if (!PGS || (typeof S !== "undefined" && (S.test || S.lab))) return;
+  try { const r = PGS.submitScore({ board, score }); if (r && r.then) r.then(x => { if (x && x.ok === false) try { errLog("Game Center " + board + ": " + (x.error || "not sent"), "gc"); } catch (_) {} }).catch(e => { try { errLog("Game Center " + board + ": " + (e && e.message || e), "gc"); } catch (_) {} }); } catch (_) {} }
 // 4) Botones 8-bit en el menú de Escape (junto a Records), visibles solo si PGS existe:
 //    "🏆 Logros" -> pgsShow("achievements")   "📈 Ranking" -> pgsShow("leaderboard")
 //    Si el jugador no tiene sesión iniciada, primero se la pide.
@@ -2566,8 +2570,13 @@ function updateRules(dt, dtW, p) {
   }
   if (has("sweep")) {
     S.sweepT -= dtW;
-    if (!S.sweep && S.sweepT <= 0) S.sweep = { x: S.camX - 10 };
-    if (S.sweep) {
+    if (!S.sweep && S.sweepT <= 0) S.sweep = S.escape ? { y: S.camY - 10, esc: true } : { x: S.camX - 10 };
+    if (S.sweep && S.sweep.esc) { // v128 (user: the sweep didn't work in Escape, the side wall always counted as cover): a beam falls from the top of the screen; hide under a platform
+      const oy = S.sweep.y; S.sweep.y += CH / 1.6 * dtW;
+      const pcy = p.y + p.h / 2, col = Math.floor((p.x + p.w / 2) / TS);
+      if (oy < pcy && S.sweep.y >= pcy && S.mode === "play") { let cover = false; for (let ty = Math.max(0, Math.floor(S.camY / TS)); ty < Math.floor(p.y / TS); ty++) { const c = S.grid[ty] && S.grid[ty][col]; if (c && c !== 3) { cover = true; break; } } if (!cover) hurt(1); }
+      if (S.sweep.y > S.camY + CH + 10) { S.sweep = null; S.sweepT = 8; }
+    } else if (S.sweep) {
       const ox = S.sweep.x; S.sweep.x += CW / 1.3 * dtW;
       const pcx = p.x + p.w / 2, row = Math.floor((p.y + p.h / 2) / TS);
       if (ox < pcx && S.sweep.x >= pcx) {
@@ -2709,7 +2718,11 @@ function drawRulesWorld(p) {
   if (S.huntT > 0) for (const e of S.enemies) if (!e.dead && !e.boss) { ctx.strokeStyle = "#5fd1c4"; ctx.lineWidth = 1; ctx.strokeRect(e.x - 2, e.y - 2, e.w + 4, e.h + 4); }
 }
 function drawRulesScreen(p, cx, cy) {
-  if (S.sweep) {
+  if (S.sweep && S.sweep.esc) { // v128: the falling beam, stopped by the first tile above in each column
+    ctx.fillStyle = "rgba(255,90,120,.85)"; const by = S.sweep.y;
+    for (let tx = 1; tx < S.LW - 1; tx++) { let blocked = false; for (let ty = Math.max(0, Math.floor(cy / TS)); ty * TS < by; ty++) { const c = S.grid[ty] && S.grid[ty][tx]; if (c && c !== 3) { blocked = true; break; } } if (!blocked) ctx.fillRect(tx * TS - cx, by - cy - 3, TS, 6); }
+  } else if (has("sweep") && S.escape && S.sweepT < 1.5 && Math.floor(S.t * 8) % 2) { ctx.fillStyle = "rgba(255,90,120,.5)"; ctx.fillRect(0, 0, CW, 6); }
+  else if (S.sweep) {
     ctx.fillStyle = "rgba(255,90,120,.85)";
     for (let r = Math.floor(cy / TS); r <= Math.floor((cy + CH) / TS); r++) {
       let stop = S.sweep.x; for (let tx = Math.max(0, Math.floor(cx / TS)); tx * TS < S.sweep.x; tx++) if (S.grid[r] && isSolidTile(S.grid[r][tx])) { stop = -1; break; }
@@ -4947,7 +4960,7 @@ const EN_PATTERNS = [
   [/^\+(\d+) de oro$/, "+$1 gold"], [/^Cofre: \+(\d+) de oro$/, "Chest: +$1 gold"], [/^Combinación descubierta: (.+)$/, "Combo discovered: $1"],
   [/^Mentiroso: la regla oculta era (.+)$/, "Liar: the hidden rule was $1"], [/^Nueva regla en el mazo: (.+)$/, "New rule in the deck: $1"],
   [/^Reliquia oculta: (.+)$/, "Hidden relic: $1"], [/^Reliquia: (.+)$/, "Relic: $1"],
-  [/^BARRIDO EN (\d+) · CÚBRETE TRAS UNA PARED$/, "SWEEP IN $1 · TAKE COVER BEHIND A WALL"], [/^CAZA (\d+)s$/, "HUNT $1s"], [/^GRAVEDAD (\d+)s$/, "GRAVITY $1s"],
+  [/^BARRIDO EN (\d+) · CÚBRETE TRAS UNA PARED$/, "SWEEP IN $1 · TAKE COVER BEHIND A WALL"], [/^BARRIDO EN (\d+) · CÚBRETE BAJO UNA PLATAFORMA$/, "SWEEP IN $1 · HIDE UNDER A PLATFORM"], [/^CAZA (\d+)s$/, "HUNT $1s"], [/^GRAVEDAD (\d+)s$/, "GRAVITY $1s"],
   [/^GUARDIÁN DEL PISO (\d+)$/, "FLOOR $1 GUARDIAN"], [/^INTERCAMBIO (\d+)s$/, "SWAP $1s"], [/^LA CÁMARA EMPIEZA A SUBIR EN (\d+)$/, "THE CAMERA STARTS RISING IN $1"],
   [/^MUNICIÓN(.*)$/, "AMMO$1"], [/^PISO (\d+)( · JEFE)? · (.+)$/, (m, a, b, c) => "FLOOR " + a + (b ? " · BOSS" : "") + " · " + c], [/^TERREMOTO EN (\d+)$/, "EARTHQUAKE IN $1"],
   [/^TIEMPO (\d+)$/, "TIME $1"], [/^VIENTO (.) (\d+)s$/, "WIND $1 $2s"], [/^MEDIANOCHE EN (\d+)s · DAÑO x2$/, "MIDNIGHT IN $1s · DAMAGE x2"],
@@ -6852,7 +6865,7 @@ function draw() {
   if (has("midnight")) { ctx.fillStyle = S.floorT < 30 ? "#f2c14e" : "#5d5a78"; ctx.fillText(S.floorT < 30 ? "MEDIANOCHE EN " + Math.ceil(30 - S.floorT) + "s · DAÑO x2" : "PASADA LA MEDIANOCHE · DAÑO ½", 34, hy); hy += 16; }
   if (S.siren > 0) { ctx.fillStyle = "#ff8ad8"; ctx.fillText(input.attack ? "OÍDOS TAPADOS" : "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS", 34, hy); hy += 16; }
   if (has("quake") && S.quakeT < 2) { ctx.fillStyle = "#c9a36a"; ctx.fillText("TERREMOTO EN " + Math.ceil(S.quakeT), 34, hy); hy += 16; }
-  if (has("sweep") && !S.sweep && S.sweepT < 3) { ctx.fillStyle = "#ff5a78"; ctx.fillText("BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE TRAS UNA PARED", 34, hy); hy += 16; }
+  if (has("sweep") && !S.sweep && S.sweepT < 3) { ctx.fillStyle = "#ff5a78"; ctx.fillText(S.escape ? "BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE BAJO UNA PLATAFORMA" : "BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE TRAS UNA PARED", 34, hy); hy += 16; }
   if (has("wax") && (p.burn || 0) > 0.05) { ctx.fillStyle = "#ff7a3a"; ctx.fillText("CERA", 34, hy); ctx.fillRect(80, hy - 9, 70 * Math.min(1, p.burn / 0.9), 8); hy += 16; }
   if (S.shadowE && !S.shadowE.caught) { ctx.fillStyle = "#9a94b8"; ctx.fillText("ATRAPA TU SOMBRA", 34, hy); hy += 16; }
   if (has("grav") && S.mode === "play") {
@@ -10620,7 +10633,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v127";
+var OMF_VER = "Escape v129";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12522,6 +12535,19 @@ var d126 = dailyMods; dailyMods = function (seed, easy, hard) {
   return out; };
 // the daily tower itself: a hashed seed, so neighbouring days don't start alike
 var n126 = newRun; newRun = function (opts) { const r = n126.apply(this, arguments); if (S && S.daily) { const k = S.seed; S.rng = mulberry((Math.imul(k ^ 0x85ebca6b, 3266489917) ^ (k >>> 5)) >>> 0); } return r; };
+// v128 (user: spikes over a gap blocked the way): a floor spike needs a tile under it; one left floating
+// (its floor cleared by the generator, or a crumbling tile gone) is removed
+function spikeFloat(sp) { if (sp.ceil || sp.room || sp.lab || sp.bp) return false; const r = S.grid[sp.ty + 1], c = r && r[sp.tx]; return !c || c === 3; }
+var sp128g = genEscSegment; genEscSegment = function () { const r = sp128g.apply(this, arguments); if (S.escape && S.spikes) S.spikes = S.spikes.filter(sp => !spikeFloat(sp)); return r; };
+var sp128t = escapeTick; escapeTick = function (p, dt) { const r = sp128t.apply(this, arguments); if (S.spikes && (S.sp128 = (S.sp128 || 0) + dt) > 0.25) { S.sp128 = 0; S.spikes = S.spikes.filter(sp => !spikeFloat(sp)); } return r; };
+// v129: leaving a climb from the pause menu (restart / menu) still sends its height to the boards
+var pz129 = escPause; escPause = function () { const r = pz129.apply(this, arguments);
+  for (const id of ["rstBtn", "menuBtn"]) { const btn = document.getElementById(id); if (!btn || !btn.onclick) continue; const f = btn.onclick;
+    btn.onclick = function () { try { if (S && S.escape && !S.dead && !S.pgsSent && (S.escBest || 0) > 0) { S.pgsSent = true; pgsRun(S.escBest || 0, Math.max(0, S.t - S.escT0)); } } catch (_) {} return f.apply(this, arguments); }; }
+  return r; };
+var pr129 = pgsRun; pgsRun = function () { if (S && S.pgsSentDie) return; if (S) S.pgsSentDie = true; return pr129.apply(this, arguments); };
+// v128: Escape's Sweep falls from the top; its card says so
+if (ESCAPE && RULE.sweep) { RULE.sweep.desc = "Cada 8 s un rayo baja por la pantalla. Escóndete debajo de una plataforma."; EN_TEXT["Cada 8 s un rayo baja por la pantalla. Escóndete debajo de una plataforma."] = "Every 8 s a beam falls down the screen. Hide under a platform."; if (typeof EN_RULES !== "undefined" && EN_RULES.sweep) EN_RULES.sweep = ["Sweep", "Every 8 s a beam falls down the screen. Hide under a platform."]; }
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
