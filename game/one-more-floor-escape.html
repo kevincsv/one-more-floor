@@ -1104,9 +1104,10 @@ function pgsRun(meters, seconds) {
   // v124 (user): height only. The daily challenge has ONE board for every difficulty (resets each UTC day);
   // the climb ranks Normal ("height") and Hardcore ("height_hard"); Easy climbs are not ranked
   if (typeof S === "undefined") return;
-  if (S.daily) { pgsCall("submitScore", { board: "daily", score: Math.floor(meters) }); return; } // omf_daily: recurring, resets 00:00 UTC
-  if (S.easy || S.horde || S.hu) return; // Horde and story runs are not climb rankings
-  pgsCall("submitScore", { board: S.hard ? "height_hard" : "height", score: Math.floor(meters) });
+  if (S.daily) { if (!S.easy) pgsCall("submitScore", { board: S.hard ? "daily_hard" : "daily", score: Math.floor(meters) }); return; } // v126 (user): omf_daily (Normal) + omf_daily_hard, both recurring, reset 00:00 UTC; Easy dailies unranked
+  if (S.horde || S.hu) return; // Horde and story runs are not climb rankings
+  // v126 (user): Easy has its own height board (omf_height_easy), shown apart and not counted as a ranking
+  pgsCall("submitScore", { board: S.easy ? "height_easy" : S.hard ? "height_hard" : "height", score: Math.floor(meters) });
 }
 // 4) Botones 8-bit en el menú de Escape (junto a Records), visibles solo si PGS existe:
 //    "🏆 Logros" -> pgsShow("achievements")   "📈 Ranking" -> pgsShow("leaderboard")
@@ -4445,7 +4446,7 @@ function testBoss(z, ph) {
     S.signed = { ice: 3, dark: 2, noise: 1 }; startFloor(); S.test = true; return; }
   startFloor(); S.test = true;
   // move the clock to that biome, build the arena right away and drop the hero inside it
-  S.escT0 = S.t - (z ? ESC_BIOME_T[z - 1] + 1 : 0); S.eg.lastZone = z;
+  S.escT0 = S.t - (z ? ESC_BIOME_T[z - 1] + 1 : 0); S.eg.lastZone = z; S.bossTestZ = z;
   if (!buildEscArena()) return;
   const A = S.arena, p = S.player;
   p.x = 3 * TS + 4; p.y = A.F * TS - p.h - 0.01; p.vx = p.vy = 0; p.ground = true; p.climb = false;
@@ -4683,9 +4684,9 @@ const RUN_NAMES = { story: "Historia", endless: "Infinito", daily: "Desafío dia
 const fmtTime = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
 function localRuns() { try { return JSON.parse(localStorage.getItem("omf-runs") || "[]"); } catch (_) { return []; } }
 function escDifKind() { return META.easy ? "escape-easy" : META.hard ? "escape-hard" : "escape"; }
-const ESC_DIF_INFO = { e: "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores, sin Espejo y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.",
-  n: "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.",
-  h: "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte." };
+const ESC_DIF_INFO = { e: "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores, sin Espejo y atraviesas todas las plataformas desde abajo. Tiene su propia tabla de altura, fuera del ranking.",
+  n: "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma. Cuenta para el ranking.",
+  h: "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Cuenta para el ranking Hardcore." };
 function escDifHTML() { const d = META.easy ? "e" : META.hard ? "h" : "n";
   return `<div class="difsel" role="group" aria-label="${T("Dificultad")}">${[["e", "FÁCIL"], ["n", "NORMAL"], ["h", "HARDCORE"]].map(([k, n]) => `<button data-dif="${k}" class="${d === k ? "on" : ""}${k === "h" ? " hc" : ""}">${T(n)}</button>`).join("")}</div><p class="difinfo">${T(ESC_DIF_INFO[d])}</p>`; }
 function bestOf(kind) { const r = localRuns().filter(x => x.run === kind); return r.length ? Math.max(...r.map(x => x.floor)) : 0; }
@@ -10619,7 +10620,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v125";
+var OMF_VER = "Escape v127";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10950,19 +10951,25 @@ function shareCard(D) {
   out(D.m + " m", 540, 830, 130, "#f2c14e", 8);
   const tm = Math.floor(D.time / 60) + ":" + String(Math.floor(D.time % 60)).padStart(2, "0");
   out(tm + " · " + B.name.toUpperCase(), 540, 890, 38, "#ece6ff", 4);
-  const extra = [D.daily ? Lx("RETO DIARIO ", "DAILY ") + D.daily : "", D.mode, D.boss ? Lx("JEFE: ", "BOSS: ") + D.boss : ""].filter(Boolean).join(" · ");
-  if (extra) out(extra, 540, 942, 28, "#5fd1c4", 3);
+  // v127 (user): the card always says the mode and difficulty you played, on a pixel badge
+  const modeTxt = D.mode || "", extra = D.boss ? Lx("JEFE: ", "BOSS: ") + D.boss : "";
+  if (modeTxt) { g.font = "30px Silkscreen, monospace"; const bw = Math.min(960, Math.ceil(g.measureText(modeTxt).width / K) * K + 12 * K), bx = Math.round((1080 - bw) / 2 / K) * K, by = 912;
+    g.fillStyle = "#0b0912"; g.fillRect(bx - K, by - K, bw + 2 * K, 48 + 2 * K); g.fillStyle = D.modeCol || "#5fd1c4"; g.fillRect(bx, by, bw, 48); g.fillStyle = "#1b1829"; g.fillRect(bx + K, by + K, bw - 2 * K, 48 - 2 * K);
+    out(modeTxt, 540, by + 36, 30, D.modeCol || "#5fd1c4", 3); }
+  if (extra) out(extra, 540, 990 - 16, 22, "#a39cc4", 2);
   if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; g.fillText(RULE[id] ? RULE[id].icon : "?", x0 + i * w, 340); }); }
-  out("One More Floor Escape", 540, 1008, 26, "#a39cc4", 3);
+  out("One More Floor Escape", 540, 1012, 22, "#a39cc4", 2);
   return c;
 }
 function runCardData() {
   const d = new Date(), mods = [...new Set((S.escMods || []).map(m => m.id).concat(S.v77surv || []))].filter(id => RULE[id]).slice(0, 8);
-  const z = Math.min(4, escBiomeAt(Math.max(0, S.t - S.escT0))), bz = (S.v77boss || []).slice(-1)[0];
+  const z = Math.min(4, S.camZone || 0), bz = (S.v77boss || []).slice(-1)[0];
   return { m: S.escBest || 0, time: Math.max(0, S.t - S.escT0), skin: heroesOn() ? heroSkinOf(S.char.id) : S.char.id, biome: z, mods,
     boss: bz != null && BOSSN[bz] ? BOSSN[bz][LANG === "en" ? 1 : 0].replace(/^(la|el|the) /i, "").toUpperCase() : "",
     daily: S.daily ? String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0") : "",
-    mode: S.easy ? Lx("FÁCIL", "EASY") : S.horde ? Lx("HORDA", "HORDE") : "" };
+    mode: [S.hu ? Lx("HISTORIA", "STORY") : S.horde ? Lx("HORDA", "HORDE") : S.daily ? Lx("DESAFÍO DIARIO ", "DAILY ") + String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0") : Lx("INFINITO", "ENDLESS"),
+      S.horde ? "" : S.easy ? Lx("FÁCIL", "EASY") : S.hard ? "HARDCORE" : "NORMAL"].filter(Boolean).join(" · "),
+    modeCol: S.hard ? "#e0566b" : S.easy ? "#7cba46" : "#5fd1c4" };
 }
 async function shareRun() {
   omfSfx("click");
@@ -11326,7 +11333,7 @@ Object.assign(EN_TEXT, {
 window.__trk = { give: id => trkGive(id), drop: (src, x, y) => trkDrop(src, x, y), TRK, meta: () => META, unlock: () => { for (const id in TRK) if (!META.goods.includes(id)) META.goods.push(id); } };
 if (!OMF_SFX.boom) OMF_SFX.boom = [[110, 40, 0.28, "noise", 0, 0.8], [70, 35, 0.3, "sawtooth", 0, 0.5]];
 
-Object.assign(EN_TEXT, { "HARDCORE": "HARDCORE", "Escape · Hardcore": "Escape · Hardcore", "Diario · Hardcore": "Daily · Hardcore", "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores, sin Espejo y atraviesas todas las plataformas desde abajo. Récords aparte, no cuenta para el ranking.": "+1 heart, the camera rises slower, at most 2 modifiers, no Mirror and you can jump up through every platform. Separate records, off the rankings.", "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma.": "The usual climb: moving and light platforms, roots, pistons and ghost steps can be jumped through from below.", "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Récords aparte.": "No platform can be jumped through from below and the camera rises 15% faster. Separate records." });
+Object.assign(EN_TEXT, { "HARDCORE": "HARDCORE", "Escape · Hardcore": "Escape · Hardcore", "Diario · Hardcore": "Daily · Hardcore", "+1 corazón, la cámara sube más despacio, como mucho 2 modificadores, sin Espejo y atraviesas todas las plataformas desde abajo. Tiene su propia tabla de altura, fuera del ranking.": "+1 heart, the camera rises slower, at most 2 modifiers, no Mirror and you can jump up through every platform. Has its own height board, outside the rankings.", "La subida de siempre: se atraviesan desde abajo las plataformas móviles, las de luz, las raíces, los pistones y los peldaños fantasma. Cuenta para el ranking.": "The usual climb: moving and light platforms, roots, pistons and ghost steps can be jumped through from below. Counts for the ranking.", "No atraviesas ninguna plataforma desde abajo y la cámara sube un 15% más rápido. Cuenta para el ranking Hardcore.": "No platform can be jumped through from below and the camera rises 15% faster. Counts for the Hardcore ranking." });
 // ===== v90 (user: "las pastillas están bien, pero solo para lo que viene; el resto puede ir al botón de pausa")
 // Escape, while playing: the next modifier is a small pill on the left edge; toasts, achievements and story lines
 // go into a log behind the pause button (red counter), listed in the pause menu. Achievement banners wait for the death screen.
@@ -12480,6 +12487,41 @@ Object.assign(EN_TEXT, { // v125 HISTORIA v2
   "La torre te ha tirado.": "The tower threw you down.", "La torre no necesitó trucos esta vez.": "The tower didn't need any tricks this time.", "La torre usó": "The tower used", "Funcionó.": "It worked.",
   "Afuera": "Outside", "Consigue el final AFUERA en La Huida": "Get the OUTSIDE ending in The Escape", "Consigue el final verdadero de La Huida (15/15 notas).": "Get the true ending of The Escape (15/15 notes).",
   "El Sello usa:": "The Seal uses:" });
+// ===== v126 (user) =====
+// 1) the biome changes every 150 m of height in every mode (was a timer); the story keeps its own stretches
+const ESC_BIOME_M = 150;
+var b126Biome0 = escBiomeAt; escBiomeAt = function (t) {
+  if (!ESCAPE || !S || !S.escape || (typeof huOn === "function" && huOn())) return b126Biome0(t);
+  if (S.bossTestZ != null) return S.bossTestZ;
+  const row = S.eg && S.eg.row != null ? S.eg.row : S.LH - 2, h = Math.max(0, (S.LH - 2) - row);
+  return Math.min(4, Math.max(Math.floor(h / ESC_BIOME_M), S.testBiome || 0)); };
+// 2) enemies drop a tower item now and then: 10% per kill (commons, sometimes a rare; never cursed, never bosses)
+var k126 = kill; kill = function (e, src) { const was = e && e.dead, r = k126.apply(this, arguments);
+  try { if (ESCAPE && S.escape && e && !was && e.dead && !e.boss && !e.bp && !e.critter && !e.decoy && !e.small && !e.noDrop && !S.secret && Math.random() < 0.10) {
+    const held = (S.trk || []).concat((S.items || []).filter(it => it.kind === "trk" && !it.taken).map(it => it.id));
+    const all = Object.keys(TRK).filter(id => trkOk(id) && !held.includes(id) && TRK[id].r !== "maldito");
+    const rare = all.filter(id => TRK[id].r === "raro"), com = all.filter(id => TRK[id].r === "comun"), L = Math.random() < 0.15 && rare.length ? rare : com.length ? com : rare;
+    if (L.length) { const id = L[Math.floor(Math.random() * L.length)]; S.items.push({ kind: "trk", id, x: e.x + e.w / 2 - 7, y: e.y + e.h - 14, w: 14, h: 14 }); burst(e.x + e.w / 2, e.y + e.h / 2, "#ffcf5a", 10); } } } catch (_) {}
+  return r; };
+// 3) trampolines (mushrooms, tile 6): keep a 3-wide, 3-tall shaft of air above them so the bounce never hits a ceiling
+var g126 = genEscSegment; genEscSegment = function () { const r = g126.apply(this, arguments);
+  try { if (S.escape && S.grid) { const g = S.grid, LW = S.LW, lo = Math.max(0, (S.eg && S.eg.row != null ? S.eg.row : 0) - 2), hi = Math.min(S.LH - 1, (S.g126hi != null ? S.g126hi : S.LH - 1) + 2);
+    for (let y = lo; y <= hi; y++) for (let x = 1; x < LW - 1; x++) if (g[y][x] === 6) {
+      for (let dy = 1; dy <= 3; dy++) { const yy = y - dy; if (yy < 0) break; for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 1 || xx > LW - 2) continue; const c = g[yy][xx]; if (c && c !== 3) g[yy][xx] = 0; } }
+      const bx0 = (x - 1) * TS, bx1 = (x + 2) * TS, by0 = (y - 3) * TS, by1 = y * TS;
+      if (S.movers) S.movers = S.movers.filter(m => !(m.x < bx1 && m.x + m.w > bx0 && m.y < by1 && m.y + m.h > by0)); }
+    S.g126hi = S.eg ? S.eg.row : null; } } catch (_) {}
+  return r; };
+// 4) daily challenge: the set of modifiers must clearly differ from yesterday's (neighbouring dates gave similar sets)
+var d126 = dailyMods; dailyMods = function (seed, easy, hard) {
+  const prevKey = k => { const y = Math.floor(k / 10000), m = Math.floor(k / 100) % 100, d = k % 100, t = new Date(Date.UTC(y, m - 1, d) - 864e5); return t.getUTCFullYear() * 10000 + (t.getUTCMonth() + 1) * 100 + t.getUTCDate(); };
+  const pick = k => { const h = (Math.imul(k ^ 0x9e3779b9, 2654435761) ^ (k >>> 7)) >>> 0; return d126(h % 2000000000, easy, hard); };
+  if (!(seed > 20000000 && seed < 30000000)) return d126(seed, easy, hard);
+  const prev = pick(prevKey(seed)); let out = pick(seed);
+  for (let salt = 1; salt < 12 && out.filter(id => prev.includes(id)).length > (easy ? 0 : 1); salt++) out = d126((((Math.imul(seed + salt * 7919, 2246822519) >>> 0)) % 2000000000), easy, hard);
+  return out; };
+// the daily tower itself: a hashed seed, so neighbouring days don't start alike
+var n126 = newRun; newRun = function (opts) { const r = n126.apply(this, arguments); if (S && S.daily) { const k = S.seed; S.rng = mulberry((Math.imul(k ^ 0x85ebca6b, 3266489917) ^ (k >>> 5)) >>> 0); } return r; };
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
