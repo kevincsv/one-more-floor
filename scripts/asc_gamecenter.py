@@ -23,7 +23,7 @@ def call(method, path, body=None, ok_missing=False):
     if ok_missing and r.status_code == 404:
         return None
     if r.status_code >= 400:
-        raise RuntimeError(f"{method} {path} -> {r.status_code}: {r.text[:600]}")
+        raise RuntimeError(f"{method} {path} -> {r.status_code}: {r.text[:1200]}")
     return r.json() if r.text else {}
 
 def all_pages(path):
@@ -99,9 +99,30 @@ def game_center():
     for lb in data["leaderboards"]:
         vid = pre + lb["id"]
         if vid in have_lb:
+            lid = have_lb[vid]
             if lb.get("daily"):
-                a = call("GET", f"/v1/gameCenterLeaderboards/{have_lb[vid]}")["data"]["attributes"]
+                a = call("GET", f"/v1/gameCenterLeaderboards/{lid}")["data"]["attributes"]
                 print("Marcador", vid, "recurrencia:", a.get("recurrenceStartDate"), a.get("recurrenceDuration"), a.get("recurrenceRule"))
+                if not a.get("recurrenceRule"):
+                    start = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
+                    for rr in ({"recurrenceStartDate": start, "recurrenceDuration": "P1D", "recurrenceRule": "FREQ=DAILY;INTERVAL=1"},
+                               {"recurrenceStartDate": start, "recurrenceDuration": "P1D", "recurrenceRule": "FREQ=DAILY"},
+                               {"recurrenceStartDate": start[:10], "recurrenceDuration": "P1D", "recurrenceRule": "FREQ=DAILY"}):
+                        try:
+                            call("PATCH", f"/v1/gameCenterLeaderboards/{lid}", {"data": {"type": "gameCenterLeaderboards", "id": lid, "attributes": rr}})
+                            print("  Recurrencia diaria puesta:", rr); break
+                        except Exception as e:
+                            print("  Recurrencia rechazada", rr, "->", e)
+            # localizaciones que falten
+            have_loc = {x["attributes"]["locale"] for x in all_pages(f"/v1/gameCenterLeaderboards/{lid}/localizations?limit=50")}
+            for loc, lang in locales:
+                if loc in have_loc: continue
+                la = {"locale": loc, "name": lb[lang]}
+                if lb.get("suffix_" + lang):
+                    la["formatterSuffix"] = lb["suffix_" + lang]; la["formatterSuffixSingular"] = lb["suffix_" + lang]
+                call("POST", "/v1/gameCenterLeaderboardLocalizations", {"data": {"type": "gameCenterLeaderboardLocalizations",
+                     "attributes": la, "relationships": {"gameCenterLeaderboard": {"data": {"type": "gameCenterLeaderboards", "id": lid}}}}})
+                print("  Localización añadida", vid, loc)
             continue
         attrs = {"referenceName": lb["en"], "vendorIdentifier": vid, "defaultFormatter": lb["formatter"],
                  "submissionType": "BEST_SCORE", "scoreSortType": "DESC"}
@@ -112,7 +133,7 @@ def game_center():
                 try:
                     new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": d_attrs, "relationships": rel}})
                 except Exception as e:
-                    print("  Recurrente no aceptado, creo clásico:", str(e)[:200])
+                    print("  Recurrente no aceptado, creo clásico:", e)
                     new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": attrs, "relationships": rel}})
             else:
                 new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": attrs, "relationships": rel}})

@@ -43,8 +43,8 @@
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
-   "en": "Daily challenge · Height (Easy)",
-   "es": "Reto diario · Altura (Fácil)",
+   "en": "Daily · Height (Easy)",
+   "es": "Diario · Altura (Fácil)",
    "daily": true
   },
   {
@@ -66,8 +66,8 @@
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
-   "en": "Daily challenge · Height (Hardcore)",
-   "es": "Reto diario · Altura (Hardcore)",
+   "en": "Daily · Height (Hardcore)",
+   "es": "Diario · Altura (Hardcore)",
    "daily": true
   }
  ],
