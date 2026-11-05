@@ -427,8 +427,8 @@
   },
   {
    "id": "hu_bajar",
-   "es": "Bajar es salir",
-   "en": "Down is out",
+   "es": "Afuera",
+   "en": "Outside",
    "cond_es": "Consigue el final verdadero de la historia",
    "cond_en": "Get the true ending of story mode",
    "points": 60,
