@@ -24,7 +24,8 @@
    "suffix_es": " m",
    "en": "Daily challenge · Height",
    "es": "Reto diario · Altura",
-   "daily": true
+   "daily": true,
+   "ref": "Daily Height (resets daily)"
   }
  ],
  "achievements": [

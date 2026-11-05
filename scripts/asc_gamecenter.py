@@ -125,17 +125,13 @@ def game_center():
                      "attributes": la, "relationships": {"gameCenterLeaderboard": {"data": {"type": "gameCenterLeaderboards", "id": lid}}}}})
                 print("  Localización añadida", vid, loc)
             continue
-        attrs = {"referenceName": lb["en"], "vendorIdentifier": vid, "defaultFormatter": lb["formatter"],
+        attrs = {"referenceName": lb.get("ref", lb["en"]), "vendorIdentifier": vid, "defaultFormatter": lb["formatter"],
                  "submissionType": "BEST_SCORE", "scoreSortType": "DESC"}
         try:
             if lb.get("daily"):
                 start = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
                 d_attrs = dict(attrs, recurrenceStartDate=start, recurrenceDuration="PT24H", recurrenceRule="FREQ=DAILY;INTERVAL=1")
-                try:
-                    new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": d_attrs, "relationships": rel}})
-                except Exception as e:
-                    print("  Recurrente no aceptado, creo clásico:", e)
-                    new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": attrs, "relationships": rel}})
+                new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": d_attrs, "relationships": rel}})
             else:
                 new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": attrs, "relationships": rel}})
             lid = new["data"]["id"]
