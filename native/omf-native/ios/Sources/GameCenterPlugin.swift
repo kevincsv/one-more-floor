@@ -16,6 +16,7 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         CAPPluginMethod(name: "submitScore", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "showAchievements", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "showLeaderboard", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "resetAchievements", returnType: CAPPluginReturnPromise),
     ]
 
     private let prefix = "omf_"
@@ -115,6 +116,15 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         vc.gameCenterDelegate = self
         bridge?.viewController?.present(vc, animated: true)
         call.resolve(result(true))
+    }
+
+    /// PRUEBAS: borra el progreso de todos los logros de este jugador en Game Center.
+    @objc func resetAchievements(_ call: CAPPluginCall) {
+        guard GKLocalPlayer.local.isAuthenticated else { call.resolve(["ok": false, "signedIn": false]); return }
+        GKAchievement.resetAchievements { error in
+            if let error = error { call.reject(error.localizedDescription) }
+            else { call.resolve(["ok": true, "signedIn": true]) }
+        }
     }
 
     @objc func showAchievements(_ call: CAPPluginCall) {
