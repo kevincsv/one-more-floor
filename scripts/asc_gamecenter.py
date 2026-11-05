@@ -103,6 +103,15 @@ def game_center():
             if lb.get("daily"):
                 a = call("GET", f"/v1/gameCenterLeaderboards/{lid}")["data"]["attributes"]
                 print("Marcador", vid, "recurrencia:", a.get("recurrenceStartDate"), a.get("recurrenceDuration"), a.get("recurrenceRule"))
+                rs = a.get("recurrenceStartDate")
+                if rs and rs[:10] > datetime.datetime.utcnow().strftime("%Y-%m-%d"):
+                    today = datetime.datetime.utcnow().strftime("%Y-%m-%dT00:00:00Z")
+                    try:
+                        call("PATCH", f"/v1/gameCenterLeaderboards/{lid}", {"data": {"type": "gameCenterLeaderboards", "id": lid,
+                             "attributes": {"recurrenceStartDate": today, "recurrenceDuration": a.get("recurrenceDuration"), "recurrenceRule": a.get("recurrenceRule")}}})
+                        print("  Inicio adelantado a hoy:", today)
+                    except Exception as e:
+                        print("  !! no se pudo adelantar el inicio:", e)
                 if not a.get("recurrenceRule"):
                     start = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
                     for rr in ({"recurrenceStartDate": start, "recurrenceDuration": "PT24H", "recurrenceRule": "FREQ=DAILY;INTERVAL=1"},
@@ -135,7 +144,7 @@ def game_center():
                  "submissionType": "BEST_SCORE", "scoreSortType": "DESC"}
         try:
             if lb.get("daily"):
-                start = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
+                start = datetime.datetime.utcnow().strftime("%Y-%m-%dT00:00:00Z")
                 d_attrs = dict(attrs, recurrenceStartDate=start, recurrenceDuration="PT24H", recurrenceRule="FREQ=DAILY;INTERVAL=1")
                 new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": d_attrs, "relationships": rel}})
             else:
