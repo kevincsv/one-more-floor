@@ -6,26 +6,45 @@
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
-   "en": "Escape · Height",
-   "es": "Escape · Altura"
+   "en": "Height · Normal",
+   "es": "Altura · Normal"
   },
   {
    "id": "height_hard",
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
-   "en": "Escape · Height (Hardcore)",
-   "es": "Escape · Altura (Hardcore)"
+   "en": "Height · Hardcore",
+   "es": "Altura · Hardcore"
   },
   {
    "id": "daily",
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
-   "en": "Daily challenge · Height",
-   "es": "Reto diario · Altura",
+   "en": "Daily · Normal",
+   "es": "Diario · Normal",
    "daily": true,
    "ref": "Daily Height (resets daily)"
+  },
+  {
+   "id": "height_easy",
+   "formatter": "INTEGER",
+   "suffix_en": " m",
+   "suffix_es": " m",
+   "en": "Height · Easy (unranked)",
+   "es": "Altura · Fácil (sin ranking)",
+   "ref": "Height Easy unranked"
+  },
+  {
+   "id": "daily_hard",
+   "formatter": "INTEGER",
+   "suffix_en": " m",
+   "suffix_es": " m",
+   "en": "Daily · Hardcore",
+   "es": "Diario · Hardcore",
+   "daily": true,
+   "ref": "Daily Hardcore (resets daily)"
   }
  ],
  "achievements": [
@@ -457,7 +476,6 @@
   "time",
   "time_easy",
   "time_hard",
-  "height_easy",
   "daily_height_easy",
   "daily_height_hard",
   "daily_height"

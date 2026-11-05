@@ -115,9 +115,15 @@ def game_center():
                         except Exception as e:
                             print("  Recurrencia rechazada", rr, "->", e)
             # localizaciones que falten
-            have_loc = {x["attributes"]["locale"] for x in all_pages(f"/v1/gameCenterLeaderboards/{lid}/localizations?limit=50")}
+            locs_now = {x["attributes"]["locale"]: x for x in all_pages(f"/v1/gameCenterLeaderboards/{lid}/localizations?limit=50")}
+            have_loc = set(locs_now)
             for loc, lang in locales:
-                if loc in have_loc: continue
+                if loc in have_loc:
+                    x = locs_now[loc]
+                    if x["attributes"].get("name") != lb[lang]:
+                        call("PATCH", f"/v1/gameCenterLeaderboardLocalizations/{x['id']}", {"data": {"type": "gameCenterLeaderboardLocalizations", "id": x["id"], "attributes": {"name": lb[lang]}}})
+                        print("  Nombre actualizado", vid, loc, "->", lb[lang])
+                    continue
                 la = {"locale": loc, "name": lb[lang]}
                 if lb.get("suffix_" + lang):
                     la["formatterSuffix"] = lb["suffix_" + lang]; la["formatterSuffixSingular"] = lb["suffix_" + lang]
