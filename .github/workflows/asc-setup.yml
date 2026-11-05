@@ -2,6 +2,11 @@
 name: Apple setup (sin build)
 on:
   workflow_dispatch:
+    inputs:
+      delete_unused:
+        description: "Borrar los marcadores sin uso de gamecenter.json"
+        type: boolean
+        default: false
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -31,6 +36,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           NEED_DEVICE: "0"
+          DELETE_UNUSED_LEADERBOARDS: ${{ inputs.delete_unused && '1' || '0' }}
           REGISTER_PLACEHOLDER_DEVICE: "0"
         run: |
           python3 -m pip install --quiet pyjwt cryptography requests
