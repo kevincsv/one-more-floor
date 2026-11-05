@@ -105,9 +105,10 @@ def game_center():
                 print("Marcador", vid, "recurrencia:", a.get("recurrenceStartDate"), a.get("recurrenceDuration"), a.get("recurrenceRule"))
                 if not a.get("recurrenceRule"):
                     start = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
-                    for rr in ({"recurrenceStartDate": start, "recurrenceDuration": "P1D", "recurrenceRule": "FREQ=DAILY;INTERVAL=1"},
-                               {"recurrenceStartDate": start, "recurrenceDuration": "P1D", "recurrenceRule": "FREQ=DAILY"},
-                               {"recurrenceStartDate": start[:10], "recurrenceDuration": "P1D", "recurrenceRule": "FREQ=DAILY"}):
+                    for rr in ({"recurrenceStartDate": start, "recurrenceDuration": "PT24H", "recurrenceRule": "FREQ=DAILY;INTERVAL=1"},
+                               {"recurrenceStartDate": start, "recurrenceDuration": "P1DT0H", "recurrenceRule": "FREQ=DAILY;INTERVAL=1"},
+                               {"recurrenceStartDate": start, "recurrenceDuration": "PT24H", "recurrenceRule": "FREQ=DAILY"},
+                               {"recurrenceStartDate": start.replace("Z", ".000Z"), "recurrenceDuration": "PT23H59M", "recurrenceRule": "FREQ=DAILY;INTERVAL=1"}):
                         try:
                             call("PATCH", f"/v1/gameCenterLeaderboards/{lid}", {"data": {"type": "gameCenterLeaderboards", "id": lid, "attributes": rr}})
                             print("  Recurrencia diaria puesta:", rr); break
@@ -129,7 +130,7 @@ def game_center():
         try:
             if lb.get("daily"):
                 start = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
-                d_attrs = dict(attrs, recurrenceStartDate=start, recurrenceDuration="P1D", recurrenceRule="FREQ=DAILY;INTERVAL=1")
+                d_attrs = dict(attrs, recurrenceStartDate=start, recurrenceDuration="PT24H", recurrenceRule="FREQ=DAILY;INTERVAL=1")
                 try:
                     new = call("POST", "/v1/gameCenterLeaderboards", {"data": {"type": "gameCenterLeaderboards", "attributes": d_attrs, "relationships": rel}})
                 except Exception as e:
@@ -148,6 +149,17 @@ def game_center():
             print("Creado marcador", vid)
         except Exception as e:
             print("!! marcador", vid, e); problems.append("marcador " + vid)
+
+    for uid in data.get("unused_leaderboards", []):
+        vid = pre + uid
+        if vid in have_lb:
+            if os.environ.get("DELETE_UNUSED_LEADERBOARDS") == "1":
+                try:
+                    call("DELETE", f"/v1/gameCenterLeaderboards/{have_lb[vid]}"); print("Borrado marcador sin uso", vid)
+                except Exception as e:
+                    print("!! no se pudo borrar", vid, e)
+            else:
+                print("Marcador sin uso (no se borra sin permiso):", vid)
 
     ach_recs = {a["attributes"]["vendorIdentifier"]: a["id"]
                 for a in all_pages(f"/v1/gameCenterDetails/{det_id}/gameCenterAchievements?limit=200")}

@@ -10,12 +10,6 @@
    "es": "Escape · Altura"
   },
   {
-   "id": "time",
-   "formatter": "ELAPSED_TIME_CENTISECOND",
-   "en": "Escape · Time",
-   "es": "Escape · Tiempo"
-  },
-  {
    "id": "daily_height",
    "formatter": "INTEGER",
    "suffix_en": " m",
@@ -25,50 +19,12 @@
    "daily": true
   },
   {
-   "id": "height_easy",
-   "formatter": "INTEGER",
-   "suffix_en": " m",
-   "suffix_es": " m",
-   "en": "Escape · Height (Easy)",
-   "es": "Escape · Altura (Fácil)"
-  },
-  {
-   "id": "time_easy",
-   "formatter": "ELAPSED_TIME_CENTISECOND",
-   "en": "Escape · Time (Easy)",
-   "es": "Escape · Tiempo (Fácil)"
-  },
-  {
-   "id": "daily_height_easy",
-   "formatter": "INTEGER",
-   "suffix_en": " m",
-   "suffix_es": " m",
-   "en": "Daily · Height (Easy)",
-   "es": "Diario · Altura (Fácil)",
-   "daily": true
-  },
-  {
    "id": "height_hard",
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
    "en": "Escape · Height (Hardcore)",
    "es": "Escape · Altura (Hardcore)"
-  },
-  {
-   "id": "time_hard",
-   "formatter": "ELAPSED_TIME_CENTISECOND",
-   "en": "Escape · Time (Hardcore)",
-   "es": "Escape · Tiempo (Hardcore)"
-  },
-  {
-   "id": "daily_height_hard",
-   "formatter": "INTEGER",
-   "suffix_en": " m",
-   "suffix_es": " m",
-   "en": "Daily · Height (Hardcore)",
-   "es": "Diario · Altura (Hardcore)",
-   "daily": true
   }
  ],
  "achievements": [
@@ -495,5 +451,13 @@
    "points": 40,
    "hidden": false
   }
+ ],
+ "unused_leaderboards": [
+  "time",
+  "time_easy",
+  "time_hard",
+  "height_easy",
+  "daily_height_easy",
+  "daily_height_hard"
  ]
 }
