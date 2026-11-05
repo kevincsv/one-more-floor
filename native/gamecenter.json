@@ -10,21 +10,21 @@
    "es": "Escape · Altura"
   },
   {
-   "id": "daily_height",
-   "formatter": "INTEGER",
-   "suffix_en": " m",
-   "suffix_es": " m",
-   "en": "Daily challenge · Height",
-   "es": "Reto diario · Altura",
-   "daily": true
-  },
-  {
    "id": "height_hard",
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
    "en": "Escape · Height (Hardcore)",
    "es": "Escape · Altura (Hardcore)"
+  },
+  {
+   "id": "daily",
+   "formatter": "INTEGER",
+   "suffix_en": " m",
+   "suffix_es": " m",
+   "en": "Daily challenge · Height",
+   "es": "Reto diario · Altura",
+   "daily": true
   }
  ],
  "achievements": [
@@ -458,6 +458,7 @@
   "time_hard",
   "height_easy",
   "daily_height_easy",
-  "daily_height_hard"
+  "daily_height_hard",
+  "daily_height"
  ]
 }
