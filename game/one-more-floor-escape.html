@@ -10633,7 +10633,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v129";
+var OMF_VER = "Escape v130";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12540,6 +12540,19 @@ var n126 = newRun; newRun = function (opts) { const r = n126.apply(this, argumen
 function spikeFloat(sp) { if (sp.ceil || sp.room || sp.lab || sp.bp) return false; const r = S.grid[sp.ty + 1], c = r && r[sp.tx]; return !c || c === 3; }
 var sp128g = genEscSegment; genEscSegment = function () { const r = sp128g.apply(this, arguments); if (S.escape && S.spikes) S.spikes = S.spikes.filter(sp => !spikeFloat(sp)); return r; };
 var sp128t = escapeTick; escapeTick = function (p, dt) { const r = sp128t.apply(this, arguments); if (S.spikes && (S.sp128 = (S.sp128 || 0) + dt) > 0.25) { S.sp128 = 0; S.spikes = S.spikes.filter(sp => !spikeFloat(sp)); } return r; };
+// v130 (user: the buttons only reacted when hit near their centre): the whole right side of the pad is live; a touch
+// that misses GOLPE / SALTO goes to the nearest one (up to 72 px away), keeping that finger until it lifts
+{ const st = document.createElement("style"); st.textContent = "body.esc:not(.ctl-invisible) .gpad .gbtns { pointer-events: auto; }"; document.head.appendChild(st);
+  const box = document.querySelector(".gpad .gbtns");
+  if (box) box.addEventListener("pointerdown", e => {
+    if (CTL === "invisible" || (e.target && e.target.closest && e.target.closest(".gb"))) return;
+    let best = null, bd = 1e9;
+    for (const id of ["gJump", "gAtk"]) { const el = document.getElementById(id); if (!el || !el.offsetParent) continue; const r = el.getBoundingClientRect();
+      const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right), dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom), d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = el; } }
+    if (!best || bd > 72) return;
+    e.preventDefault();
+    best.dispatchEvent(new PointerEvent("pointerdown", { pointerId: e.pointerId, pointerType: e.pointerType, clientX: e.clientX, clientY: e.clientY, isPrimary: e.isPrimary, bubbles: true, cancelable: true }));
+  }); }
 // v129: leaving a climb from the pause menu (restart / menu) still sends its height to the boards
 var pz129 = escPause; escPause = function () { const r = pz129.apply(this, arguments);
   for (const id of ["rstBtn", "menuBtn"]) { const btn = document.getElementById(id); if (!btn || !btn.onclick) continue; const f = btn.onclick;
