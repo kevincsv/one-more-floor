@@ -99,6 +99,9 @@ def game_center():
     for lb in data["leaderboards"]:
         vid = pre + lb["id"]
         if vid in have_lb:
+            if lb.get("daily"):
+                a = call("GET", f"/v1/gameCenterLeaderboards/{have_lb[vid]}")["data"]["attributes"]
+                print("Marcador", vid, "recurrencia:", a.get("recurrenceStartDate"), a.get("recurrenceDuration"), a.get("recurrenceRule"))
             continue
         attrs = {"referenceName": lb["en"], "vendorIdentifier": vid, "defaultFormatter": lb["formatter"],
                  "submissionType": "BEST_SCORE", "scoreSortType": "DESC"}
