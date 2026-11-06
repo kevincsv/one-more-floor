@@ -10656,7 +10656,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v148";
+var OMF_VER = "Escape v149";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -13419,6 +13419,19 @@ ov.addEventListener("click", e => { const b = e.target.closest && e.target.close
 .dlyintro .ddold{font-family:var(--font-display);font-size:10px;color:#0b0912;background:#9a94b8;text-shadow:none;padding:2px 6px;vertical-align:middle;letter-spacing:1px}
 .dlyintro .ddwarn{margin:10px auto;max-width:420px;padding:8px 10px;background:#2a1418;color:#ff8a66;box-shadow:inset 0 0 0 2px #ff8a66;clip-path:var(--cxframe);font-size:12px;text-align:center}
 `; document.head.appendChild(st); })();
+// v149 (user): the duel is not in this version. Its tile stays, dimmed, with COMING SOON; a tap only blinks it.
+// Its four achievements are hidden in the game (they still exist in Game Center and come back with the duel).
+var DUEL_SOON = true;
+if (DUEL_SOON) {
+  for (const L of [PGS_FEATS, GC_ACH]) for (let i = L.length - 1; i >= 0; i--) if (/^duel_/.test(L[i][0])) L.splice(i, 1);
+  { const dm0 = duMenu; duMenu = function () { if (DUEL_SOON && !(S && S.test)) return duSoonTap(); return dm0.apply(this, arguments); }; }
+  { const tw0 = escTitleWire; escTitleWire = function () { const r = tw0.apply(this, arguments);
+      try { const b = document.getElementById("duelBtn"); if (b) { b.classList.add("dusoon"); const n = b.querySelector(".new, .dunew"); if (n) n.remove();
+          const s = b.querySelector(".ts, .mv"); if (s) s.textContent = Lx("PRÓXIMAMENTE", "COMING SOON"); b.onclick = () => duSoonTap(); } } catch (_) {}
+      return r; }; }
+}
+function duSoonTap() { try { omfSfx("click"); } catch (_) {} const b = document.getElementById("duelBtn"); if (!b) return; b.classList.remove("dublink"); void b.offsetWidth; b.classList.add("dublink"); }
+(() => { const st = document.createElement("style"); st.textContent = '#duelBtn.dusoon{opacity:.6}#duelBtn.dusoon .ts,#duelBtn.dusoon .mv{color:#f2c14e;letter-spacing:1px}#duelBtn.dublink{animation:dublink .45s steps(3) 1}@keyframes dublink{0%,66%{opacity:1;transform:translateX(-2px)}33%,100%{opacity:.6;transform:translateX(2px)}}'; document.head.appendChild(st); })();
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
