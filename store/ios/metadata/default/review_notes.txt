@@ -13,7 +13,7 @@ HOW TO REACH EACH FEATURE
 3. ESCAPE: the main endless climb, free.
 4. HISTORIA / STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
 5. HORDA / HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
-6. DUELO / DUEL: a live race between two devices. On device A open DUEL and create a room; it shows a 4-letter code. On device B open DUEL, enter that code, and both press READY. A small relay server only forwards the two players' positions in real time and stores nothing. There are no accounts and no names, and only the chosen hero is sent.
+6. DUELO / DUEL: a live race between two devices. On device A open DUEL and create a room; it shows a 4-character code (letters and digits). On device B open DUEL, enter that code, and both press READY. A small relay server only forwards the two players' positions in real time and stores nothing. There are no accounts and no names, and only the chosen hero is sent.
 7. SHOP: a cosmetic skin shop that uses in-game coins only, with no real money.
 8. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.
 Controls: an on-screen D-pad plus HIT and JUMP buttons. Other layouts are in Settings.
