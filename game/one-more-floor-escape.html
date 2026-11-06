@@ -375,8 +375,9 @@ body.esc .overlay .skins .sk { width: 54px; } body.esc .skins .sk span { max-wid
 /* end-of-run summary tiles: 2 columns on phones, 3 on wider screens; each pops in with a stepped 8-bit bounce */
 .gains { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-self: stretch; margin: 2px 0 6px; }
 @media (min-width: 440px) { .gains { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 439px) { .gains > .gt:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); } } /* v142: a lone last tile sits in the middle, not under the left column */
 .gains .gt { --gc: var(--amber); display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; padding: 7px 8px;
-  background: var(--panel); border: 3px solid var(--gc); clip-path: var(--frame, none); box-shadow: inset 0 -3px 0 rgba(0,0,0,.35); animation: gpop .45s steps(4) both; min-width: 0; }
+  background: var(--panel); border: 3px solid var(--gc); clip-path: var(--frame, none); box-shadow: inset 0 -3px 0 rgba(0,0,0,.35); animation: gpop .26s cubic-bezier(.2,1.2,.4,1) both; min-width: 0; } /* v142: smooth and quick (was 4 steps, 0.18 s apart) */
 .gains .gt.bad { --gc: #e0566b; } .gains .gt.good { --gc: var(--teal); } .gains .gt.char, .gains .gt.skin { --gc: #b48cf2; } .gains .gt.rec { --gc: var(--amber); background: #2a2214; }
 .gains .gi { grid-row: 1 / 3; width: 30px; height: 30px; display: grid; place-items: center; background: #0a0812; color: var(--gc); font-size: 16px; }
 .gains .gi img.pxe { width: 20px; height: 20px; }
@@ -1806,6 +1807,7 @@ function escCrackAim(p, pcx, pcy) {
   return null;
 }
 function escHitCrack(pcx, pcy, ang) {
+  if (S.duel) return; // v144 (user: the duel broke when a player got into a secret room): in a duel cracked walls stay shut
   for (const d of [10, 20, 30]) {
     const tx = Math.floor((pcx + Math.cos(ang) * d) / TS), ty = Math.floor((pcy + Math.sin(ang) * d) / TS);
     if (!S.grid[ty] || S.grid[ty][tx] !== 7 || (tx !== 0 && tx !== S.LW - 1)) continue;
@@ -2163,7 +2165,7 @@ function escapeTick(p, dt) {
   if (perk("escudo") && S.shieldT > 0) S.shieldT -= dt;
   if (perk("iman")) for (const c of S.coinsL) { const dx = p.x + p.w / 2 - c.x - c.w / 2, dy = p.y + p.h / 2 - c.y - c.h / 2, d = Math.hypot(dx, dy); if (d < 4.5 * TS && d > 1) { c.x += dx / d * 260 * dt; c.y += dy / d * 260 * dt; } }
   if (S.secret) { escSecretTick(p, dt); return false; }
-  for (const d of S.doors) if (!d.used && Math.floor((p.x + p.w / 2) / TS) === d.tx && p.y + p.h > d.y0 * TS && p.y < (d.y1 + 1) * TS) { if (!S.fade) escFade(() => { S.roomTest = false; escEnterRoom(d, d.kind); }); return false; }
+  if (!S.duel) for (const d of S.doors) if (!d.used && Math.floor((p.x + p.w / 2) / TS) === d.tx && p.y + p.h > d.y0 * TS && p.y < (d.y1 + 1) * TS) { if (!S.fade) escFade(() => { S.roomTest = false; escEnterRoom(d, d.kind); }); return false; }
   const el = S.t - S.escT0;
   // camera: follows you up, never comes back down, and creeps upward on its own a little faster over time
   const locked = escArenaTick(p, dt);
@@ -2189,7 +2191,7 @@ function escapeTick(p, dt) {
   S.floor = 1 + Math.floor(Math.min(escD(), 9) * 1.6); // enemy count and speed follow the difficulty tier
   const tier = escTier(); if (tier !== (S.escTierSeen || 0)) { S.escTierSeen = tier; toast(T("Dificultad: ") + T(ESC_TIERS[tier][0])); S.shake = Math.max(S.shake || 0, 0.2); }
   S.camZone = S.rowZone[clamp(Math.floor((S.camY + CH / 2) / TS), 0, S.LH - 1)] || 0;
-  if (S.camZone !== S.escZoneSeen) { S.escZoneSeen = S.camZone; if (S.camZone > 0) S.trkFog = trk("niebla"); toast(T("Nuevo bioma: ") + BIOMES[S.camZone].name); const m = ESC_BIOME_MOD[S.camZone]; if (m && RULE[m]) escAddMod(m, el); }
+  if (S.camZone !== S.escZoneSeen) { S.escZoneSeen = S.camZone; if (S.camZone > 0) S.trkFog = trk("niebla"); toast(T("Nuevo bioma: ") + BIOMES[S.camZone].name); /* v142 (user): biomes no longer bring a fixed modifier; modifiers only come from the timer */ }
   // modifiers: a new one every 30 s, each lasting 60 s (+15 s per difficulty tier), at most escMaxMods() at once
   for (const m of S.escMods.slice()) if (el >= m.until) { S.escMods = S.escMods.filter(x => x !== m); S.rules = S.rules.filter(r => r !== m.id); escSurvived(m.id); toast("− " + RULE[m.id].icon + " " + RULE[m.id].name); lastHud = ""; }
   if (el >= S.escNextMod) {
@@ -3147,7 +3149,7 @@ function update(dt) {
   const gk = has("glutton") ? S.grow || 1 : 1;
   const sw = Math.round((has("shrink") ? 10 : 16) * gk), sh = Math.round((has("shrink") ? 13 : 22) * gk);
   if (p.w !== sw) { if (S.gdir > 0) p.y += p.h - sh; p.x += (p.w - sw) / 2; p.w = sw; p.h = sh; }
-  const accel = p.ground ? (has("ice") ? (rel("crampones") ? 7 : 1.6) : 18) : (has("ice") ? 1.4 : 9);
+  const accel = p.ground ? (has("ice") ? (rel("crampones") ? 10 : 5) : 18) : 9; // v142 (user: "el hielo tiene demasiada inercia, es imposible saltar si no corres"): ice only slides on the ground (was 1.6) and the air control is normal (was 1.4)
   p.launchT -= dt;
   if (!(has("frozen") && !p.ground) && p.launchT <= 0) p.vx += (target - p.vx) * Math.min(1, dt * accel);
   if (dirIn) p.face = dirIn;
@@ -9486,7 +9488,7 @@ function runGains() {
   if (!tiles.length) return "";
   const MAX = 6, more = tiles.length - MAX;
   return `<div class="mlabel">${T("DESBLOQUEADO")}</div><div class="gains">${tiles.slice(0, MAX).map((t, i) =>
-    gTile(t, 0.25 + i * 0.18)).join("")}</div>
+    gTile(t, 0.05 + i * 0.06)).join("")}</div>
     ${more > 0 ? `<p class="gmore">${T("y")} ${more} ${T("más en el Códice")}</p>` : ""}`;
 }
 
@@ -10651,7 +10653,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v141";
+var OMF_VER = "Escape v144";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11990,7 +11992,8 @@ function brisaOk() { return shopOwned("brisa") || (typeof PAY_ON !== "undefined"
 { const s0 = skinOwned; skinOwned = function (id) { const k = HERO_SKINS[id]; if (k && k.shop) return id === "brisa" ? brisaOk() : shopOwned(id); return s0.apply(this, arguments); }; }
 { const h0 = heroSkinOf; heroSkinOf = function (cid) { const r = h0.apply(this, arguments), k = HERO_SKINS[r]; if (k && k.shop && r !== cid && !shopOwned(r)) return HERO_SKINS[cid] ? cid : r; return r; }; }
 { const l0 = lockInfo; lockInfo = function (kind, id) { if (kind === "skin" && HERO_SKINS[id] && HERO_SKINS[id].shop) return { t: Lx("Tienda", "Shop") + ' · <i class="cn"></i>' + shopFmt(shopPrice(id)) }; return l0.apply(this, arguments); }; }
-function shopFmt(n) { return Math.round(n || 0).toLocaleString(LANG === "en" ? "en-US" : "es-ES"); }
+function shopFmt(n) { const s = String(Math.abs(Math.round(n || 0))), sep = LANG === "en" ? "," : "."; // no Intl: loading its locale data stalled the first death screen
+  return (n < 0 ? "-" : "") + (s.length > 4 || LANG === "en" && s.length > 3 ? s.replace(/\B(?=(\d{3})+(?!\d))/g, sep) : s); }
 // umbrella knocks enemies twice as far
 { const he0 = hitEnemy; hitEnemy = function (e) { const r = he0.apply(this, arguments); try { if (S.char && S.char.id === "brisa" && e && !e.boss && !e.bp) { e.vx = (e.vx || 0) * 2; } } catch (_) {} return r; }; }
 
@@ -13324,7 +13327,7 @@ var MF = { deadAt: 0, drewDead: false };
 { const mfDie0 = die; die = function () { MF.deadAt = performance.now(); MF.drewDead = false; return mfDie0.apply(this, arguments); }; }
 { const mfDraw0 = draw; draw = function () {
     if (S && S.mode === "title" && !ov.hidden) { const bg = document.getElementById("a3bg"); if (bg && bg.isConnected) return; }
-    if (S && S.mode === "dead" && !ov.hidden && MF.deadAt && performance.now() - MF.deadAt > 2600) { const sz = cv.width + "x" + cv.height; if (MF.drewDead === sz) return; MF.drewDead = sz; }
+    if (S && S.mode === "dead" && !ov.hidden && MF.deadAt && performance.now() - MF.deadAt > 1800) { const sz = cv.width + "x" + cv.height; if (MF.drewDead === sz) return; MF.drewDead = sz; }
     else MF.drewDead = false;
     return mfDraw0.apply(this, arguments); }; }
 // ===== v139 (user: "cuando te unes a un jugador en el lobby debería pedirle a ambos un click de ready"): in a room both players press
