@@ -3215,10 +3215,13 @@ function update(dt) {
     p.knockT = (p.knockT || 0) - dt;
     if (p.knockT > 0 && p.ground) { p.vx *= Math.max(0, 1 - 5 * dt); if (Math.random() < dt * 30) puff(p.x + p.w / 2 - (p.knockDir || 0) * 6, p.y + p.h, 1); }
     const knockJump = p.knockT > 0 && p.knockJ && p.coyote <= 0;
-    if (p.buf > 0 && canJump && (p.coyote > 0 || water || knockJump)) {
+    const springJump = S.escape && p.springJ && !p.ground && p.coyote <= 0 && !water && !knockJump; // v131 (user): after a mushroom bounce your own jump is still there
+    if (p.buf > 0 && canJump && (p.coyote > 0 || water || knockJump || springJump)) {
       if (knockJump) { p.knockJ = false; p.knockT = 0; p.launchT = 0; }
+      const vOld = p.vy; if (springJump) { p.springJ = false; S.springJumps = (S.springJumps || 0) + 1; }
       if (S.mem) S.mem.jumps++; achJump(); omfSfx("jump");
       p.vy = (water ? -330 : -JUMP_V) * (has("shrink") ? 0.9 : 1) * (has("moon") ? 0.75 : 1) * (trk("ancla") ? 0.95 : 1) * S.gdir; p.buf = 0; p.coyote = 0;
+      if (springJump && vOld * S.gdir < p.vy * S.gdir) p.vy = vOld; // still rising faster from the bounce: keep the faster one
       puff(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h : p.y, 4); noise(p.x, p.y);
     } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && (S.escape ? ((p.wjN || 0) < 2 || (p.wjCd || 0) <= 0) : ((p.wjCd || 0) <= 0 || p.stuck))) {
       p.wjSide = p.wallDir; p.wjUsed = true; if (S.escape) { if ((p.wjCd || 0) <= 0 && (p.wjN || 0) >= 2) p.wjN = 0; p.wjN = (p.wjN || 0) + 1; } // v117 (user): Escape gives two instant wall kicks in a row, then the old 0.7 s wait before the next pair; landing resets it
@@ -3230,7 +3233,7 @@ function update(dt) {
       p.vy = -JUMP_V * 0.9 * (has("shrink") ? 0.9 : 1) * S.gdir; p.buf = 0; p.airJ = (p.airJ || 0) + 1; p.launchT = 0.05; omfSfx("jump");
       puffC(p.x + p.w / 2, p.y + p.h, "#ece8f5", 6); noise(p.x, p.y);
     }
-    if (p.ground || p.climb) { p.airJ = 0; p.wjSide = 0; p.wjUsed = false; p.wjN = 0; p.wjCd = 0; }
+    if (p.ground || p.climb) { p.springJ = false; p.airJ = 0; p.wjSide = 0; p.wjUsed = false; p.wjN = 0; p.wjCd = 0; }
     if (has("blink") && !has("frozen") && p.buf > 0) { p.buf = 0; if (beatOK) doBlink(p); else missBeat(p); }
   }
   if (p.ground || p.climb) p.blinkUsed = false;
@@ -3245,7 +3248,7 @@ function update(dt) {
   p.vx -= conv;
   holeAssist(p);
   if (p.ground && tileAt(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h + 2 : p.y - 2) === 6) { achAdd("springs"); omfSfx("spring"); p.vy = -880 * S.gdir * (S.escape ? 1.09 * (input.jump ? 1.12 : 1) * (has("moon") ? 0.75 : 1) * (has("shrink") ? 0.9 : 1) : 1);
-    if (S.escape) { S.shroomHit = { tx: Math.floor((p.x + p.w / 2) / TS), ty: Math.floor((p.y + p.h + 2) / TS), t: S.t }; burst(p.x + p.w / 2, p.y + p.h, "#ff8ad8", 8); } p.ground = false; p.launchT = 0.12; puffC(p.x + p.w / 2, p.y + p.h, "#f2c14e", 6); noise(p.x, p.y); }
+    if (S.escape) { p.springJ = true; p.buf = 0; S.shroomHit = { tx: Math.floor((p.x + p.w / 2) / TS), ty: Math.floor((p.y + p.h + 2) / TS), t: S.t }; burst(p.x + p.w / 2, p.y + p.h, "#ff8ad8", 8); } p.ground = false; p.launchT = 0.12; puffC(p.x + p.w / 2, p.y + p.h, "#f2c14e", 6); noise(p.x, p.y); }
   if (has("bouncy") && !p.climb) {
     // Discoteca (Rebote + Ritmo): landing on the beat bounces higher, off the beat it barely bounces
     if (p.ground && !wasGround && Math.abs(pvy) > 170) { const k = has("rhythm") ? (onBeat() ? 1.0 : 0.45) : 0.82; p.vy = -pvy * k; p.ground = false; p.launchT = 0.05; if (has("rhythm") && k > 0.9) puffC(p.x + p.w / 2, p.y + p.h, "#ff8ad8", 6); }
@@ -10633,7 +10636,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v130";
+var OMF_VER = "Escape v133";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12540,6 +12543,11 @@ var n126 = newRun; newRun = function (opts) { const r = n126.apply(this, argumen
 function spikeFloat(sp) { if (sp.ceil || sp.room || sp.lab || sp.bp) return false; const r = S.grid[sp.ty + 1], c = r && r[sp.tx]; return !c || c === 3; }
 var sp128g = genEscSegment; genEscSegment = function () { const r = sp128g.apply(this, arguments); if (S.escape && S.spikes) S.spikes = S.spikes.filter(sp => !spikeFloat(sp)); return r; };
 var sp128t = escapeTick; escapeTick = function (p, dt) { const r = sp128t.apply(this, arguments); if (S.spikes && (S.sp128 = (S.sp128 || 0) + dt) > 0.25) { S.sp128 = 0; S.spikes = S.spikes.filter(sp => !spikeFloat(sp)); } return r; };
+// v131: Señuelos only touched the enemies that existed when the climb began; in Escape new enemies keep coming, so half of
+// each new batch is an illusion too
+var dc131 = genEscSegment; genEscSegment = function () { const r = dc131.apply(this, arguments);
+  if (S.escape && has("decoy")) for (const e of S.enemies) if (!e.dk) { e.dk = 1; if (!e.boss && !e.bp && !e.critter && !e.room && Math.random() < 0.5) { e.decoy = true; e.cd = 1e9; } }
+  return r; };
 // v130 (user: the buttons only reacted when hit near their centre): the whole right side of the pad is live; a touch
 // that misses GOLPE / SALTO goes to the nearest one (up to 72 px away), keeping that finger until it lifts
 { const st = document.createElement("style"); st.textContent = "body.esc:not(.ctl-invisible) .gpad .gbtns { pointer-events: auto; }"; document.head.appendChild(st);
@@ -12561,6 +12569,597 @@ var pz129 = escPause; escPause = function () { const r = pz129.apply(this, argum
 var pr129 = pgsRun; pgsRun = function () { if (S && S.pgsSentDie) return; if (S) S.pgsSentDie = true; return pr129.apply(this, arguments); };
 // v128: Escape's Sweep falls from the top; its card says so
 if (ESCAPE && RULE.sweep) { RULE.sweep.desc = "Cada 8 s un rayo baja por la pantalla. Escóndete debajo de una plataforma."; EN_TEXT["Cada 8 s un rayo baja por la pantalla. Escóndete debajo de una plataforma."] = "Every 8 s a beam falls down the screen. Hide under a platform."; if (typeof EN_RULES !== "undefined" && EN_RULES.sweep) EN_RULES.sweep = ["Sweep", "Every 8 s a beam falls down the screen. Hide under a platform."]; }
+// ===== v132 (user picked Codex B + UI ideas 4, 5, 6 · spec arte/codice/codice-b-ideas-4-5-6-spec.md): the Escape Codex
+// becomes one collection grid (category chips, TODO/TENGO/FALTAN, NEW dots, bottom sheet with how to get it); level-up
+// cards come face down and flip by rarity; the pause shows a height ruler; the daily screen shows the week's streak.
+var CX2_CAT = [["mod", "MODIF.", "#e0566b", "skull"], ["obj", "OBJETOS", "#f2c14e", "star"], ["cmb", "COMBOS", "#b9a7ff", "target"], ["her", "HÉROES", "#5fd1c4", "hanger"], ["log", "LOGROS", "#ff8c50", "trophy"], ["rec", "RECUERDOS", "#7cba46", "book"]];
+var CX2_RAR = { comun: ["COMÚN", "#9a94b8"], rara: ["RARA", "#4a8cff"], reliquia: ["RELIQUIA", "#f2c14e"], maldito: ["MALDITO", "#e0566b"] };
+var CX2_OLD = { rules: "mod", goods: "obj", combos: "cmb", heroes: "her", logros: "log", recuerdos: "rec" };
+var cx2 = { cat: "mod", flt: "all", fresh: null };
+(() => { const st = document.createElement("style"); st.textContent = `
+:root{--cxframe:polygon(4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px),0 4px,4px 4px)}
+.cx2{width:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:8px;text-align:left}
+.cx2 .cxh{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
+.cx2 .cxh h2{margin:0;text-align:center;font-size:18px}
+.cx2 .cxh .cnt{font-family:var(--font-display);font-size:12px;color:#f2c14e}
+.cx2 .cxbk{width:38px;height:32px;padding:0!important;display:grid;place-items:center}
+.cx2 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+.cx2 .chips::-webkit-scrollbar{display:none}
+.cx2 .chip{flex:none;display:flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:10px!important;padding:7px 9px!important;background:#1b1829;color:#9a94b8;border:0!important;border-radius:0!important;cursor:pointer;clip-path:var(--cxframe);box-shadow:inset 0 0 0 2px #3e3960}
+.cx2 .chip.on{background:#2c2842;color:#ece8f5;box-shadow:inset 0 0 0 2px var(--c)}
+.cx2 .gsum{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-family:var(--font-display);font-size:11px;color:#9a94b8}
+.cxbar{display:block;height:8px;background:#0a0812;box-shadow:0 0 0 2px #3e3960;position:relative}
+.cxbar i{position:absolute;inset:0 auto 0 0;background:repeating-linear-gradient(90deg,#f2c14e 0 6px,#b8862a 6px 8px)}
+.cx2 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.cx2 .seg button{font-size:10px!important;padding:7px 4px!important;border-radius:0!important;clip-path:var(--cxframe)}
+.cx2 .seg button.on{background:#3e3960!important;color:#ece8f5}
+.cx2 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-bottom:6px}
+.cx2 .tile{position:relative;aspect-ratio:1/1.18;background:#1b1829;border:0!important;border-radius:0!important;padding:4px 2px 5px!important;cursor:pointer;display:grid;grid-template-rows:1fr auto;justify-items:center;align-items:center;clip-path:var(--cxframe);box-shadow:inset 0 0 0 2px #3e3960;color:#ece8f5;min-width:0}
+.cx2 .tile:focus-visible,.cx2 .tile.sel{box-shadow:inset 0 0 0 2px #5fd1c4}
+.cx2 .tile small{font-family:var(--font-display);font-size:8px;line-height:1.1;text-align:center;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 2px}
+.cx2 .tile.lk{background:#15121f;color:#9a94b8}
+.cx2 .tile .art{display:grid;place-items:center;font-size:22px;line-height:1;min-height:0}
+.cx2 .tile .art img,.cx2 .tile .art canvas{image-rendering:pixelated}
+.cx2 .tile .art .ci{display:inline-flex;align-items:center;gap:1px;font-size:15px}.cx2 .tile .art .ci i{font-style:normal;font-family:var(--font-display);font-size:9px;color:#b9a7ff}
+.cx2 .tile.lk .art{filter:brightness(0);opacity:.55}
+.cx2 .tile .lkc{position:absolute;right:3px;top:3px}
+.cx2 .tile.new::after{content:"";position:absolute;right:4px;top:4px;width:6px;height:6px;background:#e0566b;animation:cxblink 1s steps(2) infinite}
+.cx2 .tile .rar{position:absolute;left:0;right:0;bottom:0;height:3px}
+@keyframes cxblink{50%{opacity:0}}
+.cx2 .empty{grid-column:1/-1;text-align:center;font-family:var(--font-display);font-size:12px;color:#7cba46;padding:24px 0}
+.cxshade{position:fixed;inset:0;background:#05040acc;z-index:60;opacity:0;pointer-events:none;transition:opacity .15s steps(3)}
+.cxshade.on{opacity:1;pointer-events:auto}
+.cxsheet{position:fixed;left:50%;bottom:0;width:min(100%,480px);z-index:61;background:#1b1829;color:#ece8f5;box-sizing:border-box;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px))!important;transform:translate(-50%,105%);transition:transform .2s steps(5);clip-path:polygon(0 8px,8px 8px,8px 4px,16px 4px,16px 0,calc(100% - 16px) 0,calc(100% - 16px) 4px,calc(100% - 8px) 4px,calc(100% - 8px) 8px,100% 8px,100% 100%,0 100%);box-shadow:inset 0 4px 0 #3e3960;max-height:82%;overflow-y:auto;text-align:left}
+.cxsheet.on{transform:translate(-50%,0)}
+.cxsheet .grab{width:40px;height:4px;background:#3e3960;margin:0 auto 10px}
+.cxsheet .sh-top{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}
+.cxsheet .sh-art{width:84px;height:84px;display:grid;place-items:center;background:#100e1a;clip-path:var(--cxframe);box-shadow:inset 0 0 0 3px var(--c);font-size:40px;line-height:1}
+.cxsheet .sh-art img{image-rendering:pixelated}
+.cxsheet .sh-art .ci{display:inline-flex;align-items:center;gap:2px;font-size:26px}.cxsheet .sh-art .ci i{font-style:normal;font-family:var(--font-display);font-size:12px;color:#b9a7ff}
+.cxsheet.lk .sh-art > *{filter:brightness(0);opacity:.6}
+.cxsheet .sh-name{font-family:var(--font-display);font-size:16px;line-height:1.15}
+.cxsheet .sh-cat{font-family:var(--font-display);font-size:10px;letter-spacing:1px;margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cxsheet .sh-desc{font-size:14px;margin:12px 0 8px;line-height:1.35}
+.cxsheet .sh-rows{display:grid;gap:4px;font-size:12px;color:#9a94b8}
+.cxsheet .sh-rows div{display:flex;justify-content:space-between;gap:10px;padding:5px 8px;background:#100e1a}
+.cxsheet .sh-rows b{font-family:var(--font-display);font-weight:400;font-size:11px;color:#ece8f5;text-align:right}
+.cxsheet .sh-lock{margin-top:12px;padding:9px;background:#15121f;clip-path:var(--cxframe);font-size:13px;line-height:1.35}
+.cxsheet .sh-lock .k{font-family:var(--font-display);font-size:10px;color:#f2c14e;letter-spacing:1px;display:block;margin-bottom:5px}
+.cxsheet .sh-lock .cxbar{margin-top:9px}.cxsheet .sh-lock small{display:block;margin-top:5px;font-family:var(--font-display);font-size:10px;color:#9a94b8}
+.cxsheet .sh-close{margin-top:12px;width:100%;font-family:var(--font-display);font-size:13px;letter-spacing:1px;color:#0b0912;background:#f2c14e;border:0;border-radius:0;padding:11px 10px;cursor:pointer;clip-path:var(--cxframe);box-shadow:inset 0 -3px 0 #00000066}
+.cx2 .chips{flex-wrap:nowrap!important}
+#ov .cards.lvf .card{position:relative;border-color:var(--rc)!important;padding-top:20px!important}
+#ov .cards.lvf .card:hover:not(:disabled),#ov .cards.lvf .card:focus-visible,#ov .cards.lvf .card.sel{border-color:var(--rc)!important;box-shadow:inset 0 0 0 3px #f2c14e}
+#ov .cards.lvf .card .lvr{position:absolute;left:0;right:0;top:5px;text-align:center;font-family:var(--font-display);font-size:9px;letter-spacing:1px;color:var(--rc)}
+#ov .cards.lvf .card .lvb{position:absolute;inset:0;display:none;place-items:center;background:repeating-linear-gradient(45deg,#2c2842 0 6px,#231f37 6px 12px);box-shadow:inset 0 0 0 3px #3e3960;z-index:2}
+#ov .cards.lvf .card.down .lvb{display:grid}
+#ov .cards.lvf .card .lvb canvas{image-rendering:pixelated;max-width:86%;max-height:86%;width:auto!important;height:auto!important}
+#ov .cards.lvf .card.down{border-color:#3e3960!important}
+#ov .cards.lvf .card.flip{animation:lvflip .3s steps(6)}
+@keyframes lvflip{50%{transform:scaleX(0)}}
+#ov .cards.fdn .card{pointer-events:none}
+#ov .cards.lvf .card.dim{opacity:.35}
+#ov .cards.lvf .card.pick{animation:lvpick .5s steps(2) 2}
+@keyframes lvpick{50%{box-shadow:inset 0 0 0 6px var(--rc)}}
+.prl{position:relative;height:190px;width:100%;max-width:320px;margin:4px auto 6px;background:#0f0d1c;clip-path:var(--cxframe)}
+.prl .lb{position:absolute;left:8px;top:7px;font-family:var(--font-display);font-size:9px;color:#9a94b8;letter-spacing:1px}
+.prl .rl{position:absolute;left:50%;top:22px;bottom:12px;width:10px;transform:translateX(-50%);background:repeating-linear-gradient(180deg,#9a94b8 0 2px,transparent 2px 12px),#1b1829;box-shadow:0 0 0 2px #3e3960}
+.prl .mk{position:absolute;display:flex;align-items:center;gap:5px;transform:translateY(50%);white-space:nowrap;font-size:11px;font-family:var(--font-display)}
+.prl .mk.l{flex-direction:row-reverse;right:calc(50% + 8px)}
+.prl .mk.r{left:calc(50% + 8px)}
+.prl .mk i{width:18px;height:2px;background:currentColor;flex:none}
+.prl .mk b{font-weight:400;font-size:10px}.prl .mk span{font-size:10px;opacity:.85}
+.dstk,.dstk *,.prl,.cx2,.cx2 *{box-sizing:border-box}
+.dstk .days > *{min-width:0}
+.dstk{width:100%;max-width:420px;margin:6px auto;padding:9px 10px;background:#100e1a;clip-path:var(--cxframe);box-shadow:inset 0 0 0 2px #3e3960;text-align:left}
+.dstk .sk-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--font-display);font-size:12px}
+.dstk .sk-top b{font-weight:400;color:#ff8c50}
+.dstk .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:8px 0}
+.dstk .day{aspect-ratio:1/1.35;background:#1b1829;clip-path:var(--cxframe);box-shadow:inset 0 0 0 2px #3e3960;display:grid;grid-template-rows:1fr auto;place-items:center;font-family:var(--font-display);font-size:9px;color:#9a94b8;padding:2px 0 4px}
+.dstk .day.ok{box-shadow:inset 0 0 0 2px #ff8c50;color:#ece8f5}
+.dstk .day.today{box-shadow:inset 0 0 0 2px #f2c14e;background:#2a2210;color:#f2c14e}
+.dstk .day.fut{opacity:.45}
+.dstk .sk-bot{display:grid;gap:3px;font-size:13px;color:#9a94b8}
+.dstk .sk-bot b{font-family:var(--font-display);font-weight:400;color:#ece8f5}
+`; document.head.appendChild(st); })();
+
+// tiny hand-drawn pixel sprites (from the mockup): flame for played days, skull silhouette for missed ones
+var CX2_SPR = { skull: [".wwwww.", "wwwwwww", "wkwwwkw", "wwwkwww", ".wwwww.", ".w.w.w."], flame: ["...f....", "...ff...", "..fyf.f.", ".fyyfff.", ".fywyyf.", ".fywwyf.", "..fyyf.."] };
+var CX2_PAL = { k: "#0b0912", w: "#ffffff", y: "#f2c14e", f: "#ff8c50" };
+var cx2SprUrl = {};
+function cx2Spr(name, scale, sil) {
+  const key = name + scale + (sil ? "s" : ""); if (!cx2SprUrl[key]) { try {
+    const rows = CX2_SPR[name], h = rows.length, w = Math.max(...rows.map(r => r.length)), cv = document.createElement("canvas"); cv.width = (w + 2) * scale; cv.height = (h + 2) * scale;
+    const g = cv.getContext("2d"), on = (x, y) => y >= 0 && y < h && x >= 0 && x < w && rows[y][x] && rows[y][x] !== ".";
+    for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) if (!on(x, y) && (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1))) { g.fillStyle = sil ? "#3e3960" : CX2_PAL.k; g.fillRect((x + 1) * scale, (y + 1) * scale, scale, scale); }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (on(x, y)) { g.fillStyle = sil ? "#24203a" : CX2_PAL[rows[y][x]] || "#f0f"; g.fillRect((x + 1) * scale, (y + 1) * scale, scale, scale); }
+    cx2SprUrl[key] = cv.toDataURL(); } catch (_) { cx2SprUrl[key] = ""; } }
+  return `<img src="${cx2SprUrl[key]}" alt="" style="image-rendering:pixelated">`;
+}
+var cx2HeroUrl = {};
+function cx2Hero(id, big) { if (!(id in cx2HeroUrl)) { try { const cv = sprHeroIcon(id, 1); cx2HeroUrl[id] = cv ? cv.toDataURL() : ""; } catch (_) { cx2HeroUrl[id] = ""; } }
+  return cx2HeroUrl[id] ? `<img src="${cx2HeroUrl[id]}" alt="" style="width:${big ? 40 : 24}px;height:${big ? 65 : 39}px">` : "☺"; }
+function cx2Bar(f) { return `<span class="cxbar"><i style="width:${Math.round(Math.max(0, Math.min(1, f || 0)) * 100)}%"></i></span>`; }
+function cx2Feat(u) { if (!u) return { t: "" }; const v = achProg(u), raw = Math.min(u.goal, (() => { try { return u.prog(); } catch (_) { return 0; } })());
+  if (u.star && v <= 0) return { t: T("★ Hazaña secreta") };
+  return u.goal > 1 ? { t: achTxt(u), v: Math.floor(raw), n: u.goal, u: "" } : { t: achTxt(u), v: Math.floor(v * 100), n: 100, u: "%" }; }
+
+// every entry: { id, ok, art (html), name, desc, rar, cost, rows [[label, value]], lock {t, v, n, u}, sub }
+function cx2Entries(cat) {
+  const L = [];
+  if (cat === "mod") for (const r of RULES) { const ok = META.unlocked.includes(r.id), u = UNLOCKS[r.id]; if (!((u || ok) && !(ESCAPE && !ok && u && u.m === "H"))) continue;
+    const with_ = COMBOS.filter(c => (c.a === r.id || c.b === r.id) && escComboOk(c)).map(c => RULE[c.a === r.id ? c.b : c.a]).filter(Boolean);
+    L.push({ id: "mod:" + r.id, ok, art: `<span>${r.icon}</span>`, name: T(r.name), desc: T(r.desc), cost: r.cost, sub: T(CATS[r.cat] || ""),
+      rows: [[T("Superado"), (META.survive[r.id] || 0) + " " + T("veces")]].concat(with_.length ? [[T("Combina con"), with_.map(x => x.icon + " " + T(x.name)).join(", ")]] : []), lock: cx2Feat(u) }); }
+  if (cat === "obj") {
+    for (const k of ESC_PERKS) { const ok = escPerkOk(k); L.push({ id: "obj:" + k.id, ok, art: `<span>${k.icon}</span>`, name: T(k.name), desc: T(k.desc), rar: k.relic ? "reliquia" : "comun", sub: T("Mejora de nivel"),
+      rows: k.max > 1 && k.max < 99 ? [[T("Se acumula"), "x" + k.max]] : [], lock: cx2Feat(GOOD_UNLOCKS[k.id]) }); }
+    for (const id of Object.keys(TRK)) { const D = TRK[id]; L.push({ id: "trk:" + id, ok: trkOk(id), art: trkImg(id), name: T(D.n), desc: T(D.d), rar: D.r === "raro" ? "rara" : D.r === "maldito" ? "maldito" : "comun", sub: T("Objeto de la torre"),
+      rows: [[T("Dura"), T("toda la partida")]], lock: cx2Feat(GOOD_UNLOCKS[id]) }); }
+  }
+  if (cat === "cmb") for (const c of codexCombos()) { const ok = META.combos.includes(c.key || c.name), here = !ESCAPE || escComboOk(c), A = RULE[c.a], B = RULE[c.b]; if (!A || !B) continue;
+    L.push({ id: "cmb:" + (c.key || c.name), ok, art: `<span class="ci">${A.icon}<i>+</i>${B.icon}</span>`, name: ok ? T(c.name) : "???", desc: T(c.desc), sub: T("Combinación"),
+      rows: [[T("Mezcla"), T(A.name) + " + " + T(B.name)]], lock: { t: here ? T("Ten a la vez estos dos modificadores:") + " " + A.icon + " + " + B.icon : T("Todavía no sale en Escape") } }); }
+  if (cat === "her") {
+    for (const c of CHARS) { const ok = charOk(c.id), runs = (() => { try { return localRuns().filter(x => x.char === c.id && /^escape/.test(x.run)); } catch (_) { return []; } })();
+      L.push({ id: "her:" + c.id, ok, art: cx2Hero(c.id), big: cx2Hero(c.id, true), name: c.name, desc: T(c.desc || ""), sub: T("Personaje"),
+        rows: runs.length ? [[T("Mejor altura"), Math.max(...runs.map(x => x.floor || 0)) + " m"], [T("Partidas"), runs.length]] : [], lock: lockInfo("char", c.id) }); }
+    for (const id of Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock)) { const k = HERO_SKINS[id], ch = CHARS.find(c => c.id === k.ch) || {};
+      L.push({ id: "skn:" + id, ok: skinOwned(id), art: cx2Hero(id), big: cx2Hero(id, true), name: T(k.name), desc: T("Aspecto de") + " " + (ch.name || ""), sub: T("Aspecto") + " · " + (ch.name || ""), rows: [], lock: lockInfo("skin", id) }); }
+  }
+  if (cat === "log") for (const a of GC_ACH) { const s = gcAchState(a[0]), v = Math.max(0, Math.min(1, s.v || 0));
+    L.push({ id: "log:" + a[0], ok: s.done, art: pxi("trophy", "#f2c14e", 3), name: Lx(a[1], a[2]), desc: Lx(a[3], a[4]), sub: T("Logro") + (typeof PGS !== "undefined" && PGS ? " · Game Center" : ""), rows: [],
+      lock: { t: Lx(a[3], a[4]), v: Math.floor(v * 100), n: 100, u: "%" } }); }
+  if (cat === "rec") { const M = huM();
+    HU_B.forEach((B, z) => L.push({ id: "rec:m" + z, ok: M.mem.includes(z), art: pxi("book", B.c || "#7cba46", 3), name: M.mem.includes(z) ? T(B.t) : T("RECUERDO") + " " + (z + 1), desc: huQ(T(B.m)), sub: T("Recuerdo") + " " + (z + 1) + "/5",
+      rows: [[T("Bioma"), T(HU_BIOME[z])]], lock: { t: T("Vence a") + " " + T(B.n) + " " + T("en La Huida.") } }));
+    HU_B.forEach((B, z) => [0, 1, 2].forEach(i => L.push({ id: "rec:n" + z + "-" + i, ok: M.ecos.includes(z + "-" + i), art: pxi("q", B.c || "#7cba46", 3), name: T("Nota") + " " + (z * 3 + i + 1), desc: huQ(T(B.e[i])), sub: T("Nota") + " · " + T(HU_BIOME[z]),
+      rows: [], lock: { t: T("Sala secreta (Nota perdida) en") + " " + T(HU_BIOME[z]) + ", " + T("en La Huida.") } })));
+    ["piso", "bajar"].forEach((k, i) => L.push({ id: "rec:e" + k, ok: M.end.includes(k), art: pxi("star", "#f2c14e", 3), name: M.end.includes(k) ? T(HU_END[k].t) : T("FINAL") + " " + (i + 1), desc: T(HU_END[k].p[0]), sub: T("Final") + " " + (i + 1) + "/2",
+      rows: [], lock: { t: T(k === "piso" ? "Vence a El Sello." : "Vence a El Sello con las 15 notas.") } }));
+  }
+  return L;
+}
+function cx2All() { const o = {}; for (const [k] of CX2_CAT) { try { o[k] = cx2Entries(k); } catch (e) { o[k] = []; try { errLog("codex " + k + ": " + (e && e.message || e)); } catch (_) {} } } return o; }
+
+function cx2Open(cat) {
+  ov.hidden = false; ov.classList.remove("dead");
+  const all = cx2All();
+  if (!cx2.fresh) { // NEW = owned now but not when the Codex was last opened (first time ever: nothing is new)
+    const owned = [].concat(...Object.values(all)).filter(e => e.ok).map(e => e.id), had = META.cxSeen;
+    cx2.fresh = new Set(Array.isArray(had) ? owned.filter(id => !had.includes(id)) : []);
+    META.cxSeen = [...new Set((Array.isArray(had) ? had : []).concat(owned))]; try { saveMeta(); } catch (_) {}
+  }
+  if (cat) cx2.cat = cat;
+  cx2Render(all);
+}
+function cx2Render(all) {
+  all = all || cx2All();
+  const C = CX2_CAT.find(c => c[0] === cx2.cat) || CX2_CAT[0], L = all[C[0]] || [], have = L.filter(e => e.ok).length;
+  const tot = [].concat(...Object.values(all)), totOk = tot.filter(e => e.ok).length;
+  const shown = L.filter(e => cx2.flt === "all" || (cx2.flt === "own" ? e.ok : !e.ok));
+  const tile = e => `<button class="tile${e.ok ? "" : " lk"}${e.ok && cx2.fresh && cx2.fresh.has(e.id) ? " new" : ""}" data-e="${e.id}"><span class="art">${e.art}</span><small>${e.ok ? e.name : "???"}</small>${e.ok ? "" : `<span class="lkc">${pxi("lock", "#6b6488", 1)}</span>`}${e.rar ? `<span class="rar" style="background:${CX2_RAR[e.rar][1]}"></span>` : ""}</button>`;
+  ov.innerHTML = `<div class="cx2"><div class="cxh"><button class="cxbk" id="backBtn" aria-label="${T("Volver")}">${pxi("left", "#ece8f5", 2)}</button><h2>${T("CÓDICE")}</h2><span class="cnt">${totOk}/${tot.length}</span></div>
+    <div class="chips">${CX2_CAT.map(([k, n, c, ic]) => `<button class="chip${k === C[0] ? " on" : ""}" data-c="${k}" style="--c:${c}">${pxi(ic, c, 1)}${T(n)}</button>`).join("")}</div>
+    <div class="gsum">${cx2Bar(have / Math.max(1, L.length))}<span>${have}/${L.length}</span></div>
+    <div class="seg">${[["all", "TODO"], ["own", "TENGO"], ["miss", "FALTAN"]].map(([k, n]) => `<button class="${cx2.flt === k ? "on" : ""}" data-f="${k}">${T(n)}</button>`).join("")}</div>
+    <div class="grid">${shown.length ? shown.map(tile).join("") : `<div class="empty">${cx2.flt === "miss" ? T("¡Lo tienes todo aquí!") : T("Aún no tienes nada aquí.")}</div>`}</div></div>`;
+  paintPxi(ov);
+  document.getElementById("backBtn").onclick = () => { omfSfx("click"); cx2.fresh = null; cx2Close(); showTitle(); };
+  ov.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { omfSfx("click"); cx2.cat = b.dataset.c; cx2Render(all); const on = ov.querySelector(".chip.on"); if (on && on.scrollIntoView) try { on.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (_) {} });
+  ov.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { omfSfx("click"); cx2.flt = b.dataset.f; cx2Render(all); });
+  ov.querySelectorAll("[data-e]").forEach(b => b.onclick = () => { omfSfx("click"); const e = L.find(x => x.id === b.dataset.e); if (e) cx2Sheet(e, C); });
+}
+function cx2Close() { document.querySelectorAll(".cxshade,.cxsheet").forEach(x => x.remove()); }
+function cx2Sheet(e, C) {
+  cx2Close();
+  const rar = e.rar ? `<span style="color:${CX2_RAR[e.rar][1]}">${T(CX2_RAR[e.rar][0])}</span>` : "", cost = e.cost ? skullsHTML(e.cost, true) : "";
+  const lk = e.lock || { t: "" }, bar = lk.n ? `${cx2Bar(lk.v / lk.n)}<small>${lk.v}/${lk.n}${lk.u || ""}</small>` : "";
+  const sh = document.createElement("div"); sh.className = "cxshade"; const p = document.createElement("div"); p.className = "cxsheet" + (e.ok ? "" : " lk"); p.style.setProperty("--c", C[2]);
+  p.setAttribute("role", "dialog");
+  p.innerHTML = `<div class="grab"></div><div class="sh-top"><div class="sh-art">${e.big || e.art}</div><div><div class="sh-name">${e.ok ? e.name : "???"}</div><div class="sh-cat"><span style="color:${C[2]}">${T(C[1]).replace(/\.$/, "")}${e.sub ? " · " + e.sub : ""}</span>${rar}${cost}</div></div></div>
+    ${e.ok ? `<div class="sh-desc">${e.desc}</div>${e.rows && e.rows.length ? `<div class="sh-rows">${e.rows.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join("")}</div>` : ""}`
+      : `<div class="sh-lock"><span class="k">${T("CÓMO CONSEGUIRLO")}</span>${lk.t || T("Sigue jugando para descubrirlo.")}${bar}</div>`}
+    <button class="go sh-close">${T("CERRAR")}</button>`;
+  document.body.append(sh, p); paintPxi(p);
+  const close = () => { sh.classList.remove("on"); p.classList.remove("on"); setTimeout(() => { sh.remove(); p.remove(); }, 220); };
+  sh.onclick = close; p.querySelector(".sh-close").onclick = () => { omfSfx("click"); close(); };
+  requestAnimationFrame(() => requestAnimationFrame(() => { sh.classList.add("on"); p.classList.add("on"); }));
+}
+var cx2Show0 = showCodex; showCodex = function (cat) { if (!ESCAPE) return cx2Show0.apply(this, arguments); return cx2Open(cat ? CX2_OLD[cat] || cat : null); };
+var cx2Title0 = showTitle; showTitle = function () { cx2Close(); return cx2Title0.apply(this, arguments); };
+
+// ===== idea 4: level-up cards come face down and flip one by one (350 ms apart, 6 steps); the border is the rarity
+function lvRar(o) { if (!o || o.kind === "gold") return "comun"; if (o.kind === "remove") return "rara"; return o.k.relic ? "reliquia" : o.k.max <= 1 ? "rara" : "comun"; }
+var lvf0 = escLevelCards; escLevelCards = function () {
+  const r = lvf0.apply(this, arguments), box = ov.querySelector(".cards.deal"), opts = S.lvlPick; if (!box || !opts) return r;
+  box.classList.remove("deal"); box.classList.add("lvf", "fdn");
+  const cs = [...box.querySelectorAll(".card")];
+  cs.forEach(c => { const R = CX2_RAR[lvRar(opts[+c.dataset.i])]; c.style.setProperty("--rc", R[1]); c.classList.add("down");
+    c.insertAdjacentHTML("afterbegin", `<span class="lvr">${T(R[0])}</span><span class="lvb"><canvas class="hlogo" aria-label="One More Floor Escape" role="img"></canvas></span>`); });
+  paintPxi(box); try { hlogoAttach(box, 1); } catch (_) {} // v132 (user): the game logo on the back, not a skull
+  cs.forEach((c, i) => setTimeout(() => { if (!box.isConnected) return; c.classList.add("flip"); try { omfSfx("click"); } catch (_) {}
+    setTimeout(() => c.classList.remove("down"), 150); setTimeout(() => { c.classList.remove("flip"); if (i === cs.length - 1) box.classList.remove("fdn"); }, 310); }, 250 + i * 350));
+  cs.forEach(c => { const f0 = c.onclick; c.onclick = ev => { if (box.classList.contains("fdn") || box.classList.contains("took")) return; box.classList.add("took");
+    cs.forEach(x => x.classList.toggle("dim", x !== c)); c.classList.add("pick"); setTimeout(() => { if (box.isConnected) f0.call(c, ev); }, 1000); }; });
+  return r;
+};
+
+// ===== idea 5: height ruler in the pause menu (TÚ / RÉCORD on the left, the board's top 3 on the right when it loads)
+var prlCache = {};
+function prlBoard() { return S.daily ? (S.easy ? null : S.hard ? "daily_hard" : "daily") : S.horde || S.hu || S.easy ? null : S.hard ? "height_hard" : "height"; }
+function prlLoad(board, done) { // never blocks the pause: background call, 60 s cache, gives up after 3 s
+  if (!board || typeof PGS === "undefined" || !PGS || typeof PGS.loadTop !== "function") return;
+  const c = prlCache[board]; if (c && Date.now() - c.at < 60000) return; prlCache[board] = { at: Date.now(), top: c ? c.top : null, me: c ? c.me : null };
+  let fin = false; setTimeout(() => { fin = true; }, 3000);
+  try { Promise.resolve(PGS.loadTop({ board, n: 3 })).then(x => { if (fin || !x) return; const top = (x.entries || []).slice(0, 3).map(q => +q.score || 0);
+    prlCache[board] = { at: Date.now(), top, me: x.player || x.me || null }; done && done(); }).catch(() => {}); } catch (_) {}
+}
+function prlMode() { return S.daily ? "DIARIO" : S.horde ? "HORDA" : S.hu ? "HISTORIA" : S.easy ? "FÁCIL" : S.hard ? "HARDCORE" : "NORMAL"; }
+function prlRecord() { try { if (S.daily) return META.daily[dailyKey()] || 0; return bestOf(S.easy ? S.run + "-easy" : S.hard ? S.run + "-hard" : S.horde ? S.run + "-horde" : S.run); } catch (_) { return 0; } }
+function prlHTML() {
+  const you = Math.floor(S.escBest || 0), rec = Math.max(prlRecord(), 0), b = prlBoard(), c = b && prlCache[b], top = (c && c.top) || [];
+  const M = [["l", you, T("TÚ"), "#5fd1c4"], ["l", rec, T("RÉCORD"), "#f2c14e"]].concat(top.map((m, i) => ["r", m, (i + 1) + "º", ["#ece8f5", "#c9c3e6", "#9a94b8"][i]]));
+  const max = Math.max(50, ...M.map(m => m[1])) * 1.08, H = 190 - 22 - 12;
+  // two markers at the same height on one side would overlap: nudge the second one up
+  const used = { l: [], r: [] }; const pos = m => { let y = 12 + (m[1] / max) * H; for (const u of used[m[0]]) if (Math.abs(u - y) < 13) y = u + 13; used[m[0]].push(y); return Math.min(y, 190 - 22); };
+  return `<div class="prl" id="prl"><span class="lb">${T("PAUSA")} · ${T(prlMode())}</span><div class="rl"></div>${M.map(m => `<div class="mk ${m[0]}" style="bottom:${pos(m).toFixed(0)}px;color:${m[3]}"><i></i><b>${m[2]}</b><span>${m[1]} m</span></div>`).join("")}</div>`;
+}
+var prl0 = escPause; escPause = function () {
+  const was = S && S.mode; const r = prl0.apply(this, arguments); if (!S || !S.escape || was !== "play" || S.mode !== "menu") return r;
+  const tg = ov.querySelector(".menu .tagline"); if (!tg) return r;
+  tg.insertAdjacentHTML("afterend", prlHTML());
+  prlLoad(prlBoard(), () => { const el = document.getElementById("prl"); if (el && S.mode === "menu") el.outerHTML = prlHTML(); });
+  return r;
+};
+
+// ===== idea 6: daily streak (META.dailyDays = UTC days played, a union in iCloud) + live countdown to 00:00 UTC
+function ddKey(d) { return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); }
+function ddList() { const s = new Set((META.dailyDays || []).map(Number));
+  for (const k of Object.keys(META.daily || {})) { const m = /^(\d{8})/.exec(k); if (m) s.add(+m[1]); } // days started before v132 also count
+  return s; }
+function ddMark() { const t = todayKey(); META.dailyDays = META.dailyDays || []; if (!META.dailyDays.includes(t)) { META.dailyDays.push(t); if (META.dailyDays.length > 400) META.dailyDays = META.dailyDays.slice(-400); try { saveMeta(); } catch (_) {} } }
+function ddStreak() { const s = ddList(), now = Date.now(); let i = s.has(todayKey()) ? 0 : 1, n = 0; while (s.has(ddKey(new Date(now - i * 864e5)))) { n++; i++; } return n; }
+function ddLeft() { const n = new Date(), ms = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - n.getTime(), s = Math.max(0, Math.floor(ms / 1000));
+  return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, "0")).join(":"); }
+function ddHTML() {
+  const s = ddList(), now = new Date(), t = todayKey(), dow = (now.getUTCDay() + 6) % 7, D = LANG === "en" ? ["M", "T", "W", "T", "F", "S", "S"] : ["L", "M", "X", "J", "V", "S", "D"], n = ddStreak();
+  const box = i => { const d = new Date(now.getTime() - (dow - i) * 864e5), k = ddKey(d), played = s.has(k), today = k === t, fut = i > dow;
+    return `<div class="day${today ? " today" : played ? " ok" : ""}${fut ? " fut" : ""}"><span>${played ? cx2Spr("flame", 2) : fut || today ? "" : cx2Spr("skull", 2, true)}</span><span>${D[i]}</span></div>`; };
+  const k = String(t) + (META.easy ? "e" : META.hard ? "h" : ""), best = (META.daily || {})[k] || 0, b = META.easy ? null : META.hard ? "daily_hard" : "daily", c = b && prlCache[b], me = c && c.me;
+  return `<div class="dstk"><div class="sk-top"><span>${T("RACHA")}</span><b>${n} ${n === 1 ? T("DÍA") : T("DÍAS")}</b></div><div class="days">${[0, 1, 2, 3, 4, 5, 6].map(box).join("")}</div>
+    <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span><span>${T("Hoy")}: <b>${best} m</b>${me && me.rank ? ` · ${Lx("puesto", "rank")} <b>${me.rank}</b>${me.total ? ` ${Lx("de", "of")} ${me.total}` : ""}` : ""}</span></div></div>`;
+}
+var ddTimer = 0;
+function ddTick() { clearInterval(ddTimer); ddTimer = setInterval(() => { const el = document.querySelector(".ddcd"); if (!el) { clearInterval(ddTimer); return; } el.textContent = ddLeft(); }, 1000); }
+var dd0 = dailyIntro; dailyIntro = function () { const r = dd0.apply(this, arguments); ddMark();
+  const g = ov.querySelector(".dlyintro .hust"); if (g) { g.insertAdjacentHTML("beforebegin", ddHTML()); g.remove(); ddTick(); }
+  prlLoad(S.easy ? null : S.hard ? "daily_hard" : "daily", () => { const el = ov.querySelector(".dstk"); if (el) { el.outerHTML = ddHTML(); ddTick(); } });
+  return r; };
+var ddRec0 = dailyRecord; dailyRecord = function () { if (S && S.daily && S.escape && !S.test) ddMark(); return ddRec0.apply(this, arguments); };
+// the old streak (META.dailyStreak) is replaced by the day list everywhere it is shown
+dailyStreak = function () { try { return ddStreak(); } catch (_) { return 0; } };
+// menu tile: the streak on the DIARIO tile (the title builds its tiles late, so it is added to the DOM after showTitle)
+function ddTile() { try { const n = ddStreak(), b = document.getElementById("dailyBtn"); if (!b || n <= 0 || b.querySelector(".ddt")) return; const t = b.querySelector(".tl") || b.querySelector(".mt"); if (t) t.insertAdjacentHTML("beforeend", `<em class="ddt">${cx2Spr("flame", 1)}${n}</em>`); } catch (_) {} }
+var ddT0 = showTitle; showTitle = function () { const r = ddT0.apply(this, arguments); ddTile(); setTimeout(ddTile, 50); return r; };
+(() => { const st = document.createElement("style"); st.textContent = '#dailyBtn .ddt{font-style:normal;color:#ff8c50;font-size:10px;margin-left:6px;display:inline-flex;align-items:center;gap:2px;vertical-align:middle}'; document.head.appendChild(st); })();
+
+Object.assign(EN_TEXT, { "MODIF.": "MODS", "OBJETOS": "ITEMS", "COMBOS": "COMBOS", "HÉROES": "HEROES", "LOGROS": "ACHIEVEMENTS", "RECUERDOS": "MEMORIES", "CÓDICE": "CODEX",
+  "TODO": "ALL", "TENGO": "OWNED", "FALTAN": "MISSING", "¡Lo tienes todo aquí!": "You have everything here!", "Aún no tienes nada aquí.": "Nothing here yet.",
+  "COMÚN": "COMMON", "RARA": "RARE", "RELIQUIA": "RELIC", "MALDITO": "CURSED", "CÓMO CONSEGUIRLO": "HOW TO GET IT", "CERRAR": "CLOSE", "Sigue jugando para descubrirlo.": "Keep playing to find out.",
+  "Superado": "Survived", "veces": "times", "Combina con": "Combines with", "Mejora de nivel": "Level-up bonus", "Se acumula": "Stacks", "Objeto de la torre": "Tower item", "Dura": "Lasts", "toda la partida": "the whole run",
+  "Combinación": "Combo", "Mezcla": "Mix", "Ten a la vez estos dos modificadores:": "Have these two modifiers at the same time:", "Personaje": "Hero", "Mejor altura": "Best height", "Partidas": "Runs",
+  "Aspecto de": "Skin for", "Aspecto": "Skin", "Logro": "Achievement", "Recuerdo": "Memory", "Bioma": "Biome", "Final": "Ending", "★ Hazaña secreta": "★ Secret feat",
+  "TÚ": "YOU", "RÉCORD": "BEST", "DIARIO": "DAILY", "HORDA": "HORDE", "HISTORIA": "STORY", "FÁCIL": "EASY", "HARDCORE": "HARDCORE", "NORMAL": "NORMAL",
+  "RACHA": "STREAK", "DÍA": "DAY", "DÍAS": "DAYS", "Nuevo diario en": "New daily in" });
+
+// ===== v133 (user: remote DUEL, "room code for everyone now", free · spec movil/duelo/duelo-spec.md): two players climb the
+// same tower (seed + row only), the rival is an orange ghost, every 25 m you send a 20 s curse, best of 3, 3:00 per round.
+// The relay (movil/duelo/relay/server.js) only forwards messages. Its address is DUEL_RELAY, or Ajustes › Servidor de duelo.
+var DUEL_RELAY = "wss://one-more-floor.kevindevrk-96e.workers.dev"; // Cloudflare Worker (relay-cloudflare/), production
+var DU_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", DU_LIMIT = 180, DU_GOAL = 2;
+var DU = { ws: null, net: false, role: null, code: "", peer: false, rvName: "RIVAL", wins: [0, 0], round: 0, seed: 0, diff: 1, on: false, over: null,
+  cs: 0, ci: null, seenCs: 0, cRx: 0, snaps: [], rv: null, lastRx: 0, t0: 0, sendT: 0, low: 0, bot: null, quit: false, scr: "", qTimer: 0 };
+function duelRelay() { return String((META && META.duelRelay) || DUEL_RELAY || "").trim(); }
+function duName() { if (!META.duelName) { META.duelName = "JUGADOR " + (1000 + Math.floor(Math.random() * 9000)); try { saveMeta(); } catch (_) {} } return META.duelName; }
+function duClean(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9 _]/g, "").slice(0, 14) || "RIVAL"; }
+function duNow() { return performance.now() / 1000; }
+function duEl() { return DU.t0 ? Math.max(0, duNow() - DU.t0) : 0; }
+if (typeof ESC_PI === "object" && !ESC_PI.ghost) ESC_PI.ghost = ["..#####..", ".#######.", "#########", "##..#..##", "##..#..##", "#########", "#########", "#########", "#.#.#.#.#"];
+
+// ---------- network ----------
+function duTx(o) { const w = DU.ws; if (w && w.readyState === 1) try { w.send(JSON.stringify(o)); } catch (_) {} }
+function duClose() { if (DU.ws) { const w = DU.ws; DU.ws = null; try { if (w.readyState === 1) w.send(JSON.stringify({ t: "leave" })); w.close(); } catch (_) {} } DU.net = false; DU.peer = false; clearTimeout(DU.qTimer); }
+function duConnect(then) {
+  duClose(); const u = duelRelay();
+  if (!u) { duNote(Lx("El servidor de duelo aún no está listo. Mientras, prueba la PRÁCTICA.", "The duel server isn't ready yet. Meanwhile, try PRACTICE.")); return; }
+  let ws; try { ws = new WebSocket(u); } catch (_) { duNote(Lx("No se pudo conectar con el servidor de duelo.", "Couldn't reach the duel server.")); return; }
+  DU.ws = ws; duNote(Lx("Conectando...", "Connecting..."));
+  ws.onopen = () => { if (DU.ws === ws) { duNote(""); then(); } };
+  ws.onmessage = e => { if (DU.ws !== ws) return; let m; try { m = JSON.parse(e.data); } catch (_) { return; } if (m && typeof m === "object") duRx(m); };
+  ws.onclose = ws.onerror = () => { if (DU.ws !== ws) return; DU.ws = null; DU.net = false; DU.peer = false;
+    if (!DU.on && DU.scr) duNote(Lx("Se perdió la conexión con el servidor.", "Lost the connection to the server.")); };
+}
+function duRx(m) {
+  if (m.t === "room" || m.t === "joined" || m.t === "matched") { DU.net = true; DU.role = m.role === "guest" ? "guest" : "host"; DU.code = String(m.code || "").slice(0, 4); DU.wins = [0, 0]; DU.round = 0; DU.seed = 0;
+    if (m.t === "matched") clearTimeout(DU.qTimer); duWait(); return; }
+  if (m.t === "err") { duNote(m.e === "nosuch" ? Lx("No existe esa sala. Revisa el código.", "That room doesn't exist. Check the code.") : m.e === "full" ? Lx("Esa sala ya está llena.", "That room is full.") : Lx("El servidor está ocupado. Prueba otra vez.", "The server is busy. Try again.")); return; }
+  if (m.t === "peer") { DU.peer = !!m.on;
+    if (m.on) { DU.lastRx = duNow(); duHello(); if (!DU.on) duVs(); }
+    else if (!DU.on) duWait(true);
+    return; }
+  if (m.t === "msg") duState(m.d);
+}
+function duHello() { duTx({ t: "msg", d: { v: 1, role: DU.role, name: duName(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff } }); }
+function duMine() { const p = S.player, dead = S.mode === "dead" || DU.quit;
+  return { v: 1, role: DU.role, name: duName(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, f: p.face < 0 ? -1 : 1,
+    j: p.ground ? 0 : 1, inv: p.inv > 0 ? 1 : 0, hp: S.hp | 0, best: S.escBest | 0, dead: dead ? 1 : 0, why: DU.quit ? "quit" : /fell|lava|tide|cam/.test(S.deathCause || "fell") ? "lava" : "hp", cs: DU.cs, ci: DU.ci,
+    sk: (() => { try { return heroSkinOf(S.char.id); } catch (_) { return "velo"; } })() }; }
+function duSendNow() { if (DU.net && DU.on && S && S.duel && S.player) duTx({ t: "msg", d: duMine() }); }
+function duState(d) {
+  if (!d || typeof d !== "object" || d.v !== 1) return; DU.lastRx = duNow(); DU.rvName = duClean(d.name);
+  const ci = n => Math.max(0, Math.min(2, n | 0));
+  if (d.st === "lobby") { if (DU.role === "guest") DU.diff = ci(d.diff); if (!DU.on && (DU.scr === "wait" || DU.scr === "vs")) duVs(); return; }
+  if (d.st !== "play") return;
+  const seed = (+d.seed) >>> 0, round = d.round | 0;
+  if (DU.role === "guest" && seed && seed !== DU.seed) { DU.diff = ci(d.diff); if (round <= 1) DU.wins = [0, 0]; DU.round = Math.max(1, round); duStartRound(seed); return; }
+  if (!DU.on || seed !== DU.seed || round !== DU.round) return;
+  const x = +d.x, y = +d.y;
+  if (isFinite(x) && isFinite(y)) { DU.snaps.push({ t: duNow(), x: clamp(x, 0, 2000), y: clamp(y, -1e6, 1e7), f: d.f < 0 ? -1 : 1, j: d.j ? 1 : 0, inv: d.inv ? 1 : 0 }); if (DU.snaps.length > 40) DU.snaps.shift(); }
+  const rv = DU.rv || (DU.rv = { best: 0 }); rv.best = Math.max(rv.best, Math.max(0, Math.min(99999, d.best | 0))); rv.hp = Math.max(0, Math.min(9, d.hp | 0));
+  if (typeof d.sk === "string" && HERO_SKINS[d.sk]) rv.sk = d.sk;
+  if ((d.cs | 0) > DU.seenCs) { DU.seenCs = Math.min(999, d.cs | 0); duCurseIn(d.ci); }
+  if (d.dead && !DU.over) duEnd(0, duWhy(d.why, DU.rvName));
+}
+function duWhy(k, n) { return k === "quit" ? Lx(n + " SE HA RENDIDO", n + " GAVE UP") : k === "lava" ? Lx(n + " HA CAÍDO", n + " FELL") : k === "gone" ? Lx(n + " SE HA DESCONECTADO", n + " DISCONNECTED") : Lx(n + " SE QUEDÓ SIN VIDAS", n + " RAN OUT OF HEARTS"); }
+
+// ---------- curses ----------
+function duCursePool() { return ESC_MOD_POOL.filter(id => RULE[id] && !has(id) && !(S.easy && id === "mirror") && id !== "sweep"); }
+function duCurseIn(id) {
+  if (!S || !S.duel || !DU.on || DU.over || S.mode === "dead" || typeof id !== "string" || !RULE[id] || !ESC_MOD_POOL.includes(id) || has(id) || (S.easy && id === "mirror")) return;
+  const el = S.t - S.escT0; escAddMod(id, el); const m = S.escMods.find(x => x.id === id); if (m) m.until = el + 20;
+  DU.cRx++; lastHud = ""; S.duBan = { s: Lx(DU.rvName + " TE MANDA " + T(RULE[id].name).toUpperCase(), DU.rvName + " SENDS YOU " + T(RULE[id].name).toUpperCase()), t: 2.6 };
+  try { navigator.vibrate && navigator.vibrate(80); } catch (_) {} S.shake = Math.max(S.shake || 0, 0.25);
+}
+function duCurseOut() { const pool = duCursePool(); if (!pool.length) return; const id = pool[Math.floor(Math.random() * pool.length)]; DU.cs++; DU.ci = id;
+  toast(Lx("MANDAS ", "YOU SEND ") + RULE[id].icon + " " + T(RULE[id].name).toUpperCase()); omfSfx("mod");
+  if (DU.cs >= 5 && !DU.bot) duAch("curse5"); }
+
+// ---------- practice rival (no server): a pacer that climbs at a steady, slightly random speed ----------
+function duBotTick(dt) { const B = DU.bot; if (!B || B.dead) return;
+  const el = duEl(); if (el < 3) return;
+  B.h += dt * B.rate * (0.75 + 0.5 * Math.abs(Math.sin(el * 0.7 + B.ph))); B.x += B.vx * dt; if (B.x < 24 || B.x > (S.LW - 2) * TS - 8) { B.vx *= -1; B.x = clamp(B.x, 24, (S.LW - 2) * TS - 8); }
+  if (Math.random() < dt * 0.6) B.vx = (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 60);
+  const y = (S.LH - 2 - B.h) * TS; DU.snaps.push({ t: duNow(), x: B.x, y, f: B.vx < 0 ? -1 : 1, j: Math.sin(el * 3) > 0.3 ? 1 : 0, inv: 0 }); if (DU.snaps.length > 40) DU.snaps.shift();
+  DU.rv.best = Math.max(DU.rv.best, Math.floor(B.h)); DU.lastRx = duNow();
+  if (Math.floor(B.h / 25) > B.cs) { B.cs++; const pool = duCursePool(); if (pool.length) duCurseIn(pool[Math.floor(Math.random() * pool.length)]); }
+  if (Math.random() < dt * (0.002 + el / 18000)) { B.dead = true; duEnd(0, duWhy(Math.random() < 0.6 ? "lava" : "hp", DU.rvName)); }
+}
+
+// ---------- rounds ----------
+function duStartRound(seed) {
+  DU.seed = seed >>> 0 || 1; DU.on = true; DU.over = null; DU.cs = 0; DU.ci = null; DU.seenCs = 0; DU.cRx = 0; DU.snaps = []; DU.rv = { best: 0, hp: 3 }; DU.low = 0; DU.quit = false; DU.lastRx = duNow(); DU.t0 = 0; DU.sendT = 0;
+  if (DU.bot) Object.assign(DU.bot, { h: 0, x: 120, vx: 60, dead: false, cs: 0, ph: Math.random() * 6, rate: [0.55, 0.75, 0.95][DU.diff] * (0.9 + Math.random() * 0.25) });
+  const e = META.easy, h = META.hard; META.easy = DU.diff === 0; META.hard = DU.diff === 2;
+  try { newRun({ char: S.char.id, kind: "escape" }); } finally { META.easy = e; META.hard = h; }
+  S.duel = true; S.run = "duel"; S.seed = DU.seed; S.rng = mulberry(DU.seed);
+  startFloor(); duHudOn(true);
+  S.mode = "menu"; ov.hidden = false; ov.classList.remove("dead"); DU.scr = "cd";
+  let n = 3; const tick = () => { if (!DU.on || DU.scr !== "cd" || !S.duel) return;
+    if (n > 0) { ov.innerHTML = `<div class="menu ducd"><p class="tagline">${Lx("RONDA", "ROUND")} ${DU.round} · ${T("TÚ")} ${DU.wins[0]} - ${DU.wins[1]} ${DU.rvName}</p><h1>${n}</h1><p>${Lx("Cada 25 m mandas una maldición", "Every 25 m you send a curse")}</p></div>`; omfSfx("click"); n--; setTimeout(tick, 800); return; }
+    ov.innerHTML = ""; ov.hidden = true; DU.scr = ""; S.escT0 = S.t; S.mode = "play"; DU.t0 = duNow(); DU.lastRx = duNow(); omfSfx("levelup"); for (const k in input) input[k] = false; };
+  tick();
+}
+function duHostStart(rematch) { if (rematch) { DU.wins = [0, 0]; DU.round = 0; } DU.round++; const seed = ((Math.random() * 4e9) >>> 0) || 1;
+  duStartRound(seed); if (DU.net) duTx({ t: "msg", d: Object.assign(duMine(), { st: "play", dead: 0, best: 0, cs: 0, ci: null }) }); }
+function duTick(p, dt) {
+  if (!DU.on || !S.duel) return;
+  DU.sendT -= dt; if (DU.net && DU.sendT <= 0) { DU.sendT = DU.over ? 0.25 : 1 / 10; duSendNow(); }
+  if (DU.over) return;
+  if (S.duBan) { S.duBan.t -= dt; if (S.duBan.t <= 0) S.duBan = null; }
+  if (ov.querySelector(".cards")) p.inv = Math.max(p.inv, 0.3); // a level-up doesn't stop the duel: safe while you pick
+  while (Math.floor((S.escBest || 0) / 25) > DU.cs) duCurseOut();
+  if (DU.bot) duBotTick(dt);
+  else if (duNow() - DU.lastRx > 10) return duEnd(0, duWhy("gone", DU.rvName));
+  DU.low = Math.min(DU.low, (S.escBest || 0) - DU.rv.best);
+  if (duEl() >= DU_LIMIT) { const a = S.escBest || 0, b = DU.rv.best; return duEnd(a >= b ? 0 : 1, Lx("SE ACABÓ EL TIEMPO: ", "TIME'S UP: ") + (a >= b ? Lx("HAS LLEGADO MÁS ALTO", "YOU CLIMBED HIGHER") : Lx(DU.rvName + " LLEGÓ MÁS ALTO", DU.rvName + " CLIMBED HIGHER"))); }
+  duHud();
+}
+function duEnd(w, why) {
+  if (DU.over || !DU.on) return; DU.over = { w, why }; DU.wins[w]++; const fin = DU.wins[w] >= DU_GOAL; duSendNow();
+  omfSfx(w === 0 ? "levelup" : "death");
+  if (fin && w === 0 && !DU.bot) { META.duel = META.duel || {}; META.duel.wins = (META.duel.wins || 0) + 1; duAch("win"); if (META.duel.wins >= 3) duAch("3"); if (DU.low <= -20) duAch("comeback"); try { saveMeta(); } catch (_) {} }
+  const run = S; setTimeout(() => { if (S === run && DU.on) duResult(fin); }, w === 0 ? 700 : 1300);
+}
+function duAch(k) { META.duel = META.duel || {}; META.duel["a_" + k] = 1; try { pgsUnlock("duel_" + k); } catch (_) {} try { saveMeta(); } catch (_) {} }
+function duPips(n, c) { return [0, 1].map(i => `<i class="${i < n ? c : ""}"></i>`).join(""); }
+function duResult(fin) {
+  const o = DU.over; if (!o) return; if (S.mode === "play") S.mode = "menu"; duHudOn(false); DU.scr = "end";
+  const me = o.w === 0, guest = DU.net && DU.role === "guest";
+  ov.hidden = false; ov.classList.remove("dead");
+  ov.innerHTML = `<div class="menu duend"><h1 class="${me ? "dw" : "dl"}">${fin ? (me ? Lx("¡GANAS EL DUELO!", "YOU WIN THE DUEL!") : Lx(DU.rvName + " GANA EL DUELO", DU.rvName + " WINS THE DUEL")) : (me ? Lx("GANAS LA RONDA", "YOU WIN THE ROUND") : Lx(DU.rvName + " GANA LA RONDA", DU.rvName + " WINS THE ROUND"))}</h1>
+    <p class="tagline">${o.why}</p>
+    <div class="duvs"><div class="me"><b>${S.escBest || 0} m</b><span>${T("TÚ")}</span><span class="pips">${duPips(DU.wins[0], "w0")}</span></div><div class="vs">VS</div><div class="rv"><b>${DU.rv.best} m</b><span>${DU.rvName}</span><span class="pips">${duPips(DU.wins[1], "w1")}</span></div></div>
+    <p class="dusub">${Lx("Maldiciones: mandaste " + DU.cs + ", recibiste " + DU.cRx + ".", "Curses: you sent " + DU.cs + ", you got " + DU.cRx + ".")}</p>
+    <div class="rowbig"><button class="go" id="duNext"${guest ? " disabled" : ""}>${guest ? Lx("ESPERANDO AL ANFITRIÓN", "WAITING FOR THE HOST") : fin ? Lx("REVANCHA", "REMATCH") : Lx("SIGUIENTE RONDA", "NEXT ROUND")}</button></div>
+    <div class="tools"><button id="duQuit">${Lx("SALIR", "LEAVE")}</button></div></div>`;
+  document.getElementById("duNext").onclick = () => { if (guest) return; omfSfx("click"); duHostStart(fin); };
+  document.getElementById("duQuit").onclick = () => { omfSfx("click"); duLeave(); };
+}
+function duLeave() { duClose(); DU.on = false; DU.bot = null; DU.over = null; DU.scr = ""; duHudOn(false); if (S) S.duel = false; showTitle(); }
+
+// ---------- screens ----------
+function duNote(s) { const n = document.getElementById("duNote"); if (n) n.textContent = s; }
+function duDifName(d) { return T(["FÁCIL", "NORMAL", "HARDCORE"][d]); }
+function duMenu() {
+  duClose(); DU.on = false; DU.bot = null; DU.scr = "menu"; DU.diff = META.easy ? 0 : META.hard ? 2 : 1; if (!META.duelSeen) { META.duelSeen = 1; try { saveMeta(); } catch (_) {} }
+  S.mode = "menu"; ov.hidden = false; ov.classList.remove("dead");
+  const R = [Lx("La misma torre y los mismos modificadores para los dos.", "The same tower and the same modifiers for both."), Lx("Tu rival es un fantasma: no choca contigo.", "Your rival is a ghost: it can't touch you."),
+    Lx("Cada 25 m le mandas una maldición de 20 s.", "Every 25 m you send them a 20 s curse."), Lx("Pierde quien cae. A los 3:00 gana el más alto. Al mejor de 3.", "Whoever falls loses. At 3:00 the higher one wins. Best of 3.")];
+  ov.innerHTML = `<div class="menu duel"><h2>${pxi("ghost", "#ff8c50", 2)} ${Lx("DUELO", "DUEL")}</h2><p class="tagline">${duName()} · ${duDifName(DU.diff)}</p>
+    <ol class="durules">${R.map(x => `<li>${x}</li>`).join("")}</ol>
+    <div class="rowbig"><button class="go" id="duHost">${Lx("CREAR SALA", "CREATE ROOM")}</button></div>
+    <p class="dusub">${Lx("¿Tienes un código? Escríbelo:", "Got a code? Type it:")}</p>
+    <div class="ducode">${[0, 1, 2, 3].map(i => `<input id="duC${i}" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="${Lx("Letra", "Letter")} ${i + 1}">`).join("")}<button id="duJoin">${Lx("ENTRAR", "JOIN")}</button></div>
+    <div class="tools"><button id="duRand">${pxi("target", "#ff8c50")} ${Lx("RIVAL AL AZAR", "RANDOM RIVAL")}</button><button id="duBot">${pxi("ghost", "#9a94b8")} ${Lx("PRÁCTICA", "PRACTICE")}</button></div>
+    <p class="dunote" id="duNote" role="status"></p>
+    <p class="dusub">${Lx("La dificultad la elige quien crea la sala (se cambia en el menú). No cuenta para los récords.", "The room creator's difficulty is used (change it in the menu). It doesn't count for records.")}</p>
+    <div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
+  paintPxi(ov);
+  const ins = [0, 1, 2, 3].map(i => document.getElementById("duC" + i));
+  ins.forEach((el, i) => { el.oninput = () => { el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(-1); if (el.value && ins[i + 1]) ins[i + 1].focus(); };
+    el.onkeydown = e => { if (e.key === "Backspace" && !el.value && ins[i - 1]) ins[i - 1].focus(); if (e.key === "Enter") document.getElementById("duJoin").click(); e.stopPropagation(); }; });
+  document.getElementById("duHost").onclick = () => { omfSfx("click"); DU.bot = null; duConnect(() => duTx({ t: "create" })); };
+  document.getElementById("duJoin").onclick = () => { omfSfx("click"); const c = ins.map(x => x.value).join("").toUpperCase(); if (c.length < 4) { duNote(Lx("Escribe las 4 letras del código.", "Type the 4 letters of the code.")); (ins.find(x => !x.value) || ins[0]).focus(); return; }
+    DU.bot = null; duConnect(() => duTx({ t: "join", code: c })); };
+  document.getElementById("duRand").onclick = () => { omfSfx("click"); DU.bot = null; duConnect(() => { duTx({ t: "queue", diff: DU.diff }); DU.role = null; duSearch(); }); };
+  document.getElementById("duBot").onclick = () => { omfSfx("click"); duPractice(); };
+  document.getElementById("backBtn").onclick = () => { omfSfx("click"); duLeave(); };
+}
+function duPractice() { duClose(); DU.bot = { h: 0 }; DU.role = "host"; DU.code = ""; DU.rvName = Lx("FANTASMA", "GHOST"); DU.wins = [0, 0]; DU.round = 0; DU.seed = 0; DU.net = false; duVs(); }
+function duSearch() { DU.scr = "wait"; ov.innerHTML = `<div class="menu duel"><h2>${Lx("BUSCANDO RIVAL", "LOOKING FOR A RIVAL")}</h2><p class="tagline">${duDifName(DU.diff)}</p><p class="dusub">${Lx("Suele tardar menos de 30 s.", "It usually takes under 30 s.")}</p>
+    <p class="dunote" id="duNote" role="status"></p><div class="tools"><button id="duCancel">${Lx("CANCELAR", "CANCEL")}</button></div></div>`;
+  document.getElementById("duCancel").onclick = () => { omfSfx("click"); duMenu(); };
+  clearTimeout(DU.qTimer); DU.qTimer = setTimeout(() => { if (DU.scr !== "wait" || DU.peer) return; const n = document.getElementById("duNote"); if (!n) return;
+    n.innerHTML = `${Lx("Nadie más está buscando ahora.", "Nobody else is searching right now.")} <button id="duBot2">${Lx("PRÁCTICA", "PRACTICE")}</button>`; document.getElementById("duBot2").onclick = () => { omfSfx("click"); duPractice(); }; }, 30000); }
+function duWait(gone) {
+  DU.scr = "wait"; const host = DU.role === "host";
+  ov.innerHTML = `<div class="menu duel"><h2>${gone ? Lx("TU RIVAL SE HA IDO", "YOUR RIVAL LEFT") : host ? Lx("TU SALA", "YOUR ROOM") : Lx("ENTRANDO EN LA SALA", "JOINING THE ROOM")}</h2>
+    <div class="ducodebig" aria-label="${Lx("Código", "Code")}">${DU.code.split("").map(c => `<b>${c}</b>`).join("")}</div>
+    <p class="dusub">${gone ? Lx("Puede volver a entrar con el mismo código.", "They can come back with the same code.") : host ? Lx("Pasa este código a tu amigo. Cuando entre, empieza el duelo.", "Give this code to your friend. When they join, the duel starts.") : Lx("Esperando a quien creó la sala.", "Waiting for whoever made the room.")}</p>
+    ${host ? `<div class="tools"><button id="duShare">${pxi("share", "#5fd1c4")} ${Lx("COMPARTIR", "SHARE")}</button><button id="duCopy">${Lx("COPIAR", "COPY")}</button></div>` : ""}
+    <p class="dunote" id="duNote" role="status"></p><div class="tools"><button id="duCancel">${Lx("CANCELAR", "CANCEL")}</button></div></div>`;
+  paintPxi(ov);
+  const txt = Lx("¡Duelo en One More Floor Escape! Entra en DUELO y escribe el código ", "Duel me in One More Floor Escape! Open DUEL and type the code ") + DU.code;
+  const cp = () => { try { navigator.clipboard.writeText(DU.code).then(() => duNote(Lx("Código copiado.", "Code copied.")), () => duNote(DU.code)); } catch (_) { duNote(DU.code); } };
+  const s = document.getElementById("duShare"); if (s) s.onclick = () => { omfSfx("click"); try { if (navigator.share) navigator.share({ text: txt }).catch(() => {}); else cp(); } catch (_) { cp(); } };
+  const c = document.getElementById("duCopy"); if (c) c.onclick = () => { omfSfx("click"); cp(); };
+  document.getElementById("duCancel").onclick = () => { omfSfx("click"); duMenu(); };
+}
+function duVs() {
+  DU.scr = "vs"; S.mode = "menu"; ov.hidden = false; ov.classList.remove("dead"); const guest = DU.net && DU.role === "guest";
+  ov.innerHTML = `<div class="menu duel"><p class="tagline">${Lx("RONDA", "ROUND")} ${DU.round + 1} · ${duDifName(DU.diff)}</p>
+    <div class="duvs"><div class="me"><b>${duName()}</b><span>${T("TÚ")}</span><span class="pips">${duPips(DU.wins[0], "w0")}</span></div><div class="vs">VS</div><div class="rv"><b>${DU.rvName}</b><span>${DU.bot ? Lx("PRÁCTICA", "PRACTICE") : DU.code ? Lx("SALA", "ROOM") + " " + DU.code : ""}</span><span class="pips">${duPips(DU.wins[1], "w1")}</span></div></div>
+    <p class="dusub">${DU.bot ? Lx("Un fantasma de práctica sube a su ritmo. No cuenta para los logros.", "A practice ghost climbs at its own pace. It doesn't count for achievements.") : Lx("En vivo · sin pausa: el menú solo tiene SEGUIR y RENDIRME.", "Live · no pause: the menu only has RESUME and GIVE UP.")}</p>
+    <div class="rowbig"><button class="go" id="duGo"${guest ? " disabled" : ""}>${guest ? Lx("ESPERANDO AL ANFITRIÓN", "WAITING FOR THE HOST") : Lx("¡A SUBIR!", "CLIMB!")}</button></div>
+    <p class="dunote" id="duNote" role="status"></p><div class="tools"><button id="duCancel">${Lx("SALIR", "LEAVE")}</button></div></div>`;
+  document.getElementById("duGo").onclick = () => { if (guest) return; omfSfx("click"); duHostStart(false); };
+  document.getElementById("duCancel").onclick = () => { omfSfx("click"); duMenu(); };
+}
+
+// ---------- HUD + ghost ----------
+function duHudOn(on) { let h = document.getElementById("duHud"); if (!on) { if (h) h.remove(); return; } if (!h) { h = document.createElement("div"); h.id = "duHud"; document.body.appendChild(h); } duHud(true); }
+function duHud(force) { const h = document.getElementById("duHud"); if (!h) return; const left = Math.max(0, DU_LIMIT - duEl()), k = [DU.round, Math.ceil(left), DU.rv && DU.rv.best, DU.wins.join(), S.escBest, S.duBan && S.duBan.s].join("|");
+  if (!force && h._k === k) return; h._k = k;
+  h.innerHTML = `<span class="dr">${Lx("R", "R")}${DU.round} <i class="w0">${DU.wins[0]}</i>-<i class="w1">${DU.wins[1]}</i></span><span class="dt">${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}</span><span class="dn">${DU.rvName} <b>${DU.rv ? DU.rv.best : 0} m</b></span>${S.duBan ? `<span class="db">${S.duBan.s}</span>` : ""}`; }
+function duGhostAt() { const A = DU.snaps; if (!A.length) return null; const rt = duNow() - 0.15;
+  for (let i = A.length - 1; i > 0; i--) { const a = A[i - 1], b = A[i]; if (a.t <= rt) { const k = clamp((rt - a.t) / Math.max(0.001, b.t - a.t), 0, 1); return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, f: b.f, j: b.j, inv: b.inv, mv: Math.abs(b.x - a.x) > 0.5 }; } }
+  return Object.assign({}, A[0]); }
+var duTintC = new WeakMap();
+function duTint(cv) { let c = duTintC.get(cv); if (c) return c; c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.drawImage(cv, 0, 0);
+  g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(255,138,102,.6)"; g.fillRect(0, 0, c.width, c.height); duTintC.set(cv, c); return c; }
+function duDrawGhost() {
+  const q = duGhostAt(); if (!q) return; const cx = S.camX || 0, cy = S.camY || 0, sx = q.x - cx, fy = q.y - cy;
+  ctx.save(); ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0); ctx.imageSmoothingEnabled = false; ctx.font = "8px Silkscreen, monospace"; ctx.textAlign = "center";
+  const myH = Math.max(0, Math.floor((S.LH - 2) - (S.player.y + S.player.h) / TS)), rvH = Math.max(0, Math.floor((S.LH - 2) - q.y / TS)), dh = rvH - myH;
+  const lab = (t, x, y) => { ctx.fillStyle = "#0b0912"; ctx.fillText(t, x + 1, y + 1); ctx.fillStyle = "#ff8a66"; ctx.fillText(t, x, y); };
+  if (fy < 36) { const x = clamp(sx + 8, 30, CW - 30); ctx.fillStyle = "#ff8a66"; ctx.fillRect(x - 4, 30, 9, 2); ctx.fillRect(x - 2, 28, 5, 2); ctx.fillRect(x, 26, 1, 2); lab("+" + Math.max(0, dh) + " m", x, 42); ctx.restore(); return; }
+  if (fy - 30 > CH) { const x = clamp(sx + 8, 30, CW - 30), y = CH - 70; ctx.fillStyle = "#ff8a66"; ctx.fillRect(x - 4, y, 9, 2); ctx.fillRect(x - 2, y + 2, 5, 2); ctx.fillRect(x, y + 4, 1, 2); lab(dh + " m", x, y - 4); ctx.restore(); return; }
+  const id = DU.rv && DU.rv.sk && HERO_SKINS[DU.rv.sk] ? DU.rv.sk : "velo", fr = Math.floor(S.t * 10) % 6, cv = heroFrame(id, q.j ? "run" : q.mv ? "run" : "idle", q.j ? 2 : q.mv ? fr : 0);
+  const draw = (c, x, y, f, a) => { if (!c) return; ctx.globalAlpha = a; ctx.save(); ctx.translate(Math.round(x + 8), Math.round(y)); if (f < 0) ctx.scale(-1, 1); ctx.drawImage(duTint(c), -c.width / 2, -c.height); ctx.restore(); };
+  const A = DU.snaps; for (let i = Math.max(0, A.length - 6); i < A.length - 3; i++) draw(cv, A[i].x - cx, A[i].y - cy, A[i].f, 0.1);
+  draw(cv, sx, fy, q.f, q.inv && Math.floor(S.t * 14) % 2 ? 0.2 : 0.5 + Math.sin(S.t * 5) * 0.06);
+  ctx.globalAlpha = 0.9; lab(DU.rvName, sx + 8, fy - 34); ctx.restore();
+}
+var du_draw0 = draw; draw = function () { const r = du_draw0.apply(this, arguments); if (S && S.duel && DU.on && S.player) try { duDrawGhost(); } catch (_) {} return r; };
+
+// ---------- the same tower on both phones: seed + row only, no active modifiers, difficulty by height ----------
+var du_be0 = buildEscape; buildEscape = function () { if (!(S && S.duel)) return du_be0.apply(this, arguments);
+  const mr = Math.random; Math.random = mulberry((S.seed ^ 0x5bd1e995) >>> 0); S.rng = mulberry(S.seed);
+  try { return du_be0.apply(this, arguments); } finally { Math.random = mr; } };
+var du_gs0 = genEscSegment; genEscSegment = function () { if (!(S && S.duel && S.eg)) return du_gs0.apply(this, arguments);
+  const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, rules = S.rules, h = Math.max(0, (S.LH - 2) - S.eg.row), r = mulberry((S.seed | 0) * 7919 + S.eg.row * 31 + DU.diff);
+  Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.rules = [];
+  try { return du_gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.rules = rules; } };
+var du_pm0 = escPickMod; escPickMod = function (pool) { if (!(S && S.duel)) return du_pm0.apply(this, arguments); const rng = S.rng; S.rng = mulberry((S.seed | 0) * 13 + Math.round(S.escNextMod || 0) * 101);
+  try { return du_pm0.apply(this, arguments); } finally { S.rng = rng; } };
+var du_room0 = escEnterRoom; escEnterRoom = function () { if (S && S.duel) { toast(Lx("En el duelo no hay salas secretas", "No secret rooms in a duel")); return; } return du_room0.apply(this, arguments); };
+var du_pr0 = pgsRun; pgsRun = function () { if (S && S.duel) return; return du_pr0.apply(this, arguments); };
+
+// ---------- hooks: tick, death, pause, level-up ----------
+var du_et0 = escapeTick; escapeTick = function (p, dt) { const r = du_et0.apply(this, arguments); if (S.duel) duTick(p, dt); return r; };
+var du_die0 = die; die = function () { const r = du_die0.apply(this, arguments); if (S && S.duel && DU.on && !DU.over) duEnd(1, DU.quit ? Lx("TE HAS RENDIDO", "YOU GAVE UP") : /fell|lava|tide|cam/.test(S.deathCause || "fell") ? Lx("HAS CAÍDO", "YOU FELL") : Lx("TE QUEDASTE SIN VIDAS", "YOU RAN OUT OF HEARTS")); return r; };
+var du_sd0 = showDead; showDead = function () { if (S && S.duel) return; return du_sd0.apply(this, arguments); };
+var du_pa0 = escPause; escPause = function () {
+  if (!(S && S.duel)) return du_pa0.apply(this, arguments);
+  if (document.hidden || S.mode !== "play" || DU.over || ov.querySelector(".cards")) return; // no pause in a duel; leaving the app just stops sending
+  ov.hidden = false; omfSfx("click");
+  ov.innerHTML = `<div class="menu duel dupause"><h2>${Lx("DUELO", "DUEL")}</h2><p class="tagline">${Lx("La subida sigue: no hay pausa.", "The climb goes on: there's no pause.")}</p>
+    <div class="rowbig"><button class="go" id="duRes">${Lx("SEGUIR", "RESUME")}</button></div><div class="tools"><button id="duGive">${Lx("RENDIRME", "GIVE UP")}</button></div></div>`;
+  document.getElementById("duRes").onclick = () => { ov.hidden = true; ov.innerHTML = ""; for (const k in input) input[k] = false; };
+  document.getElementById("duGive").onclick = () => { ov.hidden = true; ov.innerHTML = ""; DU.quit = true; duSendNow(); S.mode = "menu"; duEnd(1, Lx("TE HAS RENDIDO", "YOU GAVE UP")); };
+};
+var du_lc0 = escLevelCards; escLevelCards = function () { if (S && S.duel && ov.querySelector(".cards")) return; const r = du_lc0.apply(this, arguments); if (S && S.duel && !DU.over) S.mode = "play"; return r; };
+var du_tl0 = escTakeLevel; escTakeLevel = function () { const e0 = S && S.escT0, r = du_tl0.apply(this, arguments); if (S && S.duel) S.escT0 = e0; return r; };
+var du_t0 = showTitle; showTitle = function () { if (DU.on || DU.ws) { duClose(); DU.on = false; DU.bot = null; } duHudOn(false); return du_t0.apply(this, arguments); };
+
+// ---------- menu tile + settings ----------
+var du_tw0 = escTitleWire; escTitleWire = function () { const r = du_tw0.apply(this, arguments);
+  try { const t = ov.querySelector(".etitle.a3 .a3tiles"); if (t && !document.getElementById("duelBtn")) {
+      t.insertAdjacentHTML("beforeend", `<button class="a3tile" id="duelBtn" style="--c:#ff8c50">${META.duelSeen ? "" : `<span class="new">${T("NUEVO")}</span>`}${pxi("ghost", "#ff8c50", 3)}<span class="tl">${Lx("DUELO", "DUEL")}</span><span class="ts">${Lx("Contra un amigo", "Vs a friend")}</span></button>`);
+      t.classList.add("du4"); paintPxi(t); document.getElementById("duelBtn").onclick = () => { omfSfx("click"); duMenu(); };
+      const e = ov.querySelector(".etitle.a3"); if (e && typeof a3Fit === "function") a3Fit(e); }
+    const hb = document.getElementById("hordeBtn"); if (hb && !document.getElementById("duelBtn") && hb.classList.contains("half")) { // the classic menu layout
+      hb.insertAdjacentHTML("afterend", `<button class="mode half" id="duelBtn"><span class="mi">${pxi("ghost", "#ff8c50")}</span><span class="mt">${Lx("DUELO", "DUEL")}${META.duelSeen ? "" : ` <em class="dunew">${T("NUEVO")}</em>`}</span><span class="mv"><small>${Lx("VS", "VS")}</small>${Lx("amigo", "friend")}</span></button>`);
+      paintPxi(hb.parentNode); document.getElementById("duelBtn").onclick = () => { omfSfx("click"); duMenu(); }; } } catch (er) { try { errLog(er.message, "duTile"); } catch (_) {} }
+  return r; };
+var du_ss0 = showSettings; showSettings = function () { const r = du_ss0.apply(this, arguments);
+  try { if (!ESCAPE || document.getElementById("duRelay")) return r; const m = ov.querySelector(".menu"); if (!m) return r; const how = document.getElementById("howBtnS"), at = how ? how.closest(".tools") : null;
+    const html = `<div class="durelay"><label for="duRelay">${Lx("Servidor de duelo", "Duel server")}</label><input id="duRelay" placeholder="${DUEL_RELAY || "wss://..."}" value="${String(META.duelRelay || "").replace(/"/g, "")}" autocomplete="off" spellcheck="false"></div>`;
+    if (at) at.insertAdjacentHTML("afterend", html); else m.insertAdjacentHTML("beforeend", html);
+    const i = document.getElementById("duRelay"); i.onchange = () => { const v = i.value.trim(); META.duelRelay = /^wss?:\/\/[^\s"<>]+$/.test(v) ? v : ""; i.value = META.duelRelay; try { saveMeta(); } catch (_) {} };
+    i.onkeydown = e => e.stopPropagation(); } catch (_) {}
+  return r; };
+
+// achievements (Game Center ids duel_win, duel_3, duel_curse5, duel_comeback)
+try { GC_ACH.push(["duel_win", "Duelista", "Duelist", "Gana un duelo", "Win a duel"], ["duel_3", "Tres coronas", "Three crowns", "Gana 3 duelos", "Win 3 duels"],
+  ["duel_curse5", "Mal de ojo", "Evil eye", "Manda 5 maldiciones en una ronda de duelo", "Send 5 curses in one duel round"], ["duel_comeback", "Remontada", "Comeback", "Gana un duelo tras ir 20 m por detrás", "Win a duel after trailing by 20 m"]);
+  PGS_FEATS.push(["duel_win", "Duelista", "Gana un duelo.", () => (META.duel && META.duel.a_win) ? 1 : 0], ["duel_3", "Tres coronas", "Gana 3 duelos.", () => Math.min(1, ((META.duel && META.duel.wins) || 0) / 3)],
+    ["duel_curse5", "Mal de ojo", "Manda 5 maldiciones en una ronda de duelo.", () => (META.duel && META.duel.a_curse5) ? 1 : 0], ["duel_comeback", "Remontada", "Gana un duelo tras ir 20 m por detrás.", () => (META.duel && META.duel.a_comeback) ? 1 : 0]); } catch (_) {}
+
+(() => { const st = document.createElement("style"); st.textContent = `
+.a3tiles.du4{grid-template-columns:repeat(4,1fr)}
+#duelBtn .dunew{font-style:normal;font-size:8px;background:#f2c14e;color:#1a1206;padding:1px 3px;margin-left:4px;vertical-align:middle}
+.a3tiles.du4 .a3tile .ts{font-size:8px;line-height:1.1;white-space:normal;text-align:center;overflow:hidden;max-width:100%;padding:0 2px}.a3tiles.du4 .a3tile .tl{font-size:10px}
+.menu.duel{max-width:440px;margin:0 auto}
+.duel .durules{text-align:left;margin:6px auto 8px;padding:8px 10px 8px 28px;background:#100e1a;box-shadow:inset 0 0 0 2px #3e3960;font-size:13px;line-height:1.35;color:#c9c3e6}
+.duel .durules li{margin:2px 0}
+.duel .dusub{font-size:12px;color:#9a94b8;margin:6px 0}
+.duel .dunote{min-height:16px;font-size:12px;color:#f2c14e;margin:4px 0}
+.duel .dunote button{margin-left:6px}
+.ducode{display:flex;gap:6px;justify-content:center;align-items:center;margin:4px 0 8px}
+.ducode input{width:40px;height:46px;text-align:center;font-family:var(--font-display);font-size:22px;text-transform:uppercase;background:#100e1a;color:#ece8f5;border:0;border-radius:0;box-shadow:inset 0 0 0 2px #3e3960;outline:none}
+.ducode input:focus{box-shadow:inset 0 0 0 2px #ff8c50}
+.ducodebig{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.ducodebig b{display:grid;place-items:center;width:52px;height:62px;font-family:var(--font-display);font-size:34px;font-weight:400;color:#f2c14e;background:#100e1a;box-shadow:inset 0 0 0 3px #f2c14e}
+.duvs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:12px 0}
+.duvs > div:not(.vs){display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;background:#100e1a;box-shadow:inset 0 0 0 2px #3e3960;min-width:0}
+.duvs .me{box-shadow:inset 0 0 0 2px #5fd1c4!important}.duvs .rv{box-shadow:inset 0 0 0 2px #ff8a66!important}
+.duvs b{font-family:var(--font-display);font-weight:400;font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duvs span{font-family:var(--font-display);font-size:10px;color:#9a94b8}
+.duvs .vs{font-family:var(--font-display);font-size:18px;color:#ff8c50}
+.duvs .pips{display:flex;gap:4px}.duvs .pips i,#duHud i{display:inline-block}.duvs .pips i{width:10px;height:10px;background:#2c2842}
+.duvs .pips i.w0{background:#5fd1c4}.duvs .pips i.w1{background:#ff8a66}
+.duend h1.dw{color:#5fd1c4}.duend h1.dl{color:#ff8a66}
+.ducd h1{font-size:72px;color:#f2c14e;margin:10px 0}
+#duHud{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 54px);transform:translateX(-50%);z-index:30;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 10px;align-items:center;padding:4px 10px;background:#0b0912cc;box-shadow:inset 0 0 0 2px #ff8a66;font-family:Silkscreen,monospace;font-size:11px;color:#ece8f5;pointer-events:none;max-width:94vw}
+#duHud .dt{color:#f2c14e}#duHud .dn{color:#ff8a66}#duHud .dn b{font-weight:400;color:#ece8f5}#duHud i{font-style:normal}#duHud .w0{color:#5fd1c4}#duHud .w1{color:#ff8a66}
+#duHud .db{flex-basis:100%;text-align:center;color:#ff8a66;animation:cxblink .5s steps(2) 4}
+.durelay{display:flex;flex-direction:column;gap:4px;margin:10px auto;max-width:340px;text-align:left;font-size:12px;color:#9a94b8}
+.durelay input{font-family:monospace;font-size:13px;padding:7px 8px;background:#100e1a;color:#ece8f5;border:0;border-radius:0;box-shadow:inset 0 0 0 2px #3e3960}
+`; document.head.appendChild(st); })();
+Object.assign(EN_TEXT, { "NUEVO": "NEW" });
+
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
