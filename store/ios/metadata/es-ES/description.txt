@@ -1,7 +1,5 @@
 Sube. No mires abajo.
 
-Aviso: el juego está en inglés.
-
 One More Floor Escape es una escalada infinita en 8 bits por una torre que se construye mientras subes. La cámara solo sube y no deja de empujar: si caes por debajo de la pantalla, se acabó.
 
 MODO HISTORIA: LA HUIDA

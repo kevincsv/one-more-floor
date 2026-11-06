@@ -11,9 +11,9 @@ HOW TO REACH EACH FEATURE
 1. Launch the app and tap the title screen.
 2. Pick a difficulty (EASY, NORMAL or HARDCORE). EASY is the quickest way to see a lot of the game.
 3. ESCAPE: the main endless climb, free.
-4. STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
-5. HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
-6. DUEL: shown as COMING SOON in this version; it is not playable yet.
+4. HISTORIA / STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
+5. HORDA / HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
+6. DUELO / DUEL: shown as COMING SOON in this version; it is not playable yet.
 7. SHOP: a cosmetic skin shop that uses in-game coins only, with no real money.
 8. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.
 Controls: an on-screen D-pad plus HIT and JUMP buttons. Other layouts are in Settings.
@@ -30,7 +30,7 @@ APPLE SERVICES
 - No third-party SDKs, analytics, servers or external services.
 
 REGIONS
-The content is the same in every region. The app is in English only. The Spanish store listing describes the same English-language game.
+The content is the same in every region. The app is in English and Spanish and follows the device language.
 
 REGULATED CONTENT
 None. There is no gambling, real-money prizes, health, finance or regulated industry content.
