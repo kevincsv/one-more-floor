@@ -10665,7 +10665,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v154";
+var OMF_VER = "Escape v156";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -13418,7 +13418,7 @@ function ddFmtDay(k) { const y = Math.floor(k / 10000), mo = Math.floor(k / 100)
     return r; }; }
 // the PLAY button in the selected past day's panel
 { const dt0 = ddDetail; ddDetail = function () { const h = dt0.apply(this, arguments); if (!DD_SEL || DD_SEL >= todayKey() || !h) return h;
-    return h.replace(/<\/div>$/, `<button type="button" class="ddplay" data-play="${DD_SEL}">${Lx("JUGAR ESTE DÍA", "PLAY THIS DAY")}</button><small class="ddnote">${Lx("Sin recompensa", "No reward")}</small></div>`); }; }
+    return h.replace(/<\/div>$/, `<small class="ddnote">${Lx("Sin recompensa", "No reward")}</small></div>`); }; } // v156 (user): no orange button here; the big yellow START button plays the selected day
 ov.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".dstk [data-play]"); if (!b) return; e.stopPropagation(); omfSfx("click");
   DD_REPLAY = +b.dataset.play; const ch = S.char.id; newRun({ char: ch, kind: "daily" }); { const k = dailyKey(); if (!(k in META.daily)) { /* nothing is saved for a past day */ } } nextRuleStep(); }, true);
 (() => { const st = document.createElement("style"); st.textContent = `
@@ -13514,6 +13514,30 @@ PXE_ART["🧪"] = PXE_ART["🧪"]; PXE_ART["❤️"] = PXE_ART["❤"];
     return u0.apply(this, arguments); }; }
 // text drawn straight on the game canvas (toasts, the message log) can't hold an <img>: emoji there are dropped
 { const t0 = toast; toast = function (text) { try { text = String(T(text)).replace(/\p{Extended_Pictographic}️?/gu, "").replace(/^\s+/, ""); } catch (_) {} return t0.call(this, text); }; }
+// v155 (user): tapping HORDA when you own it first shows what the mode is, with a button to start
+function hordeInfo() {
+  try { omfSfx("click"); } catch (_) {}
+  ov.hidden = false; ov.classList.remove("dead");
+  const row = (ic, c, es, en) => `<li>${pxi(ic, c, 2)}<span>${Lx(es, en)}</span></li>`;
+  ov.innerHTML = `<div class="menu setpage fullpg hordeinfo"><h2>${pxi("swords", "#e0566b", 2)} ${T("HORDA")}</h2>
+    <p class="rsub">${Lx("La misma torre sin fin, pero llena de enemigos.", "The same endless tower, but packed with enemies.")}</p>
+    <ul class="fulllist">${row("swords", "#e0566b", "Más enemigos: cada tramo trae 1 o 2 más, y a menudo uno que vuela.", "More enemies: every stretch brings 1 or 2 extra, and often a flyer.")}${row("up", "#f2c14e", "La torre aprieta antes: cada tramo es tan duro como 3 pisos más arriba.", "The tower gets tough sooner: each stretch is as hard as 3 floors higher.")}${row("check", "#9be07a", "Sin modificadores: nada cambia las reglas, solo cuenta pelear y subir.", "No modifiers: nothing changes the rules, it's all about fighting and climbing.")}${row("star", "#5fd1c4", "Subes de nivel y eliges cartas como en Escalar.", "You level up and pick cards just like in Climb.")}${row("trophy", "#f2c14e", "Tiene su propio récord. No cuenta para el ranking.", "It has its own record. It doesn't count for the ranking.")}</ul>
+    <p class="hbest">${Lx("Tu mejor altura en Horda", "Your best Horde height")}: <b>${bestOf("escape-horde")} m</b></p>
+    <div class="rowbig"><button class="go" id="hordeGo">${Lx("¡A LA HORDA!", "INTO THE HORDE!")}</button></div>
+    <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
+  paintPxi(ov); ov.scrollTop = 0;
+  ov.querySelector("#hordeGo").onclick = () => { try { omfSfx("click"); } catch (_) {} newRun({ char: S.char.id, kind: "escape", horde: true }); startFloor(); };
+  ov.querySelector("#backBtn").onclick = () => { try { omfSfx("click"); } catch (_) {} showTitle(); };
+}
+ov.addEventListener("click", e => { const b = e.target && e.target.closest && e.target.closest("#hordeBtn"); if (!b || !ESCAPE || !hordeOk() || b.disabled) return;
+  e.preventDefault(); e.stopPropagation(); hordeInfo(); }, true);
+(() => { const st = document.createElement("style"); st.textContent = '.hordeinfo .hbest{text-align:center;color:#c9c3e6;margin:10px 0}.hordeinfo .hbest b{color:#f2c14e}.hordeinfo .go{background:#e0566b;border-color:#e0566b;color:#1b1829}'; document.head.appendChild(st); })();
+// v156 (user): with a past day selected in the streak, the yellow START button reads START PAST CHALLENGE and opens that day
+function ddGoSync() { const g = document.getElementById("dlyGo"); if (!g || S.oldDaily) return; const past = DD_SEL && DD_SEL < todayKey();
+  g.textContent = past ? Lx("EMPEZAR DESAFÍO PASADO", "START PAST CHALLENGE") : Lx("EMPEZAR DESAFÍO DE HOY", "START TODAY'S CHALLENGE"); g.classList.toggle("ddpast", !!past); }
+{ const r0 = ddRedraw; ddRedraw = function () { const r = r0.apply(this, arguments); ddGoSync(); return r; }; }
+ov.addEventListener("click", e => { const g = e.target.closest && e.target.closest("#dlyGo"); if (!g || S.oldDaily || !(DD_SEL && DD_SEL < todayKey())) return;
+  e.preventDefault(); e.stopPropagation(); try { omfSfx("click"); } catch (_) {} DD_REPLAY = DD_SEL; newRun({ char: S.char.id, kind: "daily" }); nextRuleStep(); }, true);
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
