@@ -1120,6 +1120,7 @@ function pgsRun(meters, seconds) {
 }
 // v128 (user: the daily board didn't work): a rejected score lands in Ajustes › INFO's error log, so failures are visible
 function pgsScore(board, score) {
+  if (typeof S !== "undefined" && S && S.oldDaily && /^daily/.test(board || "")) return; // v146: a past day's challenge never posts a score
   if (!PGS || (typeof S !== "undefined" && (S.test || S.lab))) return;
   try { const r = PGS.submitScore({ board, score }); if (r && r.then) r.then(x => { if (x && x.ok === false) try { errLog("Game Center " + board + ": " + (x.error || "not sent"), "gc"); } catch (_) {} }).catch(e => { try { errLog("Game Center " + board + ": " + (e && e.message || e), "gc"); } catch (_) {} }); } catch (_) {} }
 // 4) Botones 8-bit en el menú de Escape (junto a Records), visibles solo si PGS existe:
@@ -1167,7 +1168,7 @@ function newRun(opts = {}) {
   const ch = CHARS.find(c => c.id === (opts.char || (S && S.char && S.char.id) || "velo")) || CHARS[0];
   const daily = !!opts.daily || opts.kind === "daily";
   const run = daily ? "daily" : (opts.kind || (S && S.run) || "story");
-  const seed = daily ? todayKey() : (Math.random() * 1e9) | 0;
+  const seed = daily ? (typeof DD_REPLAY !== "undefined" && DD_REPLAY ? DD_REPLAY : todayKey()) : (Math.random() * 1e9) | 0; // v146: a past day can be replayed
   S = { floor: 1, coins: 0, carry: 0, rules: [], relics: [], char: ch, maxhp: ch.hp, hp: ch.hp, mode: "title", t: 0, mult: 1,
     seed, daily, run, rng: mulberry(seed), toasts: [], won: false };
   // what you owned when the run began: the death screen lists the difference ("unlocked this run")
@@ -4161,8 +4162,10 @@ function pvTick() {
     let fr = null;
     if (heroesOn()) { // heroes add-on: the chosen skin, idle or running, cropped to its 16 x 26 art
       const sk = c.dataset.skin || heroSkinOf(cid), h = heroFrame(sk, running ? "run" : "idle", running ? Math.floor(t * 12) : Math.floor(t * 4));
-      if (h && c._pvf === h && c._pvl === c.dataset.lock + c.width + 'x' + c.height) continue; // v138: same frame as last time, nothing to repaint
-      if (h) { c._pvf = h; c._pvl = c.dataset.lock + c.width + 'x' + c.height; const k = Math.min(Math.floor(c.width / 16), Math.floor(c.height / 26)); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height); x.drawImage(h, 0, 6, 16, 26, Math.round((c.width - 16 * k) / 2), c.height - 26 * k, 16 * k, 26 * k);
+      const wg = HERO_SKINS[sk] && HERO_SKINS[sk].wings ? Math.floor(performance.now() / 133) % 2 : -1; // v147 (user): winged skins show their wings here too
+      if (wg >= 0 && !c._wgw) { const kk = Math.floor(c.height / 26), nw = 30 * kk; c._wgw = 1; if (c.width < nw) { const cw = c.getBoundingClientRect().width || c.width, ncw = cw * nw / c.width; c.width = nw; c.style.width = ncw + 'px'; c.style.marginLeft = c.style.marginRight = -(ncw - cw) / 2 + 'px'; c.style.maxWidth = 'none'; } } // the wings need 30 px of width: widen the canvas, keep the hero the same size
+      if (h && c._pvf === h && c._pvl === c.dataset.lock + c.width + 'x' + c.height + wg) continue; // v138: same frame as last time, nothing to repaint
+      if (h) { c._pvf = h; c._pvl = c.dataset.lock + c.width + 'x' + c.height + wg; const k = Math.min(Math.floor(c.width / 16), Math.floor(c.height / 26)); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height); if (wg >= 0 && typeof wingsDraw === "function") try { wingsDraw(x, sk, running ? "run" : "idle", Math.round((c.width - 16 * k) / 2), c.height - 26 * k, k, false); } catch (_) {} x.drawImage(h, 0, 6, 16, 26, Math.round((c.width - 16 * k) / 2), c.height - 26 * k, 16 * k, 26 * k);
         if (c.dataset.lock === "1") { x.globalCompositeOperation = "source-atop"; x.fillStyle = "#2a2640"; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "source-over"; }
         continue; }
     }
@@ -10653,7 +10656,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v145";
+var OMF_VER = "Escape v147";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10870,10 +10873,15 @@ var RETO_T = [
 ];
 var RETO_FRAMES = [[3, "#c98a4a", ["Marco de bronce", "Bronze frame"]], [10, "#c9cde0", ["Marco de plata", "Silver frame"]], [25, "#f2c14e", ["Marco de oro", "Gold frame"]]];
 var RETO_BOSS = ["boss", "bossx", "nohit"]; // v91: no bosses in the endless climb
-function retoGen(day) {
-  const R = mulberry(day * 7919 + 17), used = new Set(), list = [];
+// v146 (user: "los desafíos no están cambiando cada día"): the day is hashed before seeding (neighbouring days used to draw almost the
+// same set) and no challenge repeats one from the day before
+function retoHash(n) { let x = (n ^ 0x9e3779b9) | 0; x = Math.imul(x ^ (x >>> 16), 0x85ebca6b); x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35); return (x ^ (x >>> 16)) >>> 0; }
+function retoDayBefore(day) { const y = Math.floor(day / 10000), m = Math.floor(day / 100) % 100, d = day % 100, t = new Date(Date.UTC(y, m - 1, d) - 864e5); return t.getUTCFullYear() * 10000 + (t.getUTCMonth() + 1) * 100 + t.getUTCDate(); }
+function retoGen(day, depth = 10) {
+  const R = mulberry(retoHash(day)), used = new Set(), list = [], prev = depth > 0 ? new Set(retoGen(retoDayBefore(day), depth - 1).map(it => it.t)) : new Set();
   for (let d = 0; d < 3; d++) {
-    const pool = RETO_T.filter(t => !used.has(t.k) && (!t.ds || t.ds.includes(d)) && !(ESCAPE && !ESC_ARENAS && RETO_BOSS.includes(t.id)));
+    let pool = RETO_T.filter(t => !used.has(t.k) && (!t.ds || t.ds.includes(d)) && !(ESCAPE && !ESC_ARENAS && RETO_BOSS.includes(t.id)));
+    { const fresh = pool.filter(t => !prev.has(t.id)); if (fresh.length) pool = fresh; }
     const t = pool[Math.floor(R() * pool.length)]; used.add(t.k);
     list.push({ t: t.id, d, n: t.n[d], x: t.x ? t.x(d, R) : null, p: 0, done: false });
   }
@@ -10955,7 +10963,7 @@ function showRetos() {
   const d = new Date(), dd = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
   ov.hidden = false; ov.classList.remove("dead");
   ov.innerHTML = `<div class="menu setpage retos"><h2>${pxi("target", "#e0566b", 2)} ${Lx("RETOS DE HOY", "TODAY'S CHALLENGES")}</h2>
-    <p class="rsub">${dd} · ${Lx("los mismos para todos, cambian cada 24 h a medianoche · se pagan en monedas de la tienda", "the same for everyone, new ones every 24 h at midnight · paid in shop coins")}</p>
+    <p class="rsub">${dd}</p>
     <div class="rlist">${retoRows(R)}</div>
     <p class="rsum">${Lx("Completados", "Completed")}: <b>${R.total || 0}</b> · ${Lx("Días con los 3", "Days with all 3")}: <b>${R.full || 0}</b> · ${Lx("Racha", "Streak")}: <b>${dailyStreak()}</b></p>
     <div class="mlabel">${Lx("MARCOS PARA COMPARTIR", "SHARE CARD FRAMES")}</div>
@@ -11992,6 +12000,7 @@ function brisaOk() { return shopOwned("brisa") || (typeof PAY_ON !== "undefined"
 { const s0 = skinOwned; skinOwned = function (id) { const k = HERO_SKINS[id]; if (k && k.shop) return id === "brisa" ? brisaOk() : shopOwned(id); return s0.apply(this, arguments); }; }
 { const h0 = heroSkinOf; heroSkinOf = function (cid) { const r = h0.apply(this, arguments), k = HERO_SKINS[r]; if (k && k.shop && r !== cid && !shopOwned(r)) return HERO_SKINS[cid] ? cid : r; return r; }; }
 { const l0 = lockInfo; lockInfo = function (kind, id) { if (kind === "skin" && HERO_SKINS[id] && HERO_SKINS[id].shop) return { t: Lx("Tienda", "Shop") + ' · <i class="cn"></i>' + shopFmt(shopPrice(id)) }; return l0.apply(this, arguments); }; }
+try { for (const id in SHOP_SKINS) { const k = SHOP_SKINS[id]; if (k && k.en && k.name && !(k.name in EN_TEXT)) EN_TEXT[k.name] = k.en; } } catch (_) {} // v147 (user): shop skin names in English outside the shop too
 function shopFmt(n) { const s = String(Math.abs(Math.round(n || 0))), sep = LANG === "en" ? "," : "."; // no Intl: loading its locale data stalled the first death screen
   return (n < 0 ? "-" : "") + (s.length > 4 || LANG === "en" && s.length > 3 ? s.replace(/\B(?=(\d{3})+(?!\d))/g, sep) : s); }
 // umbrella knocks enemies twice as far
@@ -13379,6 +13388,36 @@ body.esc .hud .chip.duchip.ban{background:#3a1420;animation:cxblink .5s steps(2)
 #ov button,.cxsheet button,.cx2 .tile{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .cx2 .tile{transition:transform .07s ease-out}.cx2 .tile:active{transform:scale(.93)}
 @media (prefers-reduced-motion:reduce){.cxsheet,.cxshade{transition:none!important}}
+`; document.head.appendChild(st); })();
+// ===== v146 (user: "cuando cliqueas un desafío viejo te deje jugarlo pero te ponga un mensaje de que no ganarás recompensa"):
+// a past day in the streak strip has a PLAY button. It is the same tower and the same modifiers as that day (seed = that day),
+// played as practice: no prize, no streak day, no daily record, no ranking and no Game Center score. "Again" replays that day.
+var DD_REPLAY = 0;
+{ const nr0 = newRun; newRun = function (opts = {}) { const r = nr0.apply(this, arguments); S.oldDaily = !!(S.daily && DD_REPLAY && DD_REPLAY !== todayKey()); if (!S.oldDaily && S.daily) DD_REPLAY = 0; return r; }; }
+{ const t0 = showTitle; showTitle = function () { DD_REPLAY = 0; return t0.apply(this, arguments); }; }
+{ const dr0 = dailyRecord; dailyRecord = function () { if (S && S.oldDaily) return; return dr0.apply(this, arguments); }; }
+{ const rr0 = recordRun; recordRun = function () { if (S && S.oldDaily) return; return rr0.apply(this, arguments); }; }
+{ const ba0 = bankAdd; bankAdd = function (n, why) { if (S && S.oldDaily && why === Lx("Desafío diario", "Daily challenge")) return; return ba0.apply(this, arguments); }; }
+{ const aa0 = achAdd; achAdd = function (k) { if (S && S.oldDaily && k === "dailyWins") return; return aa0.apply(this, arguments); }; }
+{ const mk0 = ddMark; ddMark = function () { if (S && S.oldDaily) return; return mk0.apply(this, arguments); }; }
+function ddFmtDay(k) { const y = Math.floor(k / 10000), mo = Math.floor(k / 100) % 100, d = k % 100; return String(d).padStart(2, "0") + "/" + String(mo).padStart(2, "0") + "/" + y; }
+{ const di0 = dailyIntro; dailyIntro = function () { const r = di0.apply(this, arguments); if (!S.oldDaily) return r;
+    const tg = ov.querySelector(".dlyintro .tagline"); if (tg) tg.textContent = ddFmtDay(S.seed) + " · " + T(S.easy ? "Fácil" : S.hard ? "Hardcore" : "Normal");
+    const h2 = ov.querySelector(".dlyintro h2"); if (h2) h2.insertAdjacentHTML("beforeend", ` <small class="ddold">${Lx("ANTIGUO", "PAST")}</small>`);
+    const pr = ov.querySelector(".dlyintro .dlyprize"); if (pr) pr.outerHTML = `<p class="ddwarn">${Lx("Desafío de otro día: puedes jugarlo, pero completarlo no da recompensa, no cuenta para la racha ni para el ranking.", "A past day's challenge: you can play it, but completing it gives no reward and doesn't count for the streak or the ranking.")}</p>`;
+    const st = ov.querySelector(".dstk"); if (st) st.remove(); const hu = ov.querySelector(".dlyintro .hust"); if (hu) hu.remove();
+    const bk = document.getElementById("backBtn"); if (bk) bk.onclick = () => { omfSfx("click"); DD_REPLAY = 0; newRun({ char: S.char.id, kind: "daily" }); nextRuleStep(); };
+    return r; }; }
+// the PLAY button in the selected past day's panel
+{ const dt0 = ddDetail; ddDetail = function () { const h = dt0.apply(this, arguments); if (!DD_SEL || DD_SEL >= todayKey() || !h) return h;
+    return h.replace(/<\/div>$/, `<button type="button" class="ddplay" data-play="${DD_SEL}">${Lx("JUGAR ESTE DÍA", "PLAY THIS DAY")}</button><small class="ddnote">${Lx("Sin recompensa", "No reward")}</small></div>`); }; }
+ov.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".dstk [data-play]"); if (!b) return; e.stopPropagation(); omfSfx("click");
+  DD_REPLAY = +b.dataset.play; const ch = S.char.id; newRun({ char: ch, kind: "daily" }); { const k = dailyKey(); if (!(k in META.daily)) { /* nothing is saved for a past day */ } } nextRuleStep(); }, true);
+(() => { const st = document.createElement("style"); st.textContent = `
+.dstk .dd-det .ddplay{margin-left:auto;font-family:var(--font-display);font-size:10px;letter-spacing:1px;color:#0b0912;background:#ff8c50;border:0;border-radius:0;padding:6px 10px;cursor:pointer;clip-path:var(--cxframe);touch-action:manipulation}
+.dstk .dd-det .ddnote{font-size:10px;color:#9a94b8;width:100%;text-align:right}
+.dlyintro .ddold{font-family:var(--font-display);font-size:10px;color:#0b0912;background:#9a94b8;text-shadow:none;padding:2px 6px;vertical-align:middle;letter-spacing:1px}
+.dlyintro .ddwarn{margin:10px auto;max-width:420px;padding:8px 10px;background:#2a1418;color:#ff8a66;box-shadow:inset 0 0 0 2px #ff8a66;clip-path:var(--cxframe);font-size:12px;text-align:center}
 `; document.head.appendChild(st); })();
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
