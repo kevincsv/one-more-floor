@@ -10656,7 +10656,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v147";
+var OMF_VER = "Escape v148";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10779,7 +10779,7 @@ showSettings = function () {
     <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
       <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button></div></div><p class="bkmsg" id="bkMsg"></p>
     ${window.OMF_STORE ? "" : `<div class="mlabel">INFO</div>
-    <p class="infoln">${OMF_VER} · ${Lx("Errores", "Errors")}: <b>${errs.length}</b></p>
+    <p class="infoln">${OMF_VER}</p>
     ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`}`; // v96 (user): no debug lines in the store build
   pg.insertBefore(box, row); paintPxi(box);
   box.querySelectorAll("[data-hq]").forEach(b => b.onclick = () => { META.hq = b.dataset.hq === "1"; saveMeta(); omfSfx("click"); box.querySelectorAll("[data-hq]").forEach(o => o.setAttribute("aria-pressed", String(o === b))); fitView(true); });
