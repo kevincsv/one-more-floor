@@ -154,12 +154,15 @@ def main():
     for folder, loc in LOCALES.items():
         attrs = {k: v for k, v in {"name": read(folder, "name"), "subtitle": read(folder, "subtitle"),
                                    "privacyPolicyUrl": read(folder, "privacy_url")}.items() if v}
-        if loc in ilocs:
-            a.call("PATCH", f"/v1/appInfoLocalizations/{ilocs[loc]['id']}", {"data": {"type": "appInfoLocalizations", "id": ilocs[loc]["id"], "attributes": attrs}})
-        else:
-            a.call("POST", "/v1/appInfoLocalizations", {"data": {"type": "appInfoLocalizations", "attributes": {"locale": loc, **attrs},
-                "relationships": {"appInfo": {"data": {"type": "appInfos", "id": info["id"]}}}}})
-        print("App info", loc, "ok")
+        try:  # a live app info is locked until a new version exists; the next run edits the new one
+            if loc in ilocs:
+                a.call("PATCH", f"/v1/appInfoLocalizations/{ilocs[loc]['id']}", {"data": {"type": "appInfoLocalizations", "id": ilocs[loc]["id"], "attributes": attrs}})
+            else:
+                a.call("POST", "/v1/appInfoLocalizations", {"data": {"type": "appInfoLocalizations", "attributes": {"locale": loc, **attrs},
+                    "relationships": {"appInfo": {"data": {"type": "appInfos", "id": info["id"]}}}}})
+            print("App info", loc, "ok")
+        except RuntimeError as e:
+            print("WARN app info", loc, "(locked while live):", str(e)[:200])
 
     # content rights: uses third-party art (CC0 pack) with the rights to it
     try:
