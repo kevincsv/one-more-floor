@@ -4845,7 +4845,7 @@ const BIOMES = [
 /* ---------- language: Spanish source text, English layer applied on load ---------- */
 let LANG = "es";
 try { LANG = localStorage.getItem("omf-lang") || ((navigator.language || "es").toLowerCase().startsWith("es") ? "es" : "en"); } catch (_) {}
-var LANG_ONLY = "en", GFX_SMOOTH_ONLY = true; if (LANG_ONLY) LANG = LANG_ONLY; // v158 (user): English only for now; the Spanish texts stay so it can come back
+var LANG_ONLY = "", GFX_SMOOTH_ONLY = true; // v159 (user: "Deja español mejor"): both languages again if (LANG_ONLY) LANG = LANG_ONLY; // v158 (user): English only for now; the Spanish texts stay so it can come back
 const EN_RULES = {
   nojump: ["No jumping", "You can't jump. Ladders appear and spikes rise and fall."],
   invis: ["Invisible enemies", "You can't see enemies. Dust and hits give them away."],
@@ -10666,7 +10666,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v158";
+var OMF_VER = "Escape v159";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
