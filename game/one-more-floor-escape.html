@@ -10653,7 +10653,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v144";
+var OMF_VER = "Escape v145";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12870,7 +12870,7 @@ var DUEL_RELAY = "wss://one-more-floor.kevindevrk-96e.workers.dev"; // Cloudflar
 var DU_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", DU_LIMIT = 180, DU_GOAL = 2;
 var DU = { ws: null, net: false, role: null, code: "", peer: false, rvName: "RIVAL", wins: [0, 0], round: 0, seed: 0, diff: 1, on: false, over: null,
   cs: 0, ci: null, seenCs: 0, cRx: 0, snaps: [], rv: null, lastRx: 0, t0: 0, sendT: 0, low: 0, bot: null, quit: false, scr: "", qTimer: 0 };
-function duelRelay() { return String((META && META.duelRelay) || DUEL_RELAY || "").trim(); }
+function duelRelay() { const o = META && META.duelRelay; return String(o && /^ws:\/\/localhost[:/]/.test(o) ? o : DUEL_RELAY || "").trim(); } // v145: always the real server (a local test relay is the only override)
 function duName() { if (!META.duelName) { META.duelName = "JUGADOR " + (1000 + Math.floor(Math.random() * 9000)); try { saveMeta(); } catch (_) {} } return META.duelName; }
 function duClean(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9 _]/g, "").slice(0, 14) || "RIVAL"; }
 function duNow() { return performance.now() / 1000; }
@@ -13136,7 +13136,7 @@ var du_tw0 = escTitleWire; escTitleWire = function () { const r = du_tw0.apply(t
       paintPxi(hb.parentNode); document.getElementById("duelBtn").onclick = () => { omfSfx("click"); duMenu(); }; } } catch (er) { try { errLog(er.message, "duTile"); } catch (_) {} }
   return r; };
 var du_ss0 = showSettings; showSettings = function () { const r = du_ss0.apply(this, arguments);
-  try { if (!ESCAPE || document.getElementById("duRelay")) return r; const m = ov.querySelector(".menu"); if (!m) return r; const how = document.getElementById("howBtnS"), at = how ? how.closest(".tools") : null;
+  try { if (true) return r; /* v145 (user: "quita esto de opciones"): no Duel server field in Settings */ if (!ESCAPE || document.getElementById("duRelay")) return r; const m = ov.querySelector(".menu"); if (!m) return r; const how = document.getElementById("howBtnS"), at = how ? how.closest(".tools") : null;
     const html = `<div class="durelay"><label for="duRelay">${Lx("Servidor de duelo", "Duel server")}</label><input id="duRelay" placeholder="${DUEL_RELAY || "wss://..."}" value="${String(META.duelRelay || "").replace(/"/g, "")}" autocomplete="off" spellcheck="false"></div>`;
     if (at) at.insertAdjacentHTML("afterend", html); else m.insertAdjacentHTML("beforeend", html);
     const i = document.getElementById("duRelay"); i.onchange = () => { const v = i.value.trim(); META.duelRelay = /^wss?:\/\/[^\s"<>]+$/.test(v) ? v : ""; i.value = META.duelRelay; try { saveMeta(); } catch (_) {} };
