@@ -22,6 +22,10 @@ IAP_ID = "com.onemorefloor.escape.full"  # non-consumable "Escape completo", cre
 PREVIEW_TYPES = {"iphone": "IPHONE_67", "ipad": "IPAD_PRO_3GEN_129"}
 
 
+
+class _SameShot(Exception):
+    pass
+
 def p8():
     raw = os.environ["ASC_KEY_P8"].strip()
     if "BEGIN" not in raw:
@@ -287,7 +291,7 @@ def main():
         else:
             print("In-app purchase", IAP_ID, iap["attributes"].get("state"))
             a.call("PATCH", f"/v2/inAppPurchases/{iap['id']}", {"data": {"type": "inAppPurchases", "id": iap["id"], "attributes": {
-                "reviewNote": "Non-consumable. Opens from the title screen (FULL ESCAPE) and from Settings. Unlocks Horde mode, the heroes Kai and Nyx and all wardrobe looks. RESTORE PURCHASE is on the same screen."}}})
+                "reviewNote": "Non-consumable. Opens from the title screen (FULL ESCAPE) and from Settings. Unlocks Horde mode, the heroes Kai, Nyx and Brisa and all wardrobe looks. RESTORE PURCHASE is on the same screen."}}})
             try:
                 if not a.call("GET", f"/v2/inAppPurchases/{iap['id']}/inAppPurchaseAvailability", ok=(200, 404)).get("data"):
                     tl = terrs or [t["id"] for t in a.all("/v1/territories", limit=200)]
@@ -300,9 +304,12 @@ def main():
                 print("WARN in-app purchase availability:", str(e)[:400])
             shotf = os.path.join(ROOT, "iap", "review-screenshot.png")
             cur = a.call("GET", f"/v2/inAppPurchases/{iap['id']}/appStoreReviewScreenshot")
-            if cur and cur.get("data"):
-                a.call("DELETE", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{cur['data']['id']}")
             data = open(shotf, "rb").read()
+            have = cur and cur.get("data")
+            if have and have["attributes"].get("sourceFileChecksum") == hashlib.md5(data).hexdigest():
+                raise _SameShot()  # same file already there: re-uploading it would leave the purchase "processing" at submit time
+            if have:
+                a.call("DELETE", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{have['id']}")
             obj = a.call("POST", "/v1/inAppPurchaseAppStoreReviewScreenshots", {"data": {"type": "inAppPurchaseAppStoreReviewScreenshots",
                 "attributes": {"fileName": "review-screenshot.png", "fileSize": len(data)},
                 "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iap["id"]}}}}})["data"]
@@ -314,6 +321,8 @@ def main():
             a.call("PATCH", f"/v1/inAppPurchaseAppStoreReviewScreenshots/{obj['id']}", {"data": {"type": "inAppPurchaseAppStoreReviewScreenshots",
                 "id": obj["id"], "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
             print("In-app purchase review screenshot uploaded")
+    except _SameShot:
+        print("In-app purchase review screenshot unchanged")
     except RuntimeError as e:
         print("WARN in-app purchase:", str(e)[:600])
 
@@ -365,12 +374,20 @@ def main():
                     "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": iap["id"]}}}}})
                 print("In-app purchase added to the review")
             except RuntimeError as e:
-                print("WARN in-app purchase submission (add it on the version page in App Store Connect):", str(e)[:400])
-        sub = a.call("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"},
+                print("WARN in-app purchase submission (add it on the version page in App Store Connect):", str(e)[:2500])
+        # reuse a draft submission left by an earlier failed run instead of opening a second one
+        drafts = a.get("/v1/reviewSubmissions", **{"filter[app]": aid, "filter[platform]": "IOS",
+                                                    "filter[state]": "READY_FOR_REVIEW,UNRESOLVED_ISSUES"})["data"]
+        sub = drafts[0] if drafts else a.call("POST", "/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"},
             "relationships": {"app": {"data": {"type": "apps", "id": aid}}}}})["data"]
-        a.call("POST", "/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
-            "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": sub["id"]}},
-            "appStoreVersion": {"data": {"type": "appStoreVersions", "id": vid}}}}})
+        try:
+            a.call("POST", "/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
+                "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": sub["id"]}},
+                "appStoreVersion": {"data": {"type": "appStoreVersions", "id": vid}}}}})
+        except RuntimeError as e:
+            if not drafts:
+                raise
+            print("Version already in the draft submission:", str(e)[:200])
         a.call("PATCH", f"/v1/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"submitted": True}}})
         print("SUBMITTED for App Review")
     else:
