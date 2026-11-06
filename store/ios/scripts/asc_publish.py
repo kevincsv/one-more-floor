@@ -103,14 +103,17 @@ def media(a, vloc_id, loc, folder, types, set_kind, set_type_attr, item_kind):
     if not os.path.isdir(base):
         base = os.path.join(ROOT, folder, MEDIA_FROM.get(loc, loc))
     if not os.path.isdir(base):
-        print(f"  no {folder} for {loc}")
-        return
+        os.makedirs(base, exist_ok=True)  # empty folder: existing media of this kind gets cleared
     sets = {s["attributes"][set_type_attr]: s for s in a.all(f"/v1/appStoreVersionLocalizations/{vloc_id}/{set_kind}")}
     for dev, typ in types.items():
         files = sorted(f for f in os.listdir(base) if f.startswith(dev + "-"))
-        if not files:
-            continue
         s = sets.get(typ)
+        if not files:  # nothing in the repo for this device: clear what the listing still shows
+            if s:
+                for old in a.all(f"/v1/{set_kind}/{s['id']}/{item_kind}"):
+                    a.call("DELETE", f"/v1/{item_kind}/{old['id']}")
+                print(f"  {loc} {typ}: cleared")
+            continue
         if not s:
             s = a.call("POST", "/v1/" + set_kind, {"data": {"type": set_kind, "attributes": {set_type_attr: typ},
                 "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": vloc_id}}}}})["data"]
