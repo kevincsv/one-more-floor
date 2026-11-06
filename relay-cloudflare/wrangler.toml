@@ -1,4 +1,4 @@
-name = "omf-duel-relay"
+name = "one-more-floor"
 main = "worker.js"
 compatibility_date = "2025-09-01"
 workers_dev = true

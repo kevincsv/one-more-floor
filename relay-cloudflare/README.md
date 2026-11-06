@@ -8,4 +8,4 @@ Protocol: `create` · `join {code}` · `queue {diff}` · `leave` · `msg {d}`; r
 
 Deploy: Cloudflare dashboard, Workers & Pages, Create, Import a repository, pick this repo and set the
 root directory to `relay-cloudflare`. Or locally: `npm install && npx wrangler deploy`.
-The game connects to `wss://omf-duel-relay.<subdomain>.workers.dev`.
+The game connects to `wss://one-more-floor.<subdomain>.workers.dev`.
