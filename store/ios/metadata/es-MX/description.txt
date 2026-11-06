@@ -2,6 +2,9 @@ Sube. No mires abajo.
 
 One More Floor Escape es una escalada infinita en 8 bits por una torre que se construye mientras subes. La cámara solo sube y no deja de empujar: si caes por debajo de la pantalla, se acabó.
 
+MODO HISTORIA: LA HUIDA
+Despiertas dentro de una torre viva que quiere matarte, y cada regla nueva es uno de sus ataques. No sabes por qué. Solo sabes que tienes que subir. Cruza los cinco biomas, vence al jefe al final de cada uno, encuentra las notas de otros escaladores y recuerda a quién viniste a buscar. Dos finales, punto de control tras cada jefe y ninguno en Hardcore.
+
 REGLAS NUEVAS CADA 15 SEGUNDOS
 Oscuridad, viento, hielo, controles en espejo, enemigos invisibles... Entra un modificador nuevo y se va el más antiguo. Las calaveras te dicen lo duro que es cada uno, y dos reglas juntas pueden formar una combinación nueva.
 
@@ -22,6 +25,4 @@ Y ADEMÁS
 • Controles táctiles pensados para el móvil: cruceta, stick invisible o clásico
 
 GRATIS PARA ESCALAR
-La escalada infinita es gratis. Una única compra opcional, Escape completo, desbloquea para siempre el modo Horda, a Kai, a Nyx, a Brisa y todos los aspectos. Sin anuncios, sin cuentas, sin rastreo, y funciona sin conexión.
-
-MUY PRONTO: LA HUIDA, un modo historia con recuerdos, jefes y finales.
+La escalada infinita es gratis. Una única compra opcional, Escape completo, desbloquea para siempre el modo Horda, a Kai, a Nyx, a Brisa y todos los aspectos. El modo Horda también se desbloquea gratis al terminar La Huida en Normal o Hardcore. Sin anuncios, sin cuentas, sin rastreo, y funciona sin conexión.

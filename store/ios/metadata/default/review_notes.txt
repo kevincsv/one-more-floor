@@ -11,8 +11,8 @@ HOW TO REACH EACH FEATURE
 1. Launch the app and tap the title screen.
 2. Pick a difficulty (EASY, NORMAL or HARDCORE). EASY is the quickest way to see a lot of the game.
 3. ESCAPE: the main endless climb, free.
-4. HISTORIA / STORY ("La Huida"): shown as COMING SOON in this version; it is not playable yet.
-5. HORDA / HORDE: locked by default. It unlocks with the Full Escape purchase. Tapping it while locked explains this.
+4. HISTORIA / STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
+5. HORDA / HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
 6. SHOP: a cosmetic skin shop that uses in-game coins only, with no real money.
 7. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.
 Controls: an on-screen D-pad plus HIT and JUMP buttons. Other layouts are in Settings.
