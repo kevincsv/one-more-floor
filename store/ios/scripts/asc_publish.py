@@ -246,6 +246,8 @@ def main():
         attrs = {k: v for k, v in {"description": read(folder, "description"), "keywords": read(folder, "keywords"),
                                    "promotionalText": read(folder, "promotional_text"), "supportUrl": read(folder, "support_url"),
                                    "marketingUrl": read(folder, "marketing_url")}.items() if v}
+        if o.version != "1.0.0" and read(folder, "whats_new"):  # Apple refuses release notes on the first version
+            attrs["whatsNew"] = read(folder, "whats_new")
         if loc in vlocs:
             vl = a.call("PATCH", f"/v1/appStoreVersionLocalizations/{vlocs[loc]['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": vlocs[loc]["id"], "attributes": attrs}})["data"]
         else:
