@@ -10656,7 +10656,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v150";
+var OMF_VER = "Escape v151";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -13432,6 +13432,24 @@ if (DUEL_SOON) {
 }
 function duSoonTap() { try { omfSfx("click"); } catch (_) {} const b = document.getElementById("duelBtn"); if (!b) return; b.classList.remove("dublink"); void b.offsetWidth; b.classList.add("dublink"); }
 (() => { const st = document.createElement("style"); st.textContent = '#duelBtn.dusoon{opacity:.6}#duelBtn.dusoon .ts,#duelBtn.dusoon .mv{color:#f2c14e;letter-spacing:1px}#duelBtn.dublink{animation:dublink .45s steps(3) 1}@keyframes dublink{0%,66%{opacity:1;transform:translateX(-2px)}33%,100%{opacity:.6;transform:translateX(2px)}}'; document.head.appendChild(st); })();
+// v151 (user): the level-up cards sit in the middle of the screen, not at the bottom (the overlay pushes its first
+// child down with margin-top:auto; the last one now gets the same below). And no menu scrolls like a web page:
+// no scrollbar, no rubber-band bounce, and a menu that is only a little taller than the screen shrinks to fit.
+(() => { const st = document.createElement("style"); st.textContent = `
+#ov > h2.lvl ~ .cards:last-child{margin-bottom:auto}
+html,body{overscroll-behavior:none}
+#ov{overscroll-behavior:none;scrollbar-width:none;-webkit-tap-highlight-color:transparent}
+*::-webkit-scrollbar{display:none;width:0;height:0}
+*{scrollbar-width:none}
+#wardrobe,.cxsheet,.cx2,[class*="sheet"]{overscroll-behavior:contain}`; document.head.appendChild(st); })();
+function ovFit() { try {
+    if (ov.hidden) return; const m = ov.querySelector(":scope > .menu"); if (!m || m.classList.contains("etitle")) return;
+    m.style.zoom = ""; const H = ov.clientHeight, sh = ov.scrollHeight; if (!H || sh <= H + 1) return;
+    const z = H / sh; if (z < 0.78) return; // a long list (codex, shop pages) keeps scrolling, just without the browser look
+    m.style.zoom = Math.max(0.78, z - 0.005).toFixed(3); ov.scrollTop = 0;
+  } catch (_) {} }
+{ let q = 0; const go = () => { if (q) return; q = requestAnimationFrame(() => { q = 0; ovFit(); setTimeout(ovFit, 450); }); };
+  try { new MutationObserver(ms => { if (ms.some(m => m.target === ov || [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1))) go(); }).observe(ov, { childList: true, subtree: true }); /* a panel opening inside a menu (a streak day) refits too; text ticks do not */ } catch (_) {} addEventListener("resize", go); }
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
