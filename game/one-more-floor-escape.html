@@ -9756,7 +9756,7 @@ function drawSkullPx(x, y, k, on) { ctx.fillStyle = on ? "#e0566b" : "#3e3960"; 
 function drawNextMod(nx) { // v70 (user: "the new-modifier messages take a lot of space"): one small chip, top right under the HUD
   const id = S.escNextId, r = id && RULE[id]; if (!r) { S.nmBox = null; return; } ctx.save(); ctx.textAlign = "left";
   const hard = id === "mirror" || r.cost >= 3, n = clamp(Math.round(r.cost || 1), 1, 3), blink = nx < 1.5 && Math.floor(S.t * 8) % 2;
-  ctx.font = "10px Silkscreen, monospace"; const label = r.icon + " " + T(r.name).toUpperCase(), cnt = String(Math.ceil(nx));
+  ctx.font = "10px Silkscreen, monospace"; const label = T(r.name).toUpperCase(), cnt = String(Math.ceil(nx));
   const lw = ctx.measureText(label).width, cw2 = ctx.measureText(cnt).width, h = 20, w = Math.round(8 + lw + 6 + n * 10 + 6 + cw2 + 8);
   const x = Math.round(CW - w - 8), y = Math.round(Math.max(escToastY, 60));
   ctx.fillStyle = "rgba(10,8,18,.82)"; ctx.fillRect(x, y, w, h); S.nmBox = [y, y + h];
@@ -10665,7 +10665,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v156";
+var OMF_VER = "Escape v157";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11007,7 +11007,7 @@ function shareCard(D) {
     g.fillStyle = "#0b0912"; g.fillRect(bx - K, by - K, bw + 2 * K, 48 + 2 * K); g.fillStyle = D.modeCol || "#5fd1c4"; g.fillRect(bx, by, bw, 48); g.fillStyle = "#1b1829"; g.fillRect(bx + K, by + K, bw - 2 * K, 48 - 2 * K);
     out(modeTxt, 540, by + 36, 30, D.modeCol || "#5fd1c4", 3); }
   if (extra) out(extra, 540, 990 - 16, 22, "#a39cc4", 2);
-  if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; { const ic = RULE[id] ? RULE[id].icon : "?", A = typeof PXE_ART !== "undefined" && PXE_ART[ic]; if (A && typeof PXE_PAL !== "undefined") A.forEach((row, y) => [...row].forEach((k, x) => { if (PXE_PAL[k]) { g.fillStyle = PXE_PAL[k]; g.fillRect(x0 + i * w - 21 + x * 3, 302 + y * 3, 3, 3); } })); else g.fillText(ic, x0 + i * w, 340); } }); }
+  if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; { const ic = RULE[id] ? RULE[id].icon : "?", A = typeof PXE_ART !== "undefined" && PXE_ART[ic]; if (A && typeof PXE_PAL !== "undefined") A.forEach((row, y) => [...row].forEach((k, x) => { if (PXE_PAL[k]) { g.fillStyle = PXE_PAL[k]; g.fillRect(x0 + i * w - 21 + x * 3, 302 + y * 3, 3, 3); } })); else { try { const c = document.createElement("canvas"); c.width = c.height = 14; const q = c.getContext("2d"); q.font = "13px sans-serif"; q.fillStyle = "#ece6ff"; q.textAlign = "center"; q.textBaseline = "middle"; q.fillText(ic + "\uFE0E", 7, 8); const d = q.getImageData(0, 0, 14, 14); for (let k = 3; k < d.data.length; k += 4) d.data[k] = d.data[k] > 100 ? 255 : 0; q.putImageData(d, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(c, x0 + i * w - 21, 302, 42, 42); } catch (_) {} } } }); }
   out("One More Floor Escape", 540, 1012, 22, "#a39cc4", 2);
   return c;
 }
@@ -11409,7 +11409,7 @@ var newRun90 = newRun; newRun = function () { msgHeld.length = 0; const r = newR
 drawNextMod = function (nx, y0) { // a pill flush with the left edge: icon, name, "in N", skulls
   const id = S.escNextId, r = id && RULE[id]; if (!r) { S.nmBox = null; return; } ctx.save(); ctx.textAlign = "left";
   const hard = id === "mirror" || r.cost >= 3, n = clamp(Math.round(r.cost || 1), 1, 3), blink = nx < 1.5 && Math.floor(S.t * 8) % 2, col = hard || blink ? "#e0566b" : "#f2c14e";
-  ctx.font = "10px Silkscreen, monospace"; const label = r.icon + " " + T(r.name).toUpperCase() + " " + T("EN") + " " + Math.ceil(nx);
+  ctx.font = "10px Silkscreen, monospace"; const label = T(r.name).toUpperCase() + " " + T("EN") + " " + Math.ceil(nx);
   const lw = ctx.measureText(label).width, h = 18, w = Math.round(6 + lw + 6 + n * 9 + 6), x = 0, y = Math.round(Math.max(44, y0 || 60));
   ctx.fillStyle = "#0a0812"; ctx.fillRect(x, y - 2, w + 4, h + 4); ctx.fillStyle = col; ctx.fillRect(x, y, w + 2, h); ctx.fillStyle = "rgba(16,14,26,.95)"; ctx.fillRect(x, y + 2, w, h - 4);
   S.nmBox = [y - 2, y + h + 2]; ctx.fillStyle = col; ctx.fillText(label, x + 6, y + 13);
@@ -13538,6 +13538,27 @@ function ddGoSync() { const g = document.getElementById("dlyGo"); if (!g || S.ol
 { const r0 = ddRedraw; ddRedraw = function () { const r = r0.apply(this, arguments); ddGoSync(); return r; }; }
 ov.addEventListener("click", e => { const g = e.target.closest && e.target.closest("#dlyGo"); if (!g || S.oldDaily || !(DD_SEL && DD_SEL < todayKey())) return;
   e.preventDefault(); e.stopPropagation(); try { omfSfx("click"); } catch (_) {} DD_REPLAY = DD_SEL; newRun({ char: S.char.id, kind: "daily" }); nextRuleStep(); }, true);
+// v157 (user: "the mods in the codex still have emojis"): every symbol glyph (arrows, dingbats, misc symbols, emoji) shown in
+// the menus becomes a pixel icon. Hand-drawn art when there is one; otherwise the symbol is rasterised in its text form
+// (no colour emoji) on a 14 px grid with hard edges, in the colour of the text around it.
+PXE_ART["\u25CC"] = ["..............", ".....a..a.....", "...a......a...", "..............", "..a........a..", "..............", ".a..........a.", ".a..........a.", "..............", "..a........a..", "..............", "...a......a...", ".....a..a.....", ".............."]; // Eco: a dotted ring
+const PXS_RE = /([←-⇿⌀-⏿■-➿⤀-⥿⬀-⯿☀-⛿]|\p{Extended_Pictographic})[︎️]?/u;
+function pxSymURL(ch, col) { const base = ch.replace(/[︎️]/g, ""), key = "s157" + base + col; if (pxeCache.has(key)) return pxeCache.get(key);
+  let u = ""; if (PXE_ART[base]) u = pxEmojiURL(base);
+  else try { const c = document.createElement("canvas"); c.width = c.height = 14; const g = c.getContext("2d"); g.font = "13px sans-serif"; g.fillStyle = col || "#f2c14e"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(base + "︎", 7, 8);
+    const d = g.getImageData(0, 0, 14, 14), a = d.data; let any = 0; for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 100; a[i + 3] = on ? 255 : 0; if (on) { any = 1; const m = /\d+/g, v = String(col).match(/\d+/g); if (v && v.length >= 3) { a[i] = +v[0]; a[i + 1] = +v[1]; a[i + 2] = +v[2]; } } } g.putImageData(d, 0, 0); u = any ? c.toDataURL() : ""; } catch (_) {}
+  pxeCache.set(key, u); return u; }
+pxEmojiIn = function (root) {
+  if (!ESCAPE || !root || root.nodeType !== 1 && root.nodeType !== 11) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
+  for (let n = w.nextNode(); n; n = w.nextNode()) { const pn = n.parentNode; if (pn && !/^(SCRIPT|STYLE|TEXTAREA|INPUT|OPTION|TITLE)$/.test(pn.nodeName) && !(pn.dataset && pn.dataset.pxs) && PXS_RE.test(n.nodeValue)) hits.push(n); }
+  for (const n of hits) { const pn = n.parentNode; if (!pn) continue; let col = ""; try { col = getComputedStyle(pn).color; } catch (_) {}
+    const re = new RegExp(PXS_RE.source, "gu"), s = n.nodeValue, frag = document.createDocumentFragment(); let last = 0, m;
+    while ((m = re.exec(s))) { if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+      const u = pxSymURL(m[0], col); if (u) { const im = document.createElement("img"); im.className = "pxe"; im.src = u; im.alt = m[0]; frag.appendChild(im); } else { const sp = document.createElement("span"); sp.dataset.pxs = "1"; sp.textContent = m[0]; frag.appendChild(sp); } last = re.lastIndex; }
+    if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+    pn.replaceChild(frag, n); } };
+try { pxEmojiIn(document.body); } catch (_) {}
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
