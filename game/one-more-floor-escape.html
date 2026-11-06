@@ -729,7 +729,7 @@ function fitView(force) {
     // seam fix: one art pixel (TS/16) = a whole number of canvas pixels, so tiles never leave hairlines between them
     // v82 (user: "más fluido, 60 fps o más"): the canvas is drawn at most 3 canvas pixels per art pixel and the browser
     // scales it up pixelated, so a 3x phone fills 4x fewer pixels per frame and looks the same (Ajustes > GRÁFICOS > NÍTIDO lifts the cap)
-    { const ART = TS / 16, kMax = (typeof META !== "undefined" && META.hq) ? 9 : 3, k = Math.max(1, Math.min(kMax, Math.round(cv.width / wW * ART))); SCALE = k / ART; cv.width = Math.round(wW * SCALE); cv.height = Math.round(wH * SCALE); }
+    { const ART = TS / 16, kMax = (typeof META !== "undefined" && META.hq && typeof GFX_SMOOTH_ONLY !== "undefined" && !GFX_SMOOTH_ONLY) ? 9 : 3, k = Math.max(1, Math.min(kMax, Math.round(cv.width / wW * ART))); SCALE = k / ART; cv.width = Math.round(wW * SCALE); cv.height = Math.round(wH * SCALE); }
     CW = wW; CH = wH; dk.width = CW; dk.height = CH;
     return;
   }
@@ -4845,6 +4845,7 @@ const BIOMES = [
 /* ---------- language: Spanish source text, English layer applied on load ---------- */
 let LANG = "es";
 try { LANG = localStorage.getItem("omf-lang") || ((navigator.language || "es").toLowerCase().startsWith("es") ? "es" : "en"); } catch (_) {}
+var LANG_ONLY = "en", GFX_SMOOTH_ONLY = true; if (LANG_ONLY) LANG = LANG_ONLY; // v158 (user): English only for now; the Spanish texts stay so it can come back
 const EN_RULES = {
   nojump: ["No jumping", "You can't jump. Ladders appear and spikes rise and fall."],
   invis: ["Invisible enemies", "You can't see enemies. Dust and hits give them away."],
@@ -9469,7 +9470,7 @@ function showSettings() {
     <div class="mlabel">${T("CONTROLES")}</div>
     <div class="ctlsel ctlpics">${CTL_KINDS.map(k => `<button data-ctl="${k}" aria-pressed="${k === CTL}">${CTL_PREV[k] || ""}<span>${CTL_NAME[k]}</span></button>`).join("")}</div>
     <p class="ctldesc" id="ctlDesc">${CTL_DESC[CTL]}</p>
-    <div class="mlabel">${T("IDIOMA")}</div><div class="ctlsel"><button data-lang="es" aria-pressed="${LANG !== "en"}">Español</button><button data-lang="en" aria-pressed="${LANG === "en"}">English</button></div>
+    ${LANG_ONLY ? "" : `<div class="mlabel">${T("IDIOMA")}</div>`}<div class="ctlsel"${LANG_ONLY ? " hidden" : ""}><button data-lang="es" aria-pressed="${LANG !== "en"}">Español</button><button data-lang="en" aria-pressed="${LANG === "en"}">English</button></div>
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
   ov.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => { if (b.dataset.lang === (LANG === "en" ? "en" : "es")) return; try { localStorage.setItem("omf-lang", b.dataset.lang); sessionStorage.setItem("omf-reopen", "settings"); } catch (_) {} location.reload(); });
   ov.querySelectorAll(".pxs").forEach(el => {
@@ -10665,7 +10666,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v157";
+var OMF_VER = "Escape v158";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10780,13 +10781,13 @@ showSettings = function () {
   showSettings0();
   const pg = ov.querySelector(".setpage"), row = pg && pg.querySelector(".rowbig"); if (!row || pg.querySelector(".setx")) return;
   const errs = errList(), box = document.createElement("div"); box.className = "setx";
-  box.innerHTML = `<div class="mlabel">${Lx("GRÁFICOS", "GRAPHICS")}</div>
+  box.innerHTML = `<div hidden><div class="mlabel">${Lx("GRÁFICOS", "GRAPHICS")}</div>
     <div class="ctlsel"><button data-hq="0" aria-pressed="${!META.hq}">${Lx("FLUIDO", "SMOOTH")}</button><button data-hq="1" aria-pressed="${!!META.hq}">${Lx("NÍTIDO", "SHARP")}</button></div>
-    <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p>
-    ${CLOUD ? `<div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>` : ""}
+    <p class="ctldesc">${Lx("Fluido dibuja el pixel art a menos resolución y va más suave. Nítido usa toda la pantalla.", "Smooth draws the pixel art at a lower resolution and runs smoother. Sharp uses the full screen.")}</p></div>
+    <div hidden>${CLOUD ? `<div class="mlabel">${Lx("COPIA DE SEGURIDAD", "BACKUP")}</div>` : ""}
     ${CLOUD ? `<p class="cloudln">${pxi("cloud", "#5fd1c4", 2)}<span>${Lx("Copia en iCloud", "iCloud backup")}: <b>${!cloudAvail ? Lx("no disponible: entra en iCloud en Ajustes del iPhone", "not available: sign in to iCloud in iPhone Settings") : !cloudReady ? Lx("buscando tu copia…", "looking for your copy…") : cloudOk ? Lx("activa", "on") : Lx("conectando", "connecting")}</b>${cloudLast ? " · " + Lx("última", "last") + " " + hhmm(cloudLast) : ""}</span></p>${cloudAvail ? `<div class="ctlsel"><button id="cloudGet">${Lx("TRAER DE ICLOUD", "RESTORE FROM ICLOUD")}</button></div>` : ""}${window.OMF_STORE ? "" : cloudDbgHTML()}` : ""}
     <div class="bkbox" id="bkBox" hidden><textarea id="bkCode" rows="4" spellcheck="false" autocomplete="off" aria-label="${Lx("Código", "Code")}"></textarea>
-      <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button></div></div><p class="bkmsg" id="bkMsg"></p>
+      <div class="ctlsel"><button id="bkCopy">${Lx("COPIAR", "COPY")}</button></div></div><p class="bkmsg" id="bkMsg"></p></div>
     ${window.OMF_STORE ? "" : `<div class="mlabel">INFO</div>
     <p class="infoln">${OMF_VER}</p>
     ${errs.length ? `<div class="ctlsel"><button id="errCopy">${Lx("COPIAR ERRORES", "COPY ERRORS")}</button></div>` : ""}`}`; // v96 (user): no debug lines in the store build
@@ -13559,6 +13560,8 @@ pxEmojiIn = function (root) {
     if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
     pn.replaceChild(frag, n); } };
 try { pxEmojiIn(document.body); } catch (_) {}
+// v158 (user): the Graphics and Backup sections are gone from Settings; graphics stay on Smooth (iCloud keeps saving on its own)
+try { if (ESCAPE && META.hq) { META.hq = false; saveMeta(); if (typeof fitView === "function") fitView(true); } } catch (_) {}
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
