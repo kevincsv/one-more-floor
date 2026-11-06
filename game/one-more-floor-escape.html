@@ -294,7 +294,7 @@ body.esc.ctl-invisible .gpad .knob { position: absolute; width: 40px; height: 40
 #ov .cards.deal .card:nth-child(1) { animation-delay: .25s; } #ov .cards.deal .card:nth-child(2) { animation-delay: .4s; }
 #ov .cards.deal .card:nth-child(3) { animation-delay: .55s; } #ov .cards.deal .card:nth-child(4) { animation-delay: .7s; }
 #ov .cards.lock .card { pointer-events: none; }
-@keyframes dealIn { from { opacity: 0; transform: translateY(60px) rotate(-6deg) scale(.85); } }
+@keyframes dealIn { from { opacity: 0; transform: translateY(60px) scale(.85); } } /* v139 (user): cards no longer turn while they deal in */
 @keyframes lvlPop { from { opacity: 0; transform: scale(2.2); } }
 body.esc .hud .stat, body.esc .hud .hearts { text-shadow: 2px 2px 0 rgba(0,0,0,.6); }
 body.esc .hud .chip { background: rgba(27,24,41,.75); border-color: rgba(242,193,78,.35); border-radius: 0; }
@@ -698,9 +698,17 @@ const CTL_DESC = {
   clasico: "Cruceta y botones semitransparentes encima del juego.",
 };
 const dk = document.createElement("canvas"); dk.width = CW; dk.height = CH; const dctx = dk.getContext("2d");
+// v138 (user: "quiero todos los menús fluidos"): the stage size is measured only when it changes (ResizeObserver), not every
+// frame: reading it every frame forced the browser to lay out the whole menu again on every frame while a menu was open.
+var FIT_R = null, FIT_RO = null;
+function fitRect(st, force) {
+  if (!FIT_RO && window.ResizeObserver) { FIT_RO = new ResizeObserver(() => { FIT_R = null; fitView(); }); FIT_RO.observe(st); }
+  if (!FIT_R || force || !FIT_RO) { const b = st.getBoundingClientRect(); FIT_R = { width: b.width, height: b.height }; }
+  return FIT_R;
+}
 function fitView(force) {
   if (ESCAPE && !force && document.body.classList.contains("inmenu")) return;
-  const st = document.getElementById("stage"), r = st.getBoundingClientRect();
+  const st = document.getElementById("stage"), r = fitRect(st, force);
   const sw = Math.max(100, Math.floor(r.width)), sh = Math.max(100, Math.floor(r.height));
   const vert = ESCAPE || !!(S && S.vertical), dpr = Math.min(3, window.devicePixelRatio || 1);
   const lvl = ESCAPE && S && S.grid && S.vertical;
@@ -744,8 +752,8 @@ function fitView(force) {
   }
   dk.width = CW; dk.height = CH;
 }
-window.addEventListener("resize", () => fitView());
-if (window.visualViewport) visualViewport.addEventListener("resize", () => fitView());
+window.addEventListener("resize", () => { FIT_R = null; fitView(); });
+if (window.visualViewport) visualViewport.addEventListener("resize", () => { FIT_R = null; fitView(); });
 
 /* ---------- data ---------- */
 const CATS = { mov: "Movimiento", com: "Combate", per: "Percepción", ent: "Entorno", tie: "Tiempo" };
@@ -4151,7 +4159,8 @@ function pvTick() {
     let fr = null;
     if (heroesOn()) { // heroes add-on: the chosen skin, idle or running, cropped to its 16 x 26 art
       const sk = c.dataset.skin || heroSkinOf(cid), h = heroFrame(sk, running ? "run" : "idle", running ? Math.floor(t * 12) : Math.floor(t * 4));
-      if (h) { const k = Math.min(Math.floor(c.width / 16), Math.floor(c.height / 26)); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height); x.drawImage(h, 0, 6, 16, 26, Math.round((c.width - 16 * k) / 2), c.height - 26 * k, 16 * k, 26 * k);
+      if (h && c._pvf === h && c._pvl === c.dataset.lock + c.width + 'x' + c.height) continue; // v138: same frame as last time, nothing to repaint
+      if (h) { c._pvf = h; c._pvl = c.dataset.lock + c.width + 'x' + c.height; const k = Math.min(Math.floor(c.width / 16), Math.floor(c.height / 26)); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height); x.drawImage(h, 0, 6, 16, 26, Math.round((c.width - 16 * k) / 2), c.height - 26 * k, 16 * k, 26 * k);
         if (c.dataset.lock === "1") { x.globalCompositeOperation = "source-atop"; x.fillStyle = "#2a2640"; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "source-over"; }
         continue; }
     }
@@ -4160,7 +4169,7 @@ function pvTick() {
       const id = SPR[cid] && SPR_CHAR[cid] ? cid : "kai", pose = running ? SPR_WALK[Math.floor(t * 10) % SPR_WALK.length] : null, name = pose && SPR[id + "_" + pose] ? id + "_" + pose : id;
       try { fr = sprCanvas(name, "c:" + id + 0, sprCharPal(id, 0), false); } catch (_) { fr = null; }
     }
-    if (!fr) continue;
+    if (!fr || (c._pvf === fr && c._pvl === c.dataset.lock + c.width + 'x' + c.height)) continue; c._pvf = fr; c._pvl = c.dataset.lock + c.width + 'x' + c.height;
     const k = Math.min(3, Math.floor(c.width / fr.width), Math.floor(c.height / fr.height)) || 1;
     x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height); x.drawImage(fr, Math.round((c.width - fr.width * k) / 2), c.height - fr.height * k, fr.width * k, fr.height * k);
     if (c.dataset.lock === "1") { x.globalCompositeOperation = "source-atop"; x.fillStyle = "#2a2640"; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "source-over"; }
@@ -5780,6 +5789,7 @@ function sprDrawSlab(x, y, w, h) { // wooden planks from the pack
   for (let k = 0; k < w; k += TS) ok = sprPiece(zi, 160, 64, 16, 8, x + k, y, TS / 16) && ok;
   if (!ok) { ctx.fillStyle = SPR_RAMP5[zi][2]; ctx.fillRect(x, y, w, h); }
 }
+var SPK_BODY = {}, SPK_K = 4;
 function escDrawSpikes(s, on) {
   // v66 (user: spikes easier to see): chunky pixel spikes, dark outline, bright steel with a lit edge, red pulsing tips,
   // a red glow and a red/black hazard strip at the base; a glint runs along them every couple of seconds
@@ -5788,13 +5798,14 @@ function escDrawSpikes(s, on) {
   if (on) { ctx.save(); ctx.globalCompositeOperation = "lighter"; sprGlow(x + TS / 2, base - 7, 18, [255, 60, 80], 0.16 + 0.08 * pulse); ctx.restore(); }
   const row = (sx, r, w, c) => { ctx.fillStyle = c; ctx.fillRect(sx, base - h + r, w, 1); };
   const glint = ((S.t * 0.6 + s.tx * 0.13) % 2) * 3; // 0..6: which spike sparkles
+  { const col = warn ? (Math.floor(S.t * 12) % 2 ? "#ff5a6a" : "#ffffff") : "#dfe3f2", key = h + col; // v134: both spike bodies are one cached image (same pixels)
+    let B = SPK_BODY[key]; if (!B) { B = SPK_BODY[key] = document.createElement("canvas"); B.width = TS * SPK_K; B.height = (h + 1) * SPK_K; const g = B.getContext("2d"); g.scale(SPK_K, SPK_K);
+      const rw = (sx, r, w, c) => { g.fillStyle = c; g.fillRect(sx, r + 1, w, 1); }, wAt = r => 2 * Math.ceil((r + 1) * 6 / h);
+      for (let k = 0; k < 2; k++) { const cx = 6 + k * 12; for (let r = -1; r < h; r++) { const w = r < 0 ? 2 : wAt(r) + 2; rw(cx - w / 2, r, w, "#0a0812"); }
+        for (let r = 0; r < h; r++) { const w = wAt(r), lx = cx - w / 2; rw(lx, r, w, col); if (w >= 4) { rw(lx, r, 1, "#ffffff"); rw(lx + w / 2, r, w / 2, "#b4b8d4"); rw(lx + w - 1, r, 1, "#7c80a4"); } } } }
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(B, x, base - h - 1, TS, h + 1); ctx.imageSmoothingEnabled = sm; }
   for (let k = 0; k < 2; k++) {
-    const cx = x + 6 + k * 12; // spike k: a pixel triangle 12 px wide at the base, dark outline around it
-    const wAt = r => 2 * Math.ceil((r + 1) * 6 / h);
-    for (let r = -1; r < h; r++) { const w = r < 0 ? 2 : wAt(r) + 2; row(cx - w / 2, r, w, "#0a0812"); }
-    for (let r = 0; r < h; r++) { const w = wAt(r), lx = cx - w / 2;
-      row(lx, r, w, warn ? (Math.floor(S.t * 12) % 2 ? "#ff5a6a" : "#ffffff") : "#dfe3f2");
-      if (w >= 4) { row(lx, r, 1, "#ffffff"); row(lx + w / 2, r, w / 2, "#b4b8d4"); row(lx + w - 1, r, 1, "#7c80a4"); } }
+    const cx = x + 6 + k * 12;
     if (on) { ctx.fillStyle = pulse > 0.5 ? "#ff3048" : "#ff7080"; ctx.fillRect(cx - 1, base - h, 2, 3); }
     if (on && Math.abs(glint - k * 3) < 0.6) { ctx.fillStyle = "#ffffff"; ctx.fillRect(cx - 3, base - h + 6, 1, 3); ctx.fillRect(cx - 4, base - h + 7, 3, 1); }
   }
@@ -6493,9 +6504,9 @@ function draw() {
   if (!S.ambient) S.ambient = Array.from({ length: 46 }, () => ({ x: Math.random() * CW, y: Math.random() * CH, s: Math.random() * 2 + 1, ph: Math.random() * 6 }));
   const zone = zone4(S.floor);
   for (const m of S.ambient) {
-    if (zone === 0) { m.y += 0.15; m.x += Math.sin(S.t + m.ph) * 0.1; ctx.fillStyle = "rgba(200,195,220,.18)"; }
-    else if (zone === 1) { m.x += Math.sin(S.t * 0.7 + m.ph) * 0.4; m.y += Math.cos(S.t * 0.5 + m.ph) * 0.3; ctx.fillStyle = `rgba(200,255,120,${0.25 + 0.5 * Math.max(0, Math.sin(S.t * 2 + m.ph))})`; }
-    else if (zone === 2) { m.y -= 0.6; m.x += Math.sin(S.t * 2 + m.ph) * 0.3; ctx.fillStyle = `rgba(255,${120 + (m.ph * 20 | 0)},60,.55)`; }
+    if (zone === 0) { m.y += 0.15 * (window.OMF_FK || 1); m.x += Math.sin(S.t + m.ph) * 0.1 * (window.OMF_FK || 1); ctx.fillStyle = "rgba(200,195,220,.18)"; }
+    else if (zone === 1) { m.x += Math.sin(S.t * 0.7 + m.ph) * 0.4 * (window.OMF_FK || 1); m.y += Math.cos(S.t * 0.5 + m.ph) * 0.3 * (window.OMF_FK || 1); ctx.fillStyle = `rgba(200,255,120,${0.25 + 0.5 * Math.max(0, Math.sin(S.t * 2 + m.ph))})`; }
+    else if (zone === 2) { m.y -= 0.6 * (window.OMF_FK || 1); m.x += Math.sin(S.t * 2 + m.ph) * 0.3 * (window.OMF_FK || 1); ctx.fillStyle = `rgba(255,${120 + (m.ph * 20 | 0)},60,.55)`; }
     else { ctx.fillStyle = `rgba(170,190,255,${0.15 + 0.5 * Math.max(0, Math.sin(S.t * 1.5 + m.ph * 3))})`; }
     if (m.y > CH) m.y = 0; if (m.y < 0) m.y = CH; if (m.x > CW) m.x = 0; if (m.x < 0) m.x = CW;
     ctx.fillRect(m.x, m.y, m.s, m.s);
@@ -7101,7 +7112,7 @@ function escHudSync() {
     if (key !== escHudKey) {
       escHudKey = key;
       document.getElementById("eHud").innerHTML =
-        `<span class="st"><i class="k">${T("TIEMPO")} </i><b>${Math.floor(el / 60)}:${String(Math.floor(el % 60)).padStart(2, "0")}</b></span><span class="st"><i class="k">${T("ALTURA")} </i><b${S.recHit ? ' style="color:#f2c14e"' : ""}>${S.escBest} m</b></span>` +
+        `<span class="st"><i class="k">${S.duel && typeof duClockLeft === "function" ? T("DUELO") : T("TIEMPO")} </i>${(c => `<b${S.duel ? ' style="color:#f2c14e"' : ""}>${Math.floor(c / 60)}:${String(Math.floor(c % 60)).padStart(2, "0")}</b>`)(S.duel && typeof duClockLeft === "function" ? duClockLeft() : el)}</span><span class="st"><i class="k">${T("ALTURA")} </i><b${S.recHit ? ' style="color:#f2c14e"' : ""}>${S.escBest} m</b></span>` +
         `<div class="bars"><div class="bar"><div class="seg">${ESC_TIERS.map(([, c], i) => `<i><u style="width:${i < tier ? 100 : i === tier ? Math.round(Math.min(1, D - i) * 100) : 0}%;background:${c}"></u></i>`).join("")}</div>` +
         `<span class="lbl" style="color:${ESC_TIERS[tier][1]}">${T(ESC_TIERS[tier][0]).toUpperCase()}</span></div>` +
         `<div class="xp${S.xpPopT > 0 || S.lvlFxT ? " pop" : ""}"><u style="width:${Math.round(fr * 100)}%"></u></div><span class="lbl" style="color:var(--teal)">${lv >= ESC_LVL_MAX ? T("NV MÁX") : T("NV") + " " + lv}</span></div>` + trkHudHTML();
@@ -10515,6 +10526,10 @@ function devTick(p, dt, locked) {
   S.devBeatT = (S.devBeatT || 0) - dt; if (near && S.devBeatT <= 0) { S.devBeatT = 0.75 - 0.25 * Math.min(1, Math.max(0, (sy - CH * 0.72) / (CH * 0.2))); omfSfx("devbeat"); }
   if (S.camZone !== S.devZone) { S.devZone = S.camZone; }
 }
+var DEV_PAT = {}; // v134: the dither as a 4x4-cell pattern (same cells as the old per-pixel loop)
+function devPat(c, step, k) { const key = c + "|" + step + "|" + k; let p = DEV_PAT[key]; if (p) return p; const cv2 = document.createElement("canvas"); cv2.width = cv2.height = 4 * k; const g2 = cv2.getContext("2d"); g2.fillStyle = c;
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if (step === 2 ? ((x + y) & 1) === 0 : ((x & 1) === 0 && (y & 1) === 0 && ((x >> 1) + (y >> 1)) % 2 === 0)) g2.fillRect(x * k, y * k, k, k);
+  p = DEV_PAT[key] = ctx.createPattern(cv2, "repeat"); return p; }
 function devDraw(p, cx, cy) {
   if (!devOn()) return;
   const k = DEV_K, t = S.t, W = Math.ceil(CW / k) + 1, sleep = !!S.devSleep, bite = S.devBite > 0;
@@ -10523,7 +10538,7 @@ function devDraw(p, cx, cy) {
   const d = sleep ? 0 : bite ? 1 : Math.max(0, Math.min(1, S.devD || 0)), agit = 1 + Math.min(1, (typeof escD === "function" ? escD() : 0) / 6);
   const base = Math.round((CH + devSink()) / k), SURF = base - DEV_LH;
   const r = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.floor(x) * k, Math.floor(y) * k, Math.ceil(w) * k, Math.ceil(h) * k); };
-  const dither = (x0, y0, w, h, c, step) => { ctx.fillStyle = c; for (let y = Math.floor(y0); y < y0 + h; y++) for (let x = Math.floor(x0); x < x0 + w; x++) if (step === 2 ? ((x + y) & 1) === 0 : ((x & 1) === 0 && (y & 1) === 0 && ((x >> 1) + (y >> 1)) % 2 === 0)) ctx.fillRect(x * k, y * k, k, k); };
+  const dither = (x0, y0, w, h, c, step) => { const X0 = Math.floor(x0), Y0 = Math.floor(y0), nx = Math.ceil(x0 + w) - X0, ny = Math.ceil(y0 + h) - Y0; if (nx <= 0 || ny <= 0) return; ctx.fillStyle = devPat(c, step, k); ctx.fillRect(X0 * k, Y0 * k, nx * k, ny * k); }; // v134: one pattern fill, same pixels
   const tt = t * agit, wave = x => Math.round(SURF + Math.sin(x * 0.13 + tt * 2.2) * (1 + d * 1.2) + Math.sin(x * 0.05 - tt * 1.1) * 1.2);
   ctx.save();
   if (!sleep) { ctx.globalAlpha = 0.55 + 0.3 * d; dither(0, SURF - 5, W, 4, L.glow, 2); if (d > 0.3) dither(0, SURF - 12, W, 7, L.glow, 4); ctx.globalAlpha = 1; }
@@ -10636,7 +10651,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v133";
+var OMF_VER = "Escape v141";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12063,7 +12078,7 @@ function showCoinShop(from) {
   ov.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { omfSfx("click"); CSHOP.tab = b.dataset.tab; CSHOP.page = 0; CSHOP.sel = null; showCoinShop(); });
   $s("shopPrev").onclick = () => { omfSfx("click"); CSHOP.page--; CSHOP.sel = null; showCoinShop(); };
   $s("shopNext").onclick = () => { omfSfx("click"); CSHOP.page++; CSHOP.sel = null; showCoinShop(); };
-  $s("backBtn").onclick = () => { omfSfx("click"); cancelAnimationFrame(CSHOP.raf); if (CSHOP.from === "dead" && S.mode === "dead") showDead(); else showTitle(); };
+  $s("backBtn").onclick = () => { omfSfx("click"); cancelAnimationFrame(CSHOP.raf); if (CSHOP.from === "dead" && S.mode === "dead") showDead(); else if (CSHOP.from === "codex" && typeof showCodex === "function") showCodex(); else showTitle(); };
   const eqb = $s("shopEq"); if (eqb) eqb.onclick = () => { if (!charOk(k.ch)) { omfSfx("hurt"); msg.textContent = Lx("Necesitas a ", "You need ") + SHOP_HERO[k.ch] + "."; return; } META.skin[k.ch] = s; saveMeta(); omfSfx("pick"); showCoinShop(); };
   const bb = $s("shopBuy"); if (bb) bb.onclick = () => { omfSfx("click"); $s("shopAsk").hidden = false; $s("shopYes").focus(); };
   if ($s("shopNo")) $s("shopNo").onclick = () => { omfSfx("click"); $s("shopAsk").hidden = true; };
@@ -12244,7 +12259,7 @@ function a3Biome(x, W, H, t, z) {
 var A3BG = { raf: 0, t0: 0, last: 0, tmp: null };
 function a3BgFrame(ms) {
   const cv = document.getElementById("a3bg"); if (!cv || ov.hidden || !cv.isConnected) { A3BG.raf = 0; return; }
-  A3BG.raf = requestAnimationFrame(a3BgFrame); if (ms - A3BG.last < 55) return; A3BG.last = ms;
+  A3BG.raf = requestAnimationFrame(a3BgFrame); if (ms - A3BG.last < (META && META.fps120 ? 6 : 14)) return; A3BG.last = ms; // v138: every frame (was ~18 fps, which looked choppy)
   const W = 100, H = Math.max(140, Math.min(260, Math.round(100 * innerHeight / Math.max(1, innerWidth)))); if (cv.height !== H) cv.height = H;
   const x = cv.getContext("2d"); x.imageSmoothingEnabled = false;
   const RM = matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, t = RM ? 3 : Math.max(0, (ms - A3BG.t0) / 1000);
@@ -12607,9 +12622,9 @@ var cx2 = { cat: "mod", flt: "all", fresh: null };
 .cx2 .tile .rar{position:absolute;left:0;right:0;bottom:0;height:3px}
 @keyframes cxblink{50%{opacity:0}}
 .cx2 .empty{grid-column:1/-1;text-align:center;font-family:var(--font-display);font-size:12px;color:#7cba46;padding:24px 0}
-.cxshade{position:fixed;inset:0;background:#05040acc;z-index:60;opacity:0;pointer-events:none;transition:opacity .15s steps(3)}
+.cxshade{position:fixed;inset:0;background:#05040acc;z-index:60;opacity:0;pointer-events:none;transition:opacity .14s linear;will-change:opacity}
 .cxshade.on{opacity:1;pointer-events:auto}
-.cxsheet{position:fixed;left:50%;bottom:0;width:min(100%,480px);z-index:61;background:#1b1829;color:#ece8f5;box-sizing:border-box;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px))!important;transform:translate(-50%,105%);transition:transform .2s steps(5);clip-path:polygon(0 8px,8px 8px,8px 4px,16px 4px,16px 0,calc(100% - 16px) 0,calc(100% - 16px) 4px,calc(100% - 8px) 4px,calc(100% - 8px) 8px,100% 8px,100% 100%,0 100%);box-shadow:inset 0 4px 0 #3e3960;max-height:82%;overflow-y:auto;text-align:left}
+.cxsheet{position:fixed;left:50%;bottom:0;width:min(100%,480px);z-index:61;background:#1b1829;color:#ece8f5;box-sizing:border-box;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px))!important;transform:translate(-50%,105%);transition:transform .2s cubic-bezier(.2,.9,.3,1);will-change:transform;clip-path:polygon(0 8px,8px 8px,8px 4px,16px 4px,16px 0,calc(100% - 16px) 0,calc(100% - 16px) 4px,calc(100% - 8px) 4px,calc(100% - 8px) 8px,100% 8px,100% 100%,0 100%);box-shadow:inset 0 4px 0 #3e3960;max-height:82%;overflow-y:auto;text-align:left}
 .cxsheet.on{transform:translate(-50%,0)}
 .cxsheet .grab{width:40px;height:4px;background:#3e3960;margin:0 auto 10px}
 .cxsheet .sh-top{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}
@@ -12704,8 +12719,11 @@ function cx2Entries(cat) {
     for (const c of CHARS) { const ok = charOk(c.id), runs = (() => { try { return localRuns().filter(x => x.char === c.id && /^escape/.test(x.run)); } catch (_) { return []; } })();
       L.push({ id: "her:" + c.id, ok, art: cx2Hero(c.id), big: cx2Hero(c.id, true), name: c.name, desc: T(c.desc || ""), sub: T("Personaje"),
         rows: runs.length ? [[T("Mejor altura"), Math.max(...runs.map(x => x.floor || 0)) + " m"], [T("Partidas"), runs.length]] : [], lock: lockInfo("char", c.id) }); }
-    for (const id of Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock)) { const k = HERO_SKINS[id], ch = CHARS.find(c => c.id === k.ch) || {};
-      L.push({ id: "skn:" + id, ok: skinOwned(id), art: cx2Hero(id), big: cx2Hero(id, true), name: T(k.name), desc: T("Aspecto de") + " " + (ch.name || ""), sub: T("Aspecto") + " · " + (ch.name || ""), rows: [], lock: lockInfo("skin", id) }); }
+    // v140 (user: "en FALTAN de héroes no me muestra los que se pueden comprar"): the coin-shop skins are listed too, with their price
+    for (const id of Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock || (HERO_SKINS[id].shop && HERO_SKINS[id].tier !== "heroe"))) { const k = HERO_SKINS[id], ch = CHARS.find(c => c.id === k.ch) || {}, shop = !k.unlock;
+      const rar = { comun: "comun", raro: "rara", legendario: "reliquia" }[k.tier];
+      L.push({ id: "skn:" + id, shopId: shop ? id : null, ok: skinOwned(id), art: cx2Hero(id), big: cx2Hero(id, true), name: T(k.name), desc: T("Aspecto de") + " " + (ch.name || ""), sub: T("Aspecto") + " · " + (ch.name || "") + (shop ? " · " + Lx("Tienda", "Shop") : ""), rar: shop ? rar : undefined,
+        rows: shop ? [[Lx("Precio", "Price"), shopCost(id) + " " + Lx("monedas", "coins")]] : [], lock: shop ? { t: Lx("Cómpralo en la TIENDA por ", "Buy it in the SHOP for ") + shopCost(id) + Lx(" monedas.", " coins."), v: Math.min(META.bank || 0, shopCost(id)), n: shopCost(id) } : lockInfo("skin", id) }); }
   }
   if (cat === "log") for (const a of GC_ACH) { const s = gcAchState(a[0]), v = Math.max(0, Math.min(1, s.v || 0));
     L.push({ id: "log:" + a[0], ok: s.done, art: pxi("trophy", "#f2c14e", 3), name: Lx(a[1], a[2]), desc: Lx(a[3], a[4]), sub: T("Logro") + (typeof PGS !== "undefined" && PGS ? " · Game Center" : ""), rows: [],
@@ -12760,31 +12778,20 @@ function cx2Sheet(e, C) {
   p.innerHTML = `<div class="grab"></div><div class="sh-top"><div class="sh-art">${e.big || e.art}</div><div><div class="sh-name">${e.ok ? e.name : "???"}</div><div class="sh-cat"><span style="color:${C[2]}">${T(C[1]).replace(/\.$/, "")}${e.sub ? " · " + e.sub : ""}</span>${rar}${cost}</div></div></div>
     ${e.ok ? `<div class="sh-desc">${e.desc}</div>${e.rows && e.rows.length ? `<div class="sh-rows">${e.rows.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join("")}</div>` : ""}`
       : `<div class="sh-lock"><span class="k">${T("CÓMO CONSEGUIRLO")}</span>${lk.t || T("Sigue jugando para descubrirlo.")}${bar}</div>`}
-    <button class="go sh-close">${T("CERRAR")}</button>`;
+    ${e.shopId && !e.ok ? `<div class="sh-btns"><button class="go sh-close">${T("CERRAR")}</button><button class="go sh-shop">${Lx("TIENDA", "SHOP")}</button></div>` : `<button class="go sh-close">${T("CERRAR")}</button>`}`;
   document.body.append(sh, p); paintPxi(p);
-  const close = () => { sh.classList.remove("on"); p.classList.remove("on"); setTimeout(() => { sh.remove(); p.remove(); }, 220); };
+  const close = () => { sh.classList.remove("on"); p.classList.remove("on"); setTimeout(() => { sh.remove(); p.remove(); }, 200); };
   sh.onclick = close; p.querySelector(".sh-close").onclick = () => { omfSfx("click"); close(); };
-  requestAnimationFrame(() => requestAnimationFrame(() => { sh.classList.add("on"); p.classList.add("on"); }));
+  // v141 (user): a shop skin you don't have yet opens the coin shop on that skin; BACK there returns to the codex
+  const sb = p.querySelector(".sh-shop"); if (sb) sb.onclick = () => { omfSfx("click"); cx2Close(); const id = e.shopId; showCoinShop("codex");
+    for (let pg = 0; pg < 12 && !ov.querySelector(`[data-si="${id}"]`); pg++) { CSHOP.page = pg; CSHOP.sel = null; showCoinShop(); }
+    if (ov.querySelector(`[data-si="${id}"]`)) { CSHOP.sel = id; showCoinShop(); } };
+  p.getBoundingClientRect(); sh.classList.add("on"); p.classList.add("on"); // v140: slides in on the very next frame (was two frames later)
 }
 var cx2Show0 = showCodex; showCodex = function (cat) { if (!ESCAPE) return cx2Show0.apply(this, arguments); return cx2Open(cat ? CX2_OLD[cat] || cat : null); };
 var cx2Title0 = showTitle; showTitle = function () { cx2Close(); return cx2Title0.apply(this, arguments); };
 
-// ===== idea 4: level-up cards come face down and flip one by one (350 ms apart, 6 steps); the border is the rarity
-function lvRar(o) { if (!o || o.kind === "gold") return "comun"; if (o.kind === "remove") return "rara"; return o.k.relic ? "reliquia" : o.k.max <= 1 ? "rara" : "comun"; }
-var lvf0 = escLevelCards; escLevelCards = function () {
-  const r = lvf0.apply(this, arguments), box = ov.querySelector(".cards.deal"), opts = S.lvlPick; if (!box || !opts) return r;
-  box.classList.remove("deal"); box.classList.add("lvf", "fdn");
-  const cs = [...box.querySelectorAll(".card")];
-  cs.forEach(c => { const R = CX2_RAR[lvRar(opts[+c.dataset.i])]; c.style.setProperty("--rc", R[1]); c.classList.add("down");
-    c.insertAdjacentHTML("afterbegin", `<span class="lvr">${T(R[0])}</span><span class="lvb"><canvas class="hlogo" aria-label="One More Floor Escape" role="img"></canvas></span>`); });
-  paintPxi(box); try { hlogoAttach(box, 1); } catch (_) {} // v132 (user): the game logo on the back, not a skull
-  cs.forEach((c, i) => setTimeout(() => { if (!box.isConnected) return; c.classList.add("flip"); try { omfSfx("click"); } catch (_) {}
-    setTimeout(() => c.classList.remove("down"), 150); setTimeout(() => { c.classList.remove("flip"); if (i === cs.length - 1) box.classList.remove("fdn"); }, 310); }, 250 + i * 350));
-  cs.forEach(c => { const f0 = c.onclick; c.onclick = ev => { if (box.classList.contains("fdn") || box.classList.contains("took")) return; box.classList.add("took");
-    cs.forEach(x => x.classList.toggle("dim", x !== c)); c.classList.add("pick"); setTimeout(() => { if (box.isConnected) f0.call(c, ev); }, 1000); }; });
-  return r;
-};
-
+// (v134, user: the face-down level-up cards were removed; the cards are dealt as before, in a triangle)
 // ===== idea 5: height ruler in the pause menu (TÚ / RÉCORD on the left, the board's top 3 on the right when it loads)
 var prlCache = {};
 function prlBoard() { return S.daily ? (S.easy ? null : S.hard ? "daily_hard" : "daily") : S.horde || S.hu || S.easy ? null : S.hard ? "height_hard" : "height"; }
@@ -12872,7 +12879,7 @@ function duTx(o) { const w = DU.ws; if (w && w.readyState === 1) try { w.send(JS
 function duClose() { if (DU.ws) { const w = DU.ws; DU.ws = null; try { if (w.readyState === 1) w.send(JSON.stringify({ t: "leave" })); w.close(); } catch (_) {} } DU.net = false; DU.peer = false; clearTimeout(DU.qTimer); }
 function duConnect(then) {
   duClose(); const u = duelRelay();
-  if (!u) { duNote(Lx("El servidor de duelo aún no está listo. Mientras, prueba la PRÁCTICA.", "The duel server isn't ready yet. Meanwhile, try PRACTICE.")); return; }
+  if (!u) { duNote(Lx("El servidor de duelo aún no está listo.", "The duel server isn't ready yet.")); return; }
   let ws; try { ws = new WebSocket(u); } catch (_) { duNote(Lx("No se pudo conectar con el servidor de duelo.", "Couldn't reach the duel server.")); return; }
   DU.ws = ws; duNote(Lx("Conectando...", "Connecting..."));
   ws.onopen = () => { if (DU.ws === ws) { duNote(""); then(); } };
@@ -12892,7 +12899,7 @@ function duRx(m) {
 }
 function duHello() { duTx({ t: "msg", d: { v: 1, role: DU.role, name: duName(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff } }); }
 function duMine() { const p = S.player, dead = S.mode === "dead" || DU.quit;
-  return { v: 1, role: DU.role, name: duName(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, f: p.face < 0 ? -1 : 1,
+  return { v: 1, ts: Math.round(duNow() * 1000) / 1000, role: DU.role, name: duName(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, f: p.face < 0 ? -1 : 1,
     j: p.ground ? 0 : 1, inv: p.inv > 0 ? 1 : 0, hp: S.hp | 0, best: S.escBest | 0, dead: dead ? 1 : 0, why: DU.quit ? "quit" : /fell|lava|tide|cam/.test(S.deathCause || "fell") ? "lava" : "hp", cs: DU.cs, ci: DU.ci,
     sk: (() => { try { return heroSkinOf(S.char.id); } catch (_) { return "velo"; } })() }; }
 function duSendNow() { if (DU.net && DU.on && S && S.duel && S.player) duTx({ t: "msg", d: duMine() }); }
@@ -12905,7 +12912,7 @@ function duState(d) {
   if (DU.role === "guest" && seed && seed !== DU.seed) { DU.diff = ci(d.diff); if (round <= 1) DU.wins = [0, 0]; DU.round = Math.max(1, round); duStartRound(seed); return; }
   if (!DU.on || seed !== DU.seed || round !== DU.round) return;
   const x = +d.x, y = +d.y;
-  if (isFinite(x) && isFinite(y)) { DU.snaps.push({ t: duNow(), x: clamp(x, 0, 2000), y: clamp(y, -1e6, 1e7), f: d.f < 0 ? -1 : 1, j: d.j ? 1 : 0, inv: d.inv ? 1 : 0 }); if (DU.snaps.length > 40) DU.snaps.shift(); }
+  if (isFinite(x) && isFinite(y)) { DU.snaps.push({ t: duRxT(d.ts), x: clamp(x, 0, 2000), y: clamp(y, -1e6, 1e7), f: d.f < 0 ? -1 : 1, j: d.j ? 1 : 0, inv: d.inv ? 1 : 0 }); if (DU.snaps.length > 40) DU.snaps.shift(); }
   const rv = DU.rv || (DU.rv = { best: 0 }); rv.best = Math.max(rv.best, Math.max(0, Math.min(99999, d.best | 0))); rv.hp = Math.max(0, Math.min(9, d.hp | 0));
   if (typeof d.sk === "string" && HERO_SKINS[d.sk]) rv.sk = d.sk;
   if ((d.cs | 0) > DU.seenCs) { DU.seenCs = Math.min(999, d.cs | 0); duCurseIn(d.ci); }
@@ -13001,7 +13008,7 @@ function duMenu() {
     <div class="rowbig"><button class="go" id="duHost">${Lx("CREAR SALA", "CREATE ROOM")}</button></div>
     <p class="dusub">${Lx("¿Tienes un código? Escríbelo:", "Got a code? Type it:")}</p>
     <div class="ducode">${[0, 1, 2, 3].map(i => `<input id="duC${i}" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="${Lx("Letra", "Letter")} ${i + 1}">`).join("")}<button id="duJoin">${Lx("ENTRAR", "JOIN")}</button></div>
-    <div class="tools"><button id="duRand">${pxi("target", "#ff8c50")} ${Lx("RIVAL AL AZAR", "RANDOM RIVAL")}</button><button id="duBot">${pxi("ghost", "#9a94b8")} ${Lx("PRÁCTICA", "PRACTICE")}</button></div>
+    <div class="tools"><button id="duRand">${pxi("target", "#ff8c50")} ${Lx("RIVAL AL AZAR", "RANDOM RIVAL")}</button></div>
     <p class="dunote" id="duNote" role="status"></p>
     <p class="dusub">${Lx("La dificultad la elige quien crea la sala (se cambia en el menú). No cuenta para los récords.", "The room creator's difficulty is used (change it in the menu). It doesn't count for records.")}</p>
     <div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
@@ -13013,7 +13020,7 @@ function duMenu() {
   document.getElementById("duJoin").onclick = () => { omfSfx("click"); const c = ins.map(x => x.value).join("").toUpperCase(); if (c.length < 4) { duNote(Lx("Escribe las 4 letras del código.", "Type the 4 letters of the code.")); (ins.find(x => !x.value) || ins[0]).focus(); return; }
     DU.bot = null; duConnect(() => duTx({ t: "join", code: c })); };
   document.getElementById("duRand").onclick = () => { omfSfx("click"); DU.bot = null; duConnect(() => { duTx({ t: "queue", diff: DU.diff }); DU.role = null; duSearch(); }); };
-  document.getElementById("duBot").onclick = () => { omfSfx("click"); duPractice(); };
+  // v139 (user): practice mode removed from the duel menu (duPractice stays for tests only)
   document.getElementById("backBtn").onclick = () => { omfSfx("click"); duLeave(); };
 }
 function duPractice() { duClose(); DU.bot = { h: 0 }; DU.role = "host"; DU.code = ""; DU.rvName = Lx("FANTASMA", "GHOST"); DU.wins = [0, 0]; DU.round = 0; DU.seed = 0; DU.net = false; duVs(); }
@@ -13021,7 +13028,7 @@ function duSearch() { DU.scr = "wait"; ov.innerHTML = `<div class="menu duel"><h
     <p class="dunote" id="duNote" role="status"></p><div class="tools"><button id="duCancel">${Lx("CANCELAR", "CANCEL")}</button></div></div>`;
   document.getElementById("duCancel").onclick = () => { omfSfx("click"); duMenu(); };
   clearTimeout(DU.qTimer); DU.qTimer = setTimeout(() => { if (DU.scr !== "wait" || DU.peer) return; const n = document.getElementById("duNote"); if (!n) return;
-    n.innerHTML = `${Lx("Nadie más está buscando ahora.", "Nobody else is searching right now.")} <button id="duBot2">${Lx("PRÁCTICA", "PRACTICE")}</button>`; document.getElementById("duBot2").onclick = () => { omfSfx("click"); duPractice(); }; }, 30000); }
+    n.textContent = Lx("Nadie más está buscando ahora. Sigue esperando o crea una sala y pasa el código a un amigo.", "Nobody else is searching right now. Keep waiting, or create a room and send the code to a friend."); }, 30000); }
 function duWait(gone) {
   DU.scr = "wait"; const host = DU.role === "host";
   ov.innerHTML = `<div class="menu duel"><h2>${gone ? Lx("TU RIVAL SE HA IDO", "YOUR RIVAL LEFT") : host ? Lx("TU SALA", "YOUR ROOM") : Lx("ENTRANDO EN LA SALA", "JOINING THE ROOM")}</h2>
@@ -13052,9 +13059,22 @@ function duHudOn(on) { let h = document.getElementById("duHud"); if (!on) { if (
 function duHud(force) { const h = document.getElementById("duHud"); if (!h) return; const left = Math.max(0, DU_LIMIT - duEl()), k = [DU.round, Math.ceil(left), DU.rv && DU.rv.best, DU.wins.join(), S.escBest, S.duBan && S.duBan.s].join("|");
   if (!force && h._k === k) return; h._k = k;
   h.innerHTML = `<span class="dr">${Lx("R", "R")}${DU.round} <i class="w0">${DU.wins[0]}</i>-<i class="w1">${DU.wins[1]}</i></span><span class="dt">${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}</span><span class="dn">${DU.rvName} <b>${DU.rv ? DU.rv.best : 0} m</b></span>${S.duBan ? `<span class="db">${S.duBan.s}</span>` : ""}`; }
-function duGhostAt() { const A = DU.snaps; if (!A.length) return null; const rt = duNow() - 0.15;
-  for (let i = A.length - 1; i > 0; i--) { const a = A[i - 1], b = A[i]; if (a.t <= rt) { const k = clamp((rt - a.t) / Math.max(0.001, b.t - a.t), 0, 1); return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, f: b.f, j: b.j, inv: b.inv, mv: Math.abs(b.x - a.x) > 0.5 }; } }
-  return Object.assign({}, A[0]); }
+// v139 (user: "debe ser más fluido cómo se ve el otro jugador para que no maree"): each update carries the sender's own clock,
+// so the ghost replays the rival's path at the pace it really happened (not at the uneven pace packets arrive). Playback runs
+// 0.2 s behind (two updates of margin), a late packet is bridged by continuing the last motion for up to 0.15 s, and the drawn
+// position eases toward that path so nothing jitters. A jump of more than 3 tiles (respawn) snaps at once.
+function duRxT(ts) { const now = duNow(); ts = +ts; if (!isFinite(ts) || !ts) return now;
+  const o = now - ts; if (DU.clkO === undefined || DU.clkSeed !== DU.seed || o < DU.clkO) { DU.clkO = o; DU.clkSeed = DU.seed; } else DU.clkO += (o - DU.clkO) * 0.02; // lowest delay seen, drifting slowly
+  const t = ts + DU.clkO, A = DU.snaps, L = A[A.length - 1]; return L && t <= L.t ? L.t + 0.001 : t; }
+function duGhostAt() { const A = DU.snaps; if (!A.length) return null; const rt = duNow() - 0.2, L = A[A.length - 1];
+  let q = null;
+  if (rt >= L.t) { const P = A[A.length - 2]; const e = Math.min(0.15, rt - L.t); if (P && L.t - P.t > 0.001 && Math.abs(L.x - P.x) < 3 * TS && Math.abs(L.y - P.y) < 3 * TS) { const vx = (L.x - P.x) / (L.t - P.t), vy = (L.y - P.y) / (L.t - P.t); q = { x: L.x + vx * e, y: L.y + vy * e, f: L.f, j: L.j, inv: L.inv, vx }; } else q = { x: L.x, y: L.y, f: L.f, j: L.j, inv: L.inv, vx: 0 }; }
+  else { for (let i = A.length - 1; i > 0; i--) { const a = A[i - 1], b = A[i]; if (a.t <= rt) { const k = clamp((rt - a.t) / Math.max(0.001, b.t - a.t), 0, 1); q = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, f: b.f, j: b.j, inv: b.inv, vx: (b.x - a.x) / Math.max(0.001, b.t - a.t) }; break; } }
+    if (!q) q = Object.assign({ vx: 0 }, A[0]); }
+  const G = DU.gs || (DU.gs = {}), now = duNow(), dt = Math.min(0.1, Math.max(0, now - (G.t || now))); G.t = now;
+  if (G.x === undefined || G.seed !== DU.seed || Math.abs(q.x - G.x) > 3 * TS || Math.abs(q.y - G.y) > 3 * TS) { G.x = q.x; G.y = q.y; G.vx = q.vx; G.seed = DU.seed; }
+  else { const k = 1 - Math.exp(-dt * 18); G.x += (q.x - G.x) * k; G.y += (q.y - G.y) * k; G.vx += (q.vx - G.vx) * (1 - Math.exp(-dt * 8)); }
+  return { x: G.x, y: G.y, f: q.f, j: q.j, inv: q.inv, mv: Math.abs(G.vx) > 20 }; }
 var duTintC = new WeakMap();
 function duTint(cv) { let c = duTintC.get(cv); if (c) return c; c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.drawImage(cv, 0, 0);
   g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(255,138,102,.6)"; g.fillRect(0, 0, c.width, c.height); duTintC.set(cv, c); return c; }
@@ -13066,9 +13086,8 @@ function duDrawGhost() {
   if (fy < 36) { const x = clamp(sx + 8, 30, CW - 30); ctx.fillStyle = "#ff8a66"; ctx.fillRect(x - 4, 30, 9, 2); ctx.fillRect(x - 2, 28, 5, 2); ctx.fillRect(x, 26, 1, 2); lab("+" + Math.max(0, dh) + " m", x, 42); ctx.restore(); return; }
   if (fy - 30 > CH) { const x = clamp(sx + 8, 30, CW - 30), y = CH - 70; ctx.fillStyle = "#ff8a66"; ctx.fillRect(x - 4, y, 9, 2); ctx.fillRect(x - 2, y + 2, 5, 2); ctx.fillRect(x, y + 4, 1, 2); lab(dh + " m", x, y - 4); ctx.restore(); return; }
   const id = DU.rv && DU.rv.sk && HERO_SKINS[DU.rv.sk] ? DU.rv.sk : "velo", fr = Math.floor(S.t * 10) % 6, cv = heroFrame(id, q.j ? "run" : q.mv ? "run" : "idle", q.j ? 2 : q.mv ? fr : 0);
-  const draw = (c, x, y, f, a) => { if (!c) return; ctx.globalAlpha = a; ctx.save(); ctx.translate(Math.round(x + 8), Math.round(y)); if (f < 0) ctx.scale(-1, 1); ctx.drawImage(duTint(c), -c.width / 2, -c.height); ctx.restore(); };
-  const A = DU.snaps; for (let i = Math.max(0, A.length - 6); i < A.length - 3; i++) draw(cv, A[i].x - cx, A[i].y - cy, A[i].f, 0.1);
-  draw(cv, sx, fy, q.f, q.inv && Math.floor(S.t * 14) % 2 ? 0.2 : 0.5 + Math.sin(S.t * 5) * 0.06);
+  const draw = (c, x, y, f, a) => { if (!c) return; ctx.globalAlpha = a; ctx.save(); ctx.translate(Math.round((x + 8) * SCALE) / SCALE, Math.round(y * SCALE) / SCALE); if (f < 0) ctx.scale(-1, 1); ctx.drawImage(duTint(c), -c.width / 2, -c.height); ctx.restore(); };
+  draw(cv, sx, fy, q.f, q.inv && Math.floor(S.t * 14) % 2 ? 0.25 : 0.55); // v139: no after-image trail and no pulsing (both made it dizzying)
   ctx.globalAlpha = 0.9; lab(DU.rvName, sx + 8, fy - 34); ctx.restore();
 }
 var du_draw0 = draw; draw = function () { const r = du_draw0.apply(this, arguments); if (S && S.duel && DU.on && S.player) try { duDrawGhost(); } catch (_) {} return r; };
@@ -13160,6 +13179,204 @@ try { GC_ACH.push(["duel_win", "Duelista", "Duelist", "Gana un duelo", "Win a du
 `; document.head.appendChild(st); })();
 Object.assign(EN_TEXT, { "NUEVO": "NEW" });
 
+// ===== v134 (user: "el juego lagea y no va a la velocidad de mi pantalla de 120 ... mejora la fluidez de todo"):
+// 1) Ajustes › FPS: 60 (default) or 120. The world now moves in fixed 1/120 s steps, so the game runs at the same speed at
+//    both rates (at 60 fps it takes two steps per frame, exactly as before; at 120 fps one step per frame).
+// 2) The tower's blocks (with all their moss, cracks and corbels: ~3,800 tiny rectangles a frame) are painted once into a
+//    band image and reused; only blocks with turning gears are still drawn every frame (small sways and drips stay still). A block is
+//    repainted only when its row changes (crumbling, cracks) or the camera leaves the band.
+// 3) The Devourer's dithered glow is one pattern fill instead of hundreds of single pixels.
+if (!SAVE_SETTINGS.includes("fps120")) SAVE_SETTINGS.push("fps120");
+var FPS_ACC = 0, FPS_DRAW = 0, FPS_H = 1 / 120;
+frameBody = function (now) {
+  { const rot = escLandscape(), rm = document.getElementById("rotMsg"); if (rm && rm.hidden === rot) rm.hidden = !rot; if (rot) { escPause(); last = now; return; } }
+  const cap = META && META.fps120 ? 120 : 60;
+  if (now - FPS_DRAW < 1000 / cap - 2.5) return; // 60 fps on a 120 Hz screen: every other refresh
+  FPS_DRAW = now;
+  if (S && S.mode === "play" && (S.t | 0) !== skinCheck.k) { skinCheck.k = S.t | 0; skinCheck(); }
+  if (PORTRAIT) gpadVis();
+  escHudSync(); musTick();
+  const real = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; window.OMF_FK = real * 60;
+  if (S && S.hitstop > 0 && S.mode === "play") { S.hitstop -= real; draw(); return; }
+  if (PORTRAIT && autoAtk && S && S.mode === "play" && S.player && !(drag && drag.pad)) autoAttack();
+  FPS_ACC += real; let n = 0;
+  while (FPS_ACC >= FPS_H - 1e-4 && n < 8) { update(FPS_H * GAME_SPEED); if (n === 0) { pressed.jump = false; pressed.attack = false; } FPS_ACC -= FPS_H; n++; }
+  if (n >= 8) FPS_ACC = 0;
+  draw();
+};
+
+// ---------- tower band cache ----------
+var TL = { band: null, bctx: null, y0: 0, y1: -1, cx: null, sc: 0, w: 0, rows: [], anim: new Set(), skip: false, ready: false, moss: -1, off: false };
+function tlSolidT(t) { return t === 1 || t >= 4 && t !== 8; }
+var tl_tile0 = sprDrawTile; sprDrawTile = function (g, x, y) { if (TL.skip && y >= TL.y0 && y <= TL.y1 && !TL.anim.has(y * 64 + x)) return; return tl_tile0.apply(this, arguments); };
+function tlRender(a, b) {
+  const g = S.grid, n = Math.max(2, Math.floor(CH / TS) - 3), tv = S.t; let hit = false;
+  // a block whose drawing reads the clock (swaying moss, drips, gears, glints) stays live; the rest is painted once
+  Object.defineProperty(S, "t", { configurable: true, enumerable: true, get() { hit = true; return tv; }, set(v) { } });
+  try {
+    for (let r = a; r <= b; r += n) {
+      const e = Math.min(b, r + n - 1), lo = Math.max(0, r - 2), hi = Math.min(S.LH - 1, e + 2);
+      const pass = probe => { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0); ctx.translate(-TL.cx, -r * TS);
+        for (let y = lo; y <= hi; y++) { S._zo = S.rowZone[y]; for (let x = 0; x < S.LW; x++) { if (!tlSolidT(g[y][x])) continue; const k = y * 64 + x;
+          if (probe) { hit = false; ctx.save(); try { tl_tile0(g, x, y, x * TS, y * TS); } catch (_) {} ctx.restore(); if (hit) TL.anim.add(k); else TL.anim.delete(k); }
+          else if (!TL.anim.has(k)) { ctx.save(); try { tl_tile0(g, x, y, x * TS, y * TS); } catch (_) {} ctx.restore(); } } } };
+      pass(true); pass(false);
+      const h = Math.min(cv.height, Math.round((e - r + 1) * TS * SCALE)), dy = Math.round((r - TL.y0) * TS * SCALE);
+      TL.bctx.clearRect(0, dy, TL.band.width, h); TL.bctx.drawImage(cv, 0, 0, cv.width, h, 0, dy, cv.width, h);
+    }
+  } finally { delete S.t; S.t = tv; ctx.setTransform(1, 0, 0, 1, 0, 0); }
+}
+// v136 (user: "quiero que se siga moviendo"): everything that moved before still moves
+function tlPrep() {
+  TL.ready = false; if (TL.off || !S || !S.escape || !S.grid || S.lab || !S.rowZone || S.gdir < 0) return;
+  fitView(); const SNAP = TS / 16, cx = Math.round(S.camX / SNAP) * SNAP, cy = Math.round((S.camY || 0) / SNAP) * SNAP;
+  const y0 = Math.max(0, Math.floor(cy / TS) - 1), y1 = Math.min(S.LH - 1, Math.floor(cy / TS) + Math.ceil(CH / TS) + 2), g = S.grid, ml = typeof mossL === "function" ? mossL() : 0;
+  const full = !TL.band || TL.sc !== SCALE || TL.w !== cv.width || TL.cx !== cx || y0 < TL.y0 || y1 > TL.y1 || TL.moss !== ml || TL.grid !== g;
+  if (full) {
+    TL.y0 = Math.max(0, y0 - 16); TL.y1 = Math.min(S.LH - 1, y1 + 3); TL.cx = cx; TL.sc = SCALE; TL.w = cv.width; TL.moss = ml; TL.grid = g; TL.anim.clear(); TL.rows = [];
+    const H = Math.ceil((TL.y1 - TL.y0 + 1) * TS * SCALE);
+    if (!TL.band || TL.band.width !== cv.width || TL.band.height !== H) { TL.band = document.createElement("canvas"); TL.band.width = cv.width; TL.band.height = H; TL.bctx = TL.band.getContext("2d"); }
+    for (let y = TL.y0; y <= TL.y1; y++) TL.rows[y - TL.y0] = g[y].join() + "|" + S.rowZone[y];
+    tlRender(TL.y0, TL.y1);
+  } else {
+    let a = -1, b = -1; const flush = () => { if (a >= 0) tlRender(Math.max(TL.y0, a - 1), Math.min(TL.y1, b + 1)); a = b = -1; };
+    for (let y = TL.y0; y <= TL.y1; y++) { const s = g[y].join() + "|" + S.rowZone[y]; if (s !== TL.rows[y - TL.y0]) { TL.rows[y - TL.y0] = s; if (a < 0) a = y; else if (y > b + 3) { flush(); a = y; } b = y; } }
+    flush();
+  }
+  TL.ready = true;
+}
+var tl_dec0 = drawDecorBack; drawDecorBack = function () { const r = tl_dec0.apply(this, arguments);
+  if (TL.ready && TL.band) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(TL.band, TL.cx, TL.y0 * TS, TL.band.width / SCALE, TL.band.height / SCALE); ctx.restore(); TL.skip = true; }
+  return r; };
+var tl_draw0 = draw; draw = function () {
+  TL.skip = false; try { tlPrep(); } catch (e) { TL.ready = false; TL.off = true; try { errLog("band " + (e && e.message || e), "perf"); } catch (_) {} }
+  try { return tl_draw0.apply(this, arguments); } finally { TL.skip = false; } };
+
+// ---------- Ajustes › FPS ----------
+var fps_ss0 = showSettings; showSettings = function () { const r = fps_ss0.apply(this, arguments);
+  try { if (!ESCAPE || document.getElementById("fpsSel")) return r; const m = ov.querySelector(".menu"); if (!m) return r;
+    const box = document.createElement("div"); box.className = "fpsrow"; box.id = "fpsSel";
+    const paint = () => { const on = !!META.fps120; box.innerHTML = `<span class="fl">${Lx("Imagen", "Frame rate")}</span><div class="difsel" role="group" aria-label="FPS"><button data-f="60" class="${on ? "" : "on"}">60 FPS</button><button data-f="120" class="${on ? "on" : ""}">120 FPS</button></div><small>${on ? Lx("Más fluido en pantallas de 120 Hz. Gasta más batería.", "Smoother on 120 Hz screens. Uses more battery.") : Lx("Recomendado. La velocidad del juego es la misma en los dos.", "Recommended. The game speed is the same in both.")}</small>`;
+      box.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { omfSfx("click"); META.fps120 = b.dataset.f === "120"; try { saveMeta(); } catch (_) {} paint(); }); };
+    paint(); const anchor = m.querySelector("h1, h2"); if (anchor) anchor.insertAdjacentElement("afterend", box); else m.prepend(box);
+  } catch (_) {} return r; };
+
+// ---------- level-up cards: a triangle, two on top and one centred below (user) ----------
+var tri_lc0 = escLevelCards; escLevelCards = function () { const r = tri_lc0.apply(this, arguments); const c = ov.querySelector(".cards.deal"); if (c && c.children.length >= 3) c.classList.add("tri"); return r; };
+(() => { const st = document.createElement("style"); st.textContent = `
+#ov .cards.tri{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:440px;margin:0 auto}
+#ov .cards.tri .card{width:auto!important;max-width:none!important;min-width:0}
+#ov .cards.tri .card:nth-child(3):last-child{grid-column:1/span 2;justify-self:center;width:calc(50% - 4px)!important}
+.fpsrow{display:flex;flex-direction:column;align-items:center;gap:5px;margin:8px auto 10px;max-width:360px}
+.fpsrow .fl{font-family:var(--font-display);font-size:12px;color:#9a94b8;letter-spacing:.04em}
+.fpsrow small{font-size:11px;color:#9a94b8;text-align:center}
+.fpsrow .difsel button{min-width:96px}
+`; document.head.appendChild(st); })();
+
+// ===== v137 (user: "que en streak puedas tocar los días anteriores y ver cuánto hiciste"): each day of the streak strip is a
+// button. Tapping a day you played shows that day's best height for each difficulty under the strip. ◀ ▶ move a week back/forward.
+var DD_WK = 0, DD_SEL = 0;
+function ddDayRes(k) { const d = META.daily || {}, o = []; for (const [suf, name] of [["e", "FÁCIL"], ["", "NORMAL"], ["h", "HARDCORE"]]) { const key = String(k) + suf; if (key in d) o.push([name, d[key] || 0]); } return o; }
+function ddDetail() {
+  if (!DD_SEL) return "";
+  const y = Math.floor(DD_SEL / 10000), mo = Math.floor(DD_SEL / 100) % 100, da = DD_SEL % 100, dt = new Date(Date.UTC(y, mo - 1, da));
+  const W = LANG === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const M = LANG === "en" ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const r = ddDayRes(DD_SEL), played = ddList().has(DD_SEL);
+  const body = r.length ? r.map(([n, m]) => `<span>${T(n)} <b>${m} m</b></span>`).join("") : `<span>${played ? Lx("Jugaste, sin altura guardada", "Played, no height saved") : Lx("No jugaste este día", "You didn't play this day")}</span>`;
+  return `<div class="dd-det"><em>${W[dt.getUTCDay()]} ${da} ${M[mo - 1]}</em>${body}</div>`;
+}
+ddHTML = function () {
+  const s = ddList(), now = new Date(), t = todayKey(), dow = (now.getUTCDay() + 6) % 7, D = LANG === "en" ? ["M", "T", "W", "T", "F", "S", "S"] : ["L", "M", "X", "J", "V", "S", "D"], n = ddStreak();
+  const box = i => { const d = new Date(now.getTime() - (dow - i - DD_WK * 7) * 864e5), k = ddKey(d), played = s.has(k), today = k === t, fut = k > t, sel = k === DD_SEL;
+    return `<button type="button" class="day${today ? " today" : played ? " ok" : ""}${fut ? " fut" : ""}${sel ? " sel" : ""}" data-dk="${k}"${fut ? " disabled" : ""}><span>${played ? cx2Spr("flame", 2) : fut || today ? "" : cx2Spr("skull", 2, true)}</span><span>${D[i]}<i>${d.getUTCDate()}</i></span></button>`; };
+  const k = String(t) + (META.easy ? "e" : META.hard ? "h" : ""), best = (META.daily || {})[k] || 0, b = META.easy ? null : META.hard ? "daily_hard" : "daily", c = b && prlCache[b], me = c && c.me;
+  return `<div class="dstk"><div class="sk-top"><span>${T("RACHA")}</span><b>${n} ${n === 1 ? T("DÍA") : T("DÍAS")}</b></div>
+    <div class="dd-nav"><button type="button" data-wk="-1" aria-label="${Lx("Semana anterior", "Previous week")}">◀</button><span>${DD_WK === 0 ? Lx("ESTA SEMANA", "THIS WEEK") : DD_WK === -1 ? Lx("SEMANA PASADA", "LAST WEEK") : Lx("HACE " + -DD_WK + " SEMANAS", -DD_WK + " WEEKS AGO")}</span><button type="button" data-wk="1" aria-label="${Lx("Semana siguiente", "Next week")}"${DD_WK >= 0 ? " disabled" : ""}>▶</button></div>
+    <div class="days">${[0, 1, 2, 3, 4, 5, 6].map(box).join("")}</div>${ddDetail()}
+    <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span><span>${T("Hoy")}: <b>${best} m</b>${me && me.rank ? ` · ${Lx("puesto", "rank")} <b>${me.rank}</b>${me.total ? ` ${Lx("de", "of")} ${me.total}` : ""}` : ""}</span></div></div>`;
+};
+function ddRedraw() { const el = ov.querySelector(".dstk"); if (el) { el.outerHTML = ddHTML(); ddTick(); } }
+ov.addEventListener("click", e => {
+  const w = e.target.closest && e.target.closest(".dstk [data-wk]"); if (w && !w.disabled) { DD_WK = Math.min(0, Math.max(-52, DD_WK + (+w.dataset.wk))); DD_SEL = 0; try { omfSfx("click"); } catch (_) {} ddRedraw(); return; }
+  const d = e.target.closest && e.target.closest(".dstk [data-dk]"); if (d && !d.disabled) { const k = +d.dataset.dk; DD_SEL = DD_SEL === k ? 0 : k; try { omfSfx("click"); } catch (_) {} ddRedraw(); }
+});
+{ const ddI0 = dailyIntro; dailyIntro = function () { DD_WK = 0; DD_SEL = 0; return ddI0.apply(this, arguments); }; }
+(() => { const st = document.createElement("style"); st.textContent = `
+.dstk button.day{border:0;margin:0;font:inherit;font-family:var(--font-display);font-size:9px;color:#9a94b8;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.dstk button.day:disabled{cursor:default}
+.dstk .day.ok{color:#ece8f5}
+.dstk .day.today{color:#f2c14e}
+.dstk .day i{display:block;font-style:normal;font-size:8px;opacity:.75;margin-top:1px}
+.dstk .day.sel{box-shadow:inset 0 0 0 2px #ece8f5,inset 0 0 0 4px #ff8c50;background:#2b1a14}
+.dstk .dd-nav{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-family:var(--font-display);font-size:9px;color:#9a94b8}
+.dstk .dd-nav button{background:#1b1829;border:0;color:#ece8f5;font-family:var(--font-display);font-size:10px;min-width:30px;min-height:24px;clip-path:var(--cxframe);box-shadow:inset 0 0 0 2px #3e3960;cursor:pointer}
+.dstk .dd-nav button:disabled{opacity:.35;cursor:default}
+.dstk .dd-det{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;margin:0 0 8px;padding:6px 8px;background:#1b1829;clip-path:var(--cxframe);box-shadow:inset 0 0 0 2px #ff8c50;font-size:11px;color:#9a94b8}
+.dstk .dd-det em{font-style:normal;font-family:var(--font-display);font-size:10px;color:#ff8c50;width:100%}
+.dstk .dd-det b{color:#ece8f5;font-weight:400}
+`; document.head.appendChild(st); })();
+
+// ===== v138 (user: "quiero todos los menús fluidos", "cuando mueres también"): the tower is not repainted when nobody can see it
+// change: under the title screen (its own climbing background covers everything) and on the death screen once the fall animation
+// has finished (the tower there sits still, dimmed behind the panels). The phone then spends every frame on the menu itself.
+var MF = { deadAt: 0, drewDead: false };
+{ const mfDie0 = die; die = function () { MF.deadAt = performance.now(); MF.drewDead = false; return mfDie0.apply(this, arguments); }; }
+{ const mfDraw0 = draw; draw = function () {
+    if (S && S.mode === "title" && !ov.hidden) { const bg = document.getElementById("a3bg"); if (bg && bg.isConnected) return; }
+    if (S && S.mode === "dead" && !ov.hidden && MF.deadAt && performance.now() - MF.deadAt > 2600) { const sz = cv.width + "x" + cv.height; if (MF.drewDead === sz) return; MF.drewDead = sz; }
+    else MF.drewDead = false;
+    return mfDraw0.apply(this, arguments); }; }
+// ===== v139 (user: "cuando te unes a un jugador en el lobby debería pedirle a ambos un click de ready"): in a room both players press
+// LISTO; the duel starts only when both are ready (the room creator's phone starts it, as before). Pressing again takes it back.
+DU.rdy = false; DU.rvRdy = false;
+function duRdyReset() { DU.rdy = false; DU.rvRdy = false; }
+duHello = function () { duTx({ t: "msg", d: { v: 1, role: DU.role, name: duName(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff, rdy: DU.rdy ? 1 : 0 } }); };
+function duRdyCheck() { if (DU.net && DU.peer && DU.role === "host" && DU.rdy && DU.rvRdy && !DU.on && DU.scr === "vs") { duRdyReset(); duHostStart(false); } }
+{ const s0 = duState; duState = function (d) { if (d && typeof d === "object" && d.v === 1 && d.st === "lobby") DU.rvRdy = !!d.rdy; const r = s0.apply(this, arguments); if (d && d.st === "lobby") duRdyCheck(); return r; }; }
+{ const w0 = duWait; duWait = function () { duRdyReset(); return w0.apply(this, arguments); }; }
+{ const m0 = duMenu; duMenu = function () { duRdyReset(); return m0.apply(this, arguments); }; }
+{ const r0 = duStartRound; duStartRound = function () { duRdyReset(); return r0.apply(this, arguments); }; }
+{ const v0 = duVs; duVs = function () { const r = v0.apply(this, arguments); if (!DU.net || DU.bot) return r;
+    const go = document.getElementById("duGo"); if (!go) return r;
+    const paint = () => { go.disabled = false; go.classList.toggle("rdy", DU.rdy); go.textContent = DU.rdy ? Lx("✓ LISTO", "✓ READY") : Lx("¡LISTO!", "READY!");
+      let st = document.getElementById("duRdy"); if (!st) { go.parentNode.insertAdjacentHTML("afterend", '<div class="durdy" id="duRdy"></div>'); st = document.getElementById("duRdy"); }
+      st.innerHTML = `<span class="${DU.rdy ? "on" : ""}">${T("TÚ")}: ${DU.rdy ? Lx("LISTO", "READY") : Lx("ESPERANDO", "NOT READY")}</span><span class="${DU.rvRdy ? "on" : ""}">${DU.rvName}: ${DU.peer ? (DU.rvRdy ? Lx("LISTO", "READY") : Lx("ESPERANDO", "NOT READY")) : Lx("FUERA", "AWAY")}</span>`;
+      const sub = ov.querySelector(".duel .dusub"); if (sub) sub.textContent = DU.rdy && DU.rvRdy ? Lx("¡Empieza!", "Starting!") : Lx("El duelo empieza cuando los dos pulsáis LISTO. En vivo y sin pausa.", "The duel starts when both of you press READY. Live, no pause."); };
+    go.onclick = () => { omfSfx("click"); DU.rdy = !DU.rdy; duHello(); paint(); duRdyCheck(); };
+    paint(); return r; }; }
+(() => { const st = document.createElement("style"); st.textContent = `
+.durdy{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:8px auto 0;font-family:var(--font-display);font-size:10px;color:#9a94b8}
+.durdy span{padding:3px 8px;background:#1b1829;box-shadow:inset 0 0 0 2px #3e3960}
+.durdy span.on{color:#5fd1c4;box-shadow:inset 0 0 0 2px #5fd1c4}
+#duGo.rdy{background:#163230!important;color:#5fd1c4!important;box-shadow:inset 0 0 0 2px #5fd1c4!important}
+`; document.head.appendChild(st); })();
+// ===== v140 (user picked idea A for the duel scoreboard): the duel uses the normal HUD. TIEMPO becomes DUELO with the countdown, and
+// the rival lives in a chip in the modifiers row (round, rounds won, the rival's height and how far ahead or behind you they are).
+// A curse the rival sends shows in that same chip for a moment; active curses keep their own chips beside it, as in a normal climb.
+function duClockLeft() { return Math.max(0, DU_LIMIT - duEl()); }
+duHudOn = function (on) { const old = document.getElementById("duHud"); if (old) old.remove(); document.body.classList.toggle("induel", !!on); if (!on) { const c = document.getElementById("duChip"); if (c) c.remove(); } else duHud(true); };
+duHud = function (force) {
+  if (!document.body.classList.contains("induel")) return; const rows = document.getElementById("hRules"); if (!rows || !S) return;
+  let c = document.getElementById("duChip");
+  if (!c || c.parentNode !== rows) { c = document.createElement("span"); c.id = "duChip"; c.className = "chip duchip"; rows.prepend(c); c._k = ""; }
+  for (const x of [...rows.children]) if (x !== c && !x.querySelector(".ic")) x.remove(); // the "no modifiers" chip: the rival takes its place
+  const rv = DU.rv ? DU.rv.best : 0, d = rv - (S.escBest || 0), ban = S.duBan && S.duBan.s;
+  const k = [DU.round, DU.wins.join(), DU.rvName, rv, d, ban, LANG].join("|"); if (!force && c._k === k) return; c._k = k;
+  c.classList.toggle("ban", !!ban);
+  c.innerHTML = ban ? `<b class="dn">${ban}</b>` : `<span>R${DU.round} ${[0, 1].map(i => `<i class="pip${i < DU.wins[0] ? " w0" : ""}"></i>`).join("")}</span><span class="dn">${DU.rvName} ${rv} m</span>${d > 0 ? `<span class="dn">▲${d}</span>` : d < 0 ? `<span class="up">▼${-d}</span>` : ""}`;
+};
+(() => { const st = document.createElement("style"); st.textContent = `
+body.esc .hud .chip.duchip{display:inline-flex;align-items:center;gap:7px;max-width:70vw;border-color:#ff8a66;color:#ece8f5;font-family:Silkscreen,monospace}
+.duchip .pip{display:inline-block;width:7px;height:7px;background:#2c2842;margin-left:2px;vertical-align:middle}.duchip .pip.w0{background:#5fd1c4}
+.duchip .dn{color:#ff8a66;font-weight:400}.duchip .up{color:#5fd1c4}
+body.esc .hud .chip.duchip.ban{background:#3a1420;animation:cxblink .5s steps(2) 3}
+.cxsheet .sh-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cxsheet .sh-btns .sh-shop{margin-top:12px;font-family:var(--font-display);font-size:13px;letter-spacing:1px;color:#0b0912;background:#5fd1c4;border:0;border-radius:0;padding:11px 10px;cursor:pointer;clip-path:var(--cxframe)}
+/* v140 (user: "en el códex cuando abres algo sale lento"): taps answer at once (no double-tap wait) and the tile dips under the finger */
+#ov button,.cxsheet button,.cx2 .tile{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.cx2 .tile{transition:transform .07s ease-out}.cx2 .tile:active{transform:scale(.93)}
+@media (prefers-reduced-motion:reduce){.cxsheet,.cxshade{transition:none!important}}
+`; document.head.appendChild(st); })();
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
