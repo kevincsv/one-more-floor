@@ -265,9 +265,10 @@ body.esc.ctl-franja .gpad .px span { font-size: 11px; }
 /* B · Invisible: left half is a floating stick, right half reads taps (GOLPE) and upward swipes (SALTO); only a faint ring shows */
 body.esc.ctl-invisible .gpad { top: calc(env(safe-area-inset-top, 0px) + 74px); bottom: 0; height: auto; }
 body.esc.ctl-invisible .gpad .gmove { width: 50%; }
-body.esc.ctl-invisible .gpad .dpad, body.esc.ctl-invisible .gpad .gb { display: none; }
+body.esc.ctl-invisible .gpad .dpad { display: none; } /* v153 (user): "Combinado" = the invisible stick + real GOLPE / SALTO buttons */
+body.esc.ctl-invisible .gpad #gJump { bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); } body.esc.ctl-invisible .gpad #gAtk { bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); }
 .gpad .gtap { display: none; }
-body.esc.ctl-invisible .gpad .gtap { display: block; position: absolute; right: 0; top: 0; bottom: 0; width: 50%; pointer-events: auto; touch-action: none; }
+body.esc.ctl-invisible .gpad .gtap { display: none; position: absolute; right: 0; top: 0; bottom: 0; width: 50%; pointer-events: auto; touch-action: none; }
 body.esc.ctl-invisible .gpad .base.show, body.esc.ctl-invisible .gpad .knob.show { display: block !important; }
 body.esc.ctl-invisible .gpad .base { width: 104px; height: 104px; margin: -52px 0 0 -52px; border: 3px solid rgba(242,193,78,.32); background: rgba(242,193,78,.04); }
 body.esc.ctl-invisible .gpad .knob { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: rgba(242,193,78,.28); border: 2px solid rgba(255,236,170,.4); pointer-events: none; }
@@ -692,10 +693,10 @@ function setCtl(v) {
   if (typeof dpadClear === "function") dpadClear();
   fitView(true);
 }
-const CTL_NAME = { franja: "Franja", invisible: "Invisible", clasico: "Clásico" };
+const CTL_NAME = { franja: "Franja", invisible: "Combinado", clasico: "Clásico" };
 const CTL_DESC = {
   franja: "Mandos en una franja debajo del juego: no tapan nada y el borde dorado es la línea de caída.",
-  invisible: "Pantalla limpia. Mitad izquierda: stick que aparece donde tocas. Mitad derecha: toca para golpear, desliza hacia arriba para saltar.",
+  invisible: "Mitad izquierda: stick que aparece donde tocas. A la derecha, los botones GOLPE y SALTO.",
   clasico: "Cruceta y botones semitransparentes encima del juego.",
 };
 const dk = document.createElement("canvas"); dk.width = CW; dk.height = CH; const dctx = dk.getContext("2d");
@@ -4994,7 +4995,7 @@ const EN_PATTERNS = [
   [/^Bloqueado: (.+)$/, "Locked: $1"],
 ];
 Object.assign(EN_TEXT, { "Aspecto desbloqueado:": "Skin unlocked:", "Llega a 300 m en Escape": "Reach 300 m in Escape", "Encuentra 3 salas ocultas": "Find 3 hidden rooms", "Vence a un jefe": "Defeat a boss", "Vence a 3 jefes": "Defeat 3 bosses", "Junta 500 monedas en total": "Collect 500 coins in total", "Haz un combo x20": "Land a x20 combo", "Llega al Reino de las máquinas": "Reach the Machine Kingdom", "Compra 5 veces al mercader": "Buy from the merchant 5 times", "Llega a nivel 10 en Escape": "Reach level 10 in Escape", "Llega a 600 m en Escape": "Reach 600 m in Escape", "Cuervo": "Raven", "Explorador": "Explorer", "Escudero": "Squire", "Caballero": "Knight", "Minero": "Miner", "Bruto con cuernos": "Horned brute", "Gólem": "Golem", "Enano herrero": "Dwarf smith", "Bruja": "Witch", "Sombra": "Shadow" });
-Object.assign(EN_TEXT, { "⚙ AJUSTES": "⚙ SETTINGS", "CONTROLES": "CONTROLS", "Franja": "Strip", "Invisible": "Invisible", "Clásico": "Classic", "Mandos en una franja debajo del juego: no tapan nada y el borde dorado es la línea de caída.": "Controls on a strip below the game: they cover nothing, and the gold edge is the fall line.", "Pantalla limpia. Mitad izquierda: stick que aparece donde tocas. Mitad derecha: toca para golpear, desliza hacia arriba para saltar.": "Clean screen. Left half: a stick appears where you touch. Right half: tap to strike, swipe up to jump.", "Cruceta y botones semitransparentes encima del juego.": "See-through d-pad and buttons over the game." });
+Object.assign(EN_TEXT, { "⚙ AJUSTES": "⚙ SETTINGS", "CONTROLES": "CONTROLS", "Franja": "Strip", "Invisible": "Invisible", "Combinado": "Combined", "Mitad izquierda: stick que aparece donde tocas. A la derecha, los botones GOLPE y SALTO.": "Left half: a stick appears where you touch. On the right, the HIT and JUMP buttons.", "Clásico": "Classic", "Mandos en una franja debajo del juego: no tapan nada y el borde dorado es la línea de caída.": "Controls on a strip below the game: they cover nothing, and the gold edge is the fall line.", "Pantalla limpia. Mitad izquierda: stick que aparece donde tocas. Mitad derecha: toca para golpear, desliza hacia arriba para saltar.": "Clean screen. Left half: a stick appears where you touch. Right half: tap to strike, swipe up to jump.", "Cruceta y botones semitransparentes encima del juego.": "See-through d-pad and buttons over the game." });
 Object.assign(EN_TEXT, { "Saltar escena": "Skip", "Ecos de Velo": "Velo's Echoes", "Eco de Velo": "Velo's Echo", "Finales": "Endings", "FINAL": "ENDING" });
 Object.assign(EN_TEXT, { "Mira cuáles te faltan en el Códice.": "See which ones you're missing in the Codex.", "Logros": "Achievements", "Ranking": "Leaderboard", "ELIGE TU PRIMER MODIFICADOR": "PICK YOUR FIRST MODIFIER", "Empiezas la subida con él. Cada 15 s llega otro y el más antiguo se va.": "You start the climb with it. Every 15 s another one arrives and the oldest leaves." });
 EN_PATTERNS.unshift([/^Haz hazañas para añadir reglas a tu mazo · (\d+)\/(\d+)$/, "Pull off feats to add rules to your deck · $1/$2"],
@@ -9431,7 +9432,7 @@ const CTL_PREV = (() => {
   const dpad = (x, y, c) => r(x + 3, y, 3, 9, c) + r(x, y + 3, 9, 3, c);
   return {
     franja: phone(r(4, 48, 32, 16, B) + r(4, 48, 32, 1, R) + dpad(6, 52, A) + r(22, 56, 5, 5, R) + r(29, 51, 6, 6, A)),
-    invisible: phone(r(4, 40, 16, 24, "rgba(95,209,196,.12)") + r(20, 40, 16, 24, "rgba(242,193,78,.10)") + r(9, 49, 6, 6, "rgba(95,209,196,.6)") + r(11, 51, 2, 2, "#5fd1c4") + r(26, 50, 4, 4, W) + r(19, 40, 1, 24, "rgba(255,255,255,.15)")),
+    invisible: phone(r(4, 40, 16, 24, "rgba(95,209,196,.12)") + r(9, 49, 6, 6, "rgba(95,209,196,.6)") + r(11, 51, 2, 2, "#5fd1c4") + r(22, 51, 5, 5, "rgba(224,86,107,.5)") + r(29, 56, 6, 6, W)),
     clasico: phone(dpad(6, 50, W) + r(22, 54, 5, 5, "rgba(224,86,107,.5)") + r(29, 49, 6, 6, W)),
   };
 })();
@@ -10656,7 +10657,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v152";
+var OMF_VER = "Escape v153";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12577,10 +12578,10 @@ var dc131 = genEscSegment; genEscSegment = function () { const r = dc131.apply(t
   return r; };
 // v130 (user: the buttons only reacted when hit near their centre): the whole right side of the pad is live; a touch
 // that misses GOLPE / SALTO goes to the nearest one (up to 72 px away), keeping that finger until it lifts
-{ const st = document.createElement("style"); st.textContent = "body.esc:not(.ctl-invisible) .gpad .gbtns { pointer-events: auto; }"; document.head.appendChild(st);
+{ const st = document.createElement("style"); st.textContent = "body.esc .gpad .gbtns { pointer-events: auto; }"; document.head.appendChild(st);
   const box = document.querySelector(".gpad .gbtns");
   if (box) box.addEventListener("pointerdown", e => {
-    if (CTL === "invisible" || (e.target && e.target.closest && e.target.closest(".gb"))) return;
+    if (e.target && e.target.closest && e.target.closest(".gb")) return;
     let best = null, bd = 1e9;
     for (const id of ["gJump", "gAtk"]) { const el = document.getElementById(id); if (!el || !el.offsetParent) continue; const r = el.getBoundingClientRect();
       const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right), dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom), d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = el; } }
