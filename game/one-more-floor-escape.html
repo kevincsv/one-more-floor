@@ -10656,7 +10656,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v149";
+var OMF_VER = "Escape v150";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11785,7 +11785,7 @@ function dailyIntro() {
     <div class="dlycards">${ids.map(id => { const r = RULE[id]; return `<div class="card"><span class="ic">${r.icon}</span><span class="nm">${T(r.name)}</span><span class="tag">${T(CATS[r.cat])}</span>${skullsHTML(r.cost, true)}<span class="ds">${T(r.desc)}</span></div>`; }).join("")}</div>
     <p class="dlyprize"><i class="cn"></i>${dailyDone(k) ? Lx("Premio de hoy cobrado: 100 monedas", "Today's prize collected: 100 coins") : Lx("Premio al completarlo: 100 monedas", "Prize for completing it: 100 coins")}</p>
     <p class="hust">${T("Hoy")}: ${(META.daily[k] || 0)} m${dailyDone(k) ? " · ✓ " + T("superado") : ""} · ${T("Mañana, otro reto")}</p>
-    <div class="rowbig"><button class="go" id="dlyGo">${T("EMPEZAR")}</button></div><div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
+    <div class="rowbig"><button class="go" id="dlyGo">${S.oldDaily ? Lx("EMPEZAR DESAFÍO PASADO", "START PAST CHALLENGE") : Lx("EMPEZAR DESAFÍO DE HOY", "START TODAY'S CHALLENGE")}</button></div><div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov);
   document.getElementById("backBtn").onclick = () => { omfSfx("click"); showTitle(); };
   document.getElementById("dlyGo").onclick = () => { omfSfx("click"); S.dailyFix = ids.slice(); for (const id of ids) if (!S.rules.includes(id)) S.rules.push(id); startFloor();
@@ -13404,7 +13404,7 @@ function ddFmtDay(k) { const y = Math.floor(k / 10000), mo = Math.floor(k / 100)
 { const di0 = dailyIntro; dailyIntro = function () { const r = di0.apply(this, arguments); if (!S.oldDaily) return r;
     const tg = ov.querySelector(".dlyintro .tagline"); if (tg) tg.textContent = ddFmtDay(S.seed) + " · " + T(S.easy ? "Fácil" : S.hard ? "Hardcore" : "Normal");
     const h2 = ov.querySelector(".dlyintro h2"); if (h2) h2.insertAdjacentHTML("beforeend", ` <small class="ddold">${Lx("ANTIGUO", "PAST")}</small>`);
-    const pr = ov.querySelector(".dlyintro .dlyprize"); if (pr) pr.outerHTML = `<p class="ddwarn">${Lx("Desafío de otro día: puedes jugarlo, pero completarlo no da recompensa, no cuenta para la racha ni para el ranking.", "A past day's challenge: you can play it, but completing it gives no reward and doesn't count for the streak or the ranking.")}</p>`;
+    const pr = ov.querySelector(".dlyintro .dlyprize"); if (pr) pr.outerHTML = `<p class="ddwarn">${Lx("Este es un desafío de un día pasado. Puedes jugarlo, pero completarlo no da recompensa y no cuenta para la racha ni para el ranking.", "This is a past day's challenge. You can play it, but completing it gives no reward and doesn't count toward your streak or the ranking.")}</p>`;
     const st = ov.querySelector(".dstk"); if (st) st.remove(); const hu = ov.querySelector(".dlyintro .hust"); if (hu) hu.remove();
     const bk = document.getElementById("backBtn"); if (bk) bk.onclick = () => { omfSfx("click"); DD_REPLAY = 0; newRun({ char: S.char.id, kind: "daily" }); nextRuleStep(); };
     return r; }; }
