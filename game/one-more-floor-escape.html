@@ -2730,10 +2730,18 @@ function drawRulesWorld(p) {
   if (S.huntT > 0) for (const e of S.enemies) if (!e.dead && !e.boss) { ctx.strokeStyle = "#5fd1c4"; ctx.lineWidth = 1; ctx.strokeRect(e.x - 2, e.y - 2, e.w + 4, e.h + 4); }
 }
 function drawRulesScreen(p, cx, cy) {
-  if (S.sweep && S.sweep.esc) { // v128: the falling beam, stopped by the first tile above in each column
-    ctx.fillStyle = "rgba(255,90,120,.85)"; const by = S.sweep.y;
-    for (let tx = 1; tx < S.LW - 1; tx++) { let blocked = false; for (let ty = Math.max(0, Math.floor(cy / TS)); ty * TS < by; ty++) { const c = S.grid[ty] && S.grid[ty][tx]; if (c && c !== 3) { blocked = true; break; } } if (!blocked) ctx.fillRect(tx * TS - cx, by - cy - 3, TS, 6); }
-  } else if (has("sweep") && S.escape && S.sweepT < 1.5 && Math.floor(S.t * 8) % 2) { ctx.fillStyle = "rgba(255,90,120,.5)"; ctx.fillRect(0, 0, CW, 6); }
+  if (has("sweep") && S.escape && (S.sweep || S.sweepT < 1.5)) { // v154 (user picked design A "Rayo de la torre"): emitter rail on the ceiling, thin beam with a white core, sparks where it hits a platform
+    const u = Math.max(1, Math.round(TS / 12)), warn = !S.sweep, bl = Math.floor(S.t * 8) % 2, r0 = typeof escHudY !== "undefined" ? Math.max(0, Math.round(escHudY) - 2) : 0; // the rail hangs just under the html HUD
+    for (let x = 0; x < CW; x += 8 * u) { ctx.fillStyle = "#3a1f2a"; ctx.fillRect(x, r0, 8 * u, 4 * u); ctx.fillStyle = "#000"; ctx.fillRect(x, r0 + 4 * u, 8 * u, u); ctx.fillStyle = warn ? (bl ? "#ff5a78" : "#6a2a3a") : "#ff5a78"; ctx.fillRect(x + 3 * u, r0 + u, 2 * u, 2 * u); }
+    if (warn) { ctx.fillStyle = "rgba(255,90,120,.55)"; for (let x = 0; x < CW; x += 4 * u) if ((Math.floor(S.t * 8) + x / (4 * u)) % 2 < 1) ctx.fillRect(x, r0 + 6 * u, 2 * u, u); }
+    else { const by = S.sweep.y, yy = Math.round(by - cy);
+      for (let tx = 1; tx < S.LW - 1; tx++) { let top = -1; for (let ty = Math.max(0, Math.floor(cy / TS)); ty * TS < by; ty++) { const c = S.grid[ty] && S.grid[ty][tx]; if (c && c !== 3) { top = ty * TS; break; } }
+        const X = tx * TS - cx;
+        if (top >= 0) { if (by - top < 10 * u) for (let s = 0; s < 3; s++) { ctx.fillStyle = s % 2 ? "#fff6c8" : "#ff8a5a"; ctx.fillRect(X + ((Math.floor(S.t * 60) * u + s * 5 * u + tx * 3 * u) % TS), top - cy - (2 + s) * u, u, u); } continue; }
+        ctx.fillStyle = "rgba(255,90,120,.35)"; ctx.fillRect(X, yy - 3 * u, TS, u); ctx.fillRect(X, yy + u, TS, u);
+        ctx.fillStyle = "#ff5a78"; ctx.fillRect(X, yy - 2 * u, TS, u); ctx.fillRect(X, yy, TS, u);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(X, yy - u, TS, u); } }
+  }
   else if (S.sweep) {
     ctx.fillStyle = "rgba(255,90,120,.85)";
     for (let r = Math.floor(cy / TS); r <= Math.floor((cy + CH) / TS); r++) {
@@ -10657,7 +10665,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v153";
+var OMF_VER = "Escape v154";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
