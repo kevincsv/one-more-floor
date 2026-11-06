@@ -3150,7 +3150,7 @@ function update(dt) {
   const gk = has("glutton") ? S.grow || 1 : 1;
   const sw = Math.round((has("shrink") ? 10 : 16) * gk), sh = Math.round((has("shrink") ? 13 : 22) * gk);
   if (p.w !== sw) { if (S.gdir > 0) p.y += p.h - sh; p.x += (p.w - sw) / 2; p.w = sw; p.h = sh; }
-  const accel = p.ground ? (has("ice") ? (rel("crampones") ? 10 : 5) : 18) : 9; // v142 (user: "el hielo tiene demasiada inercia, es imposible saltar si no corres"): ice only slides on the ground (was 1.6) and the air control is normal (was 1.4)
+  const accel = p.ground ? (has("ice") ? (rel("crampones") ? 10 : 3.5) : 18) : 9; // v152 (user): ice a little more slippery than v143 // v142 (user: "el hielo tiene demasiada inercia, es imposible saltar si no corres"): ice only slides on the ground (was 1.6) and the air control is normal (was 1.4)
   p.launchT -= dt;
   if (!(has("frozen") && !p.ground) && p.launchT <= 0) p.vx += (target - p.vx) * Math.min(1, dt * accel);
   if (dirIn) p.face = dirIn;
@@ -10656,7 +10656,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v151";
+var OMF_VER = "Escape v152";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -10998,7 +10998,7 @@ function shareCard(D) {
     g.fillStyle = "#0b0912"; g.fillRect(bx - K, by - K, bw + 2 * K, 48 + 2 * K); g.fillStyle = D.modeCol || "#5fd1c4"; g.fillRect(bx, by, bw, 48); g.fillStyle = "#1b1829"; g.fillRect(bx + K, by + K, bw - 2 * K, 48 - 2 * K);
     out(modeTxt, 540, by + 36, 30, D.modeCol || "#5fd1c4", 3); }
   if (extra) out(extra, 540, 990 - 16, 22, "#a39cc4", 2);
-  if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; g.fillText(RULE[id] ? RULE[id].icon : "?", x0 + i * w, 340); }); }
+  if (D.mods.length) { g.font = "44px sans-serif"; const w = 60, x0 = 540 - (D.mods.length * w) / 2 + w / 2; D.mods.forEach((id, i) => { g.fillStyle = "#0b0912"; g.fillRect(x0 + i * w - 26, 300 - 2, 52, 52); g.fillStyle = "#ece6ff"; { const ic = RULE[id] ? RULE[id].icon : "?", A = typeof PXE_ART !== "undefined" && PXE_ART[ic]; if (A && typeof PXE_PAL !== "undefined") A.forEach((row, y) => [...row].forEach((k, x) => { if (PXE_PAL[k]) { g.fillStyle = PXE_PAL[k]; g.fillRect(x0 + i * w - 21 + x * 3, 302 + y * 3, 3, 3); } })); else g.fillText(ic, x0 + i * w, 340); } }); }
   out("One More Floor Escape", 540, 1012, 22, "#a39cc4", 2);
   return c;
 }
@@ -13304,7 +13304,6 @@ ddHTML = function () {
     return `<button type="button" class="day${today ? " today" : played ? " ok" : ""}${fut ? " fut" : ""}${sel ? " sel" : ""}" data-dk="${k}"${fut ? " disabled" : ""}><span>${played ? cx2Spr("flame", 2) : fut || today ? "" : cx2Spr("skull", 2, true)}</span><span>${D[i]}<i>${d.getUTCDate()}</i></span></button>`; };
   const k = String(t) + (META.easy ? "e" : META.hard ? "h" : ""), best = (META.daily || {})[k] || 0, b = META.easy ? null : META.hard ? "daily_hard" : "daily", c = b && prlCache[b], me = c && c.me;
   return `<div class="dstk"><div class="sk-top"><span>${T("RACHA")}</span><b>${n} ${n === 1 ? T("DÍA") : T("DÍAS")}</b></div>
-    <div class="dd-nav"><button type="button" data-wk="-1" aria-label="${Lx("Semana anterior", "Previous week")}">◀</button><span>${DD_WK === 0 ? Lx("ESTA SEMANA", "THIS WEEK") : DD_WK === -1 ? Lx("SEMANA PASADA", "LAST WEEK") : Lx("HACE " + -DD_WK + " SEMANAS", -DD_WK + " WEEKS AGO")}</span><button type="button" data-wk="1" aria-label="${Lx("Semana siguiente", "Next week")}"${DD_WK >= 0 ? " disabled" : ""}>▶</button></div>
     <div class="days">${[0, 1, 2, 3, 4, 5, 6].map(box).join("")}</div>${ddDetail()}
     <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span><span>${T("Hoy")}: <b>${best} m</b>${me && me.rank ? ` · ${Lx("puesto", "rank")} <b>${me.rank}</b>${me.total ? ` ${Lx("de", "of")} ${me.total}` : ""}` : ""}</span></div></div>`;
 };
@@ -13427,7 +13426,7 @@ if (DUEL_SOON) {
   { const dm0 = duMenu; duMenu = function () { if (DUEL_SOON && !(S && S.test)) return duSoonTap(); return dm0.apply(this, arguments); }; }
   { const tw0 = escTitleWire; escTitleWire = function () { const r = tw0.apply(this, arguments);
       try { const b = document.getElementById("duelBtn"); if (b) { b.classList.add("dusoon"); const n = b.querySelector(".new, .dunew"); if (n) n.remove();
-          const s = b.querySelector(".ts, .mv"); if (s) s.textContent = Lx("PRÓXIMAMENTE", "COMING SOON"); b.onclick = () => duSoonTap(); } } catch (_) {}
+          const s = b.querySelector(".ts, .mv"); if (s) s.textContent = Lx("PRONTO", "COMING SOON"); b.onclick = () => duSoonTap(); } } catch (_) {}
       return r; }; }
 }
 function duSoonTap() { try { omfSfx("click"); } catch (_) {} const b = document.getElementById("duelBtn"); if (!b) return; b.classList.remove("dublink"); void b.offsetWidth; b.classList.add("dublink"); }
@@ -13438,18 +13437,74 @@ function duSoonTap() { try { omfSfx("click"); } catch (_) {} const b = document.
 (() => { const st = document.createElement("style"); st.textContent = `
 #ov > h2.lvl ~ .cards:last-child{margin-bottom:auto}
 html,body{overscroll-behavior:none}
-#ov{overscroll-behavior:none;scrollbar-width:none;-webkit-tap-highlight-color:transparent}
+#ov{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;-webkit-tap-highlight-color:transparent}
 *::-webkit-scrollbar{display:none;width:0;height:0}
 *{scrollbar-width:none}
 #wardrobe,.cxsheet,.cx2,[class*="sheet"]{overscroll-behavior:contain}`; document.head.appendChild(st); })();
 function ovFit() { try {
-    if (ov.hidden) return; const m = ov.querySelector(":scope > .menu"); if (!m || m.classList.contains("etitle")) return;
+    if (ov.hidden) return; const m = ov.querySelector(":scope > .menu.dlyintro"); if (!m) return; /* v152 (user): only the daily challenge screen fits itself; every other menu keeps its size and scrolls natively */
     m.style.zoom = ""; const H = ov.clientHeight, sh = ov.scrollHeight; if (!H || sh <= H + 1) return;
     const z = H / sh; if (z < 0.78) return; // a long list (codex, shop pages) keeps scrolling, just without the browser look
     m.style.zoom = Math.max(0.78, z - 0.005).toFixed(3); ov.scrollTop = 0;
   } catch (_) {} }
 { let q = 0; const go = () => { if (q) return; q = requestAnimationFrame(() => { q = 0; ovFit(); setTimeout(ovFit, 450); }); };
   try { new MutationObserver(ms => { if (ms.some(m => m.target === ov || [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1))) go(); }).observe(ov, { childList: true, subtree: true }); /* a panel opening inside a menu (a streak day) refits too; text ticks do not */ } catch (_) {} addEventListener("resize", go); }
+// v152 (user): the daily challenge has its own EASY / NORMAL / HARDCORE selector, the same as the main menu.
+// Switching it re-deals the same day's challenge on that difficulty (a past day stays a past day).
+{ const di0 = dailyIntro; dailyIntro = function () { const r = di0.apply(this, arguments);
+    try { const tg = ov.querySelector(".dlyintro .tagline"); if (tg && !ov.querySelector(".dlyintro .dddif")) { const d = META.easy ? "e" : META.hard ? "h" : "n";
+        tg.insertAdjacentHTML("afterend", `<div class="difsel dddif" role="group" aria-label="${T("Dificultad")}">${[["e", "FÁCIL"], ["n", "NORMAL"], ["h", "HARDCORE"]].map(([k, n]) => `<button type="button" data-ddif="${k}" class="${d === k ? "on" : ""}${k === "h" ? " hc" : ""}">${T(n)}</button>`).join("")}</div>`);
+        ov.querySelectorAll("[data-ddif]").forEach(b => b.onclick = () => { const k = b.dataset.ddif, cur = META.easy ? "e" : META.hard ? "h" : "n"; if (k === cur) return;
+          META.easy = k === "e"; META.hard = k === "h"; saveMeta(); try { omfSfx("click"); } catch (_) {}
+          newRun({ char: S.char.id, kind: "daily" }); nextRuleStep(); }); } } catch (er) { try { errLog(er.message, "dddif"); } catch (_) {} }
+    return r; }; }
+(() => { const st = document.createElement("style"); st.textContent = '.dlyintro .dddif{margin:6px auto 4px}.dlyintro .dddif button{min-width:0;padding:5px 12px;font-size:11px}'; document.head.appendChild(st); })();
+// v152 (user): no emoji anywhere in the game. Every emoji the game uses now has its own hand-drawn 14x14 pixel icon in the
+// game's palette (the old fallback just pixelated the phone's emoji, which still looked like an emoji).
+const PXE_PAL = { a: "#f2c14e", d: "#8a5a1c", r: "#e0566b", R: "#8e2a3c", w: "#e8e2d0", g: "#9a94b8", G: "#4a4466", t: "#5fd1c4", T: "#2f8a80",
+  b: "#6aa8ff", B: "#2c4a8a", o: "#ff8c50", n: "#8a5a34", N: "#5a3a20", p: "#a070d0", k: "#1a1206", l: "#fff3b0", v: "#7cba46", V: "#3f6e22", s: "#f0c888" };
+Object.assign(PXE_ART, {
+  "🏆": ["..............", "..aaaaaaaaaa..", ".aalaaaaaaaaa.", "a.alaaaaaaad.a", "a.alaaaaaaad.a", ".aaalaaaaada..", "...aaaaaadd...", "....aaaadd....", ".....aadd.....", "......ad......", ".....aaad.....", "....dddddd....", "...aaaaaaaa...", "...dddddddd..."],
+  "🏅": ["..BB......rr..", "..BBB....rrr..", "...BBB..rrr...", "....BBBrrr....", ".....BBrr.....", "....aaaaaa....", "...aallaaaa...", "..aalaaaaaad..", "..aaaaaaaaad..", "..aaaaaaaaad..", "..aaaaaaaaad..", "...aaaaaadd...", "....dddddd....", ".............."],
+  "🧪": ["....gggggg....", ".....gwwg.....", ".....g..g.....", ".....g..g.....", ".....g..g.....", "....g....g....", "...g......g...", "..gvvvvvvvvg..", "..gvlvvvvvVg..", ".gvvvvvlvvVVg.", ".gvlvvvvvvVVg.", ".gvvvvvvvVVVg.", "..gggggggggg..", ".............."],
+  "☀": ["......aa......", "..a...aa...a..", "...a......a...", "......aa......", "....aaaaaa....", "...aallaaaa...", "aa.alaaaaad.aa", "aa.aaaaaaad.aa", "...aaaaaadd...", "....dddddd....", "......aa......", "...a......a...", "..a...aa...a..", "......aa......"],
+  "⚙": ["......gg......", "...g..gg..g...", "..gggggggggg..", "...gggggggg...", "..gggGGGGggg..", "gggggG..Gggggg", "gggggG..Gggggg", "..gggGGGGggg..", "...gggggggg...", "..gggggggggg..", "...g..gg..g...", "......gg......", "..............", ".............."],
+  "⚔": ["ww..........ww", "www........www", ".www......www.", "..www....www..", "...www..www...", "....wwwwww....", ".....wwww.....", ".....wwww.....", "....wwwwww....", "...nwww.wwwn..", "..nnnw...wnnn.", ".nna.......ann", "nna.........an", "aa...........a"],
+  "🗡": [".............w", "............ww", "...........ww.", "..........ww..", ".........ww...", "........ww....", ".......ww.....", "......ww......", "..a..ww.......", "...aww........", "...naa........", "..nn..a.......", ".nn...........", "aa............"],
+  "📖": ["..............", ".nnnnn..nnnnn.", "nwwwwwnnwwwwwn", "nwggwwnnwggwwn", "nwwwwwnnwwwwwn", "nwgggwnnwgggwn", "nwwwwwnnwwwwwn", "nwggwwnnwggwwn", "nwwwwwnnwwwwwn", "nwgggwnnwgggwn", "nwwwwwnnwwwwwn", ".nnnnnnnnnnnn.", "......nn......", ".............."],
+  "❤": ["..............", "..............", "..rrr....rrr..", ".rrlrr..rrrrr.", "rrlrrrrrrrrrRr", "rrrrrrrrrrrrRr", "rrrrrrrrrrrrRr", ".rrrrrrrrrrRr.", "..rrrrrrrrRr..", "...rrrrrrRr...", "....rrrrRr....", ".....rrRr.....", "......Rr......", ".............."],
+  "🔒": ["..............", ".....gggg.....", "....g....g....", "...g......g...", "...g......g...", "...g......g...", "..aaaaaaaaaa..", "..alaaaaaaad..", "..aaaaddaaad..", "..aaaaddaaad..", "..aaaaaaaaad..", "..aaaaaaaaad..", "..dddddddddd..", ".............."],
+  "🪽": ["..............", "..........ww..", "........wwww..", "......wwwwgw..", "....wwwwwgww..", "...wwwwwgwwg..", "..wwwwwgwwgw..", ".wwwwwgwwgw...", ".wwwwgwwgw....", "..wwgwwgw.....", "...wwgw.......", "....ww........", "..............", ".............."],
+  "👟": ["..............", "..............", "..............", "..rrrr........", "..rwrr........", "..rwwrr.......", "..rrwwrrr.....", "..rrrrrrrrr...", ".rrrrrrrrrrrr.", ".rrrrrrrrrrrrr", ".wwwwwwwwwwwww", "..wwwwwwwwwww.", "..............", ".............."],
+  "🛡": ["..............", "..gggggggggg..", ".gwwwwrrwwwwg.", ".gwwwwrrwwwwg.", ".gwwwwrrwwwwg.", ".grrrrrrrrrrg.", ".grrrrrrrrrrg.", ".gwwwwrrwwwwg.", "..gwwwrrwwwg..", "..gwwwrrwwwg..", "...gwwrrwwg...", "....gwrrwg....", ".....gggg.....", ".............."],
+  "🧲": ["..............", "..rrr....bbb..", "..rrr....bbb..", "..wrr....bbw..", "..rrr....bbb..", "..rrr....bbb..", "..rrr....bbb..", "..rrr....bbb..", "..rrrr..bbbb..", "...rrrrbbbb...", "....rrrbbb....", "..............", "..............", ".............."],
+  "⏳": ["..nnnnnnnnnn..", "...gggggggg...", "...gaaaaaag...", "....gaaaag....", ".....gaag.....", "......ga......", "......ga......", ".....g..g.....", "....g....g....", "...g..aa..g...", "...gaaaaaag...", "...gggggggg...", "..nnnnnnnnnn..", ".............."],
+  "💰": ["......nn......", ".....n..n.....", "......nn......", ".....nnnn.....", "....nnnnnn....", "...nnnnnnnn...", "..nnnnaannnn..", "..nnnaannnnn..", ".nnnnnaannnnn.", ".nnnnnnaannnn.", ".nnnnaannnnnn.", "..nnnnaannnn..", "...NNNNNNNN...", ".............."],
+  "🔦": ["..............", "..............", "ll............", "lll...........", ".lllgggg......", ".llgggggggggg.", "lllgwgggggggg.", "lllggggggggggG", ".llgggggggggg.", ".lllgggg......", "lll...........", "ll............", "..............", ".............."],
+  "🦉": ["..nn......nn..", "..nnn....nnn..", "..nnnnnnnnnn..", ".nwwwnnnnwwwn.", ".nwkwnnnnwkwn.", ".nwwwnaanwwwn.", "..nnnnaannnn..", ".nnsnnnnnnsnn.", ".nnnsnnnnsnnn.", ".nnsnnnnnnsnn.", "..nnnnnnnnnn..", "...nnnnnnnn...", "...aa....aa...", ".............."],
+  "🧊": ["..............", "..bbbbbbbbbb..", ".bwwbbbbbbbbB.", ".bwbbbbbbbbbB.", ".bbbbbbbbbbbB.", ".bbbbbwbbbbbB.", ".bbbbbbbbbbbB.", ".bbbbbbbbwbbB.", ".bbwbbbbbbbbB.", ".bbbbbbbbbbbB.", ".bbbbbbbbbbbB.", "..BBBBBBBBBB..", "..............", ".............."],
+  "❄": ["......ww......", "...w..ww..w...", "....w.ww.w....", ".....wwww.....", ".w....ww....w.", "..ww..ww..ww..", "wwwwwwwwwwwwww", "wwwwwwwwwwwwww", "..ww..ww..ww..", ".w....ww....w.", ".....wwww.....", "....w.ww.w....", "...w..ww..w...", "......ww......"],
+  "⌛": ["..nnnnnnnnnn..", "...gggggggg...", "...g......g...", "....g....g....", ".....gaag.....", "......ga......", "......ga......", ".....g..g.....", "....g.aa.g....", "...gaaaaaag...", "...gaaaaaag...", "...gggggggg...", "..nnnnnnnnnn..", ".............."],
+  "⚑": ["..............", "..nrrrrrr.....", "..nrrrrrrrrr..", "..nrrrrrrrrr..", "..nrrrrrrrrr..", "..nrrrrrrrr...", "..nrrr.rrr....", "..n...........", "..n...........", "..n...........", "..n...........", "..n...........", ".nnn..........", ".............."],
+  "❓": ["..............", "....aaaaaa....", "...aaaaaaaa...", "..aaa....aaa..", "..aaa....aaa..", ".........aaa..", "........aaa...", "......aaaa....", ".....aaa......", ".....aaa......", "..............", ".....aaa......", ".....aaa......", ".............."],
+  "🎁": ["..............", "....r....r....", ".....r..r.....", "......rr......", "..aaaaarraaaa.", "..aaaaarraaaa.", "..dddddrrdddd.", "...aaaarraaa..", "...aaaarraaa..", "...rrrrrrrrr..", "...aaaarraaa..", "...aaaarraaa..", "...dddddddddd.", ".............."],
+  "✋": ["......s.......", "....s.s.s.....", "....s.s.s.s...", "....s.s.s.s...", "....sssssss...", ".s..sssssss...", ".ss.sssssss...", "..sssssssss...", "...ssssssss...", "....ssssss....", "....ssssss....", ".....ssss.....", "..............", ".............."],
+  "☠": ["..............", "....wwwwww....", "...wwwwwwww...", "..wwwwwwwwww..", "..wkkwwwwkkw..", "..wkkwwwwkkw..", "..wwwwkkwwww..", "...wwwwwwww...", "....wkwkwk....", "....wwwwww....", "..w........w..", "...ww....ww...", ".....wwww.....", "...ww....ww..."],
+  "♦": ["..............", "......rr......", ".....rlrr.....", "....rlrrrr....", "...rlrrrrrr...", "..rrrrrrrrrR..", ".rrrrrrrrrrRR.", "..rrrrrrrrRR..", "...rrrrrrRR...", "....rrrrRR....", ".....rrRR.....", "......RR......", "..............", ".............."],
+  "📈": ["..............", "g.............", "g.........ttt.", "g..........tt.", "g.........t.t.", "g........t....", "g...t...t.....", "g..t.t.t......", "g.t...t.......", "gt............", "g.............", "gggggggggggggg", "..............", ".............."],
+  "☺": ["..............", "....aaaaaa....", "...aaaaaaaa...", "..aaaaaaaaaa..", ".aaakaaaakaaa.", ".aaakaaaakaaa.", ".aaaaaaaaaaaa.", ".aakaaaaaakaa.", ".aaakaaaakaaa.", "..aaakkkkaaa..", "...aaaaaaaa...", "....aaaaaa....", "..............", ".............."],
+  "♥": ["..............", "..............", "..rrr....rrr..", ".rrrrr..rrrrr.", "rrrrrrrrrrrrrr", "rrrrrrrrrrrrrr", "rrrrrrrrrrrrrr", ".rrrrrrrrrrrr.", "..rrrrrrrrrr..", "...rrrrrrrr...", "....rrrrrr....", ".....rrrr.....", "......rr......", ".............."],
+});
+PXE_ART["🧪"] = PXE_ART["🧪"]; PXE_ART["❤️"] = PXE_ART["❤"];
+{ // the hand-drawn art now uses the whole game palette, not just three colours
+  const u0 = pxEmojiURL; pxEmojiURL = function (ch) { const base = String(ch).replace(/️/g, "");
+    if (PXE_ART[base]) { if (pxeCache.has("v152" + base)) return pxeCache.get("v152" + base); let u = "";
+      try { const c = document.createElement("canvas"); c.width = c.height = 14; const g = c.getContext("2d");
+        PXE_ART[base].forEach((row, y) => [...row].forEach((k, x) => { if (PXE_PAL[k]) { g.fillStyle = PXE_PAL[k]; g.fillRect(x, y, 1, 1); } })); u = c.toDataURL(); } catch (_) {}
+      pxeCache.set("v152" + base, u); return u; }
+    return u0.apply(this, arguments); }; }
+// text drawn straight on the game canvas (toasts, the message log) can't hold an <img>: emoji there are dropped
+{ const t0 = toast; toast = function (text) { try { text = String(T(text)).replace(/\p{Extended_Pictographic}️?/gu, "").replace(/^\s+/, ""); } catch (_) {} return t0.call(this, text); }; }
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
 </script>
