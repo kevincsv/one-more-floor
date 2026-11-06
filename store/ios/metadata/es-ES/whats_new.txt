@@ -1,5 +1,3 @@
-• Modo duelo: compite en directo con un amigo usando un código de sala.
-• Toca días pasados de la racha para ver tus alturas y vuelve a jugar desafíos antiguos.
 • Los retos diarios cambian cada día.
 • Menús, pantalla de muerte y códice más fluidos; las skins de la tienda salen en el códice.
 • El hielo se controla mejor y las zonas ya no fuerzan un modificador.

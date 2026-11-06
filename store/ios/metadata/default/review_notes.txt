@@ -1,5 +1,5 @@
 APP OVERVIEW
-One More Floor Escape is a single-player 8-bit platformer. You climb an endless tower while new rules (modifiers) switch on every 15 seconds. Audience: casual and arcade players, rated 9+ (mild cartoon fantasy violence). Everything except the duel works fully offline.
+One More Floor Escape is a single-player 8-bit platformer. You climb an endless tower while new rules (modifiers) switch on every 15 seconds. Audience: casual and arcade players, rated 9+ (mild cartoon fantasy violence). It works fully offline.
 
 SCREEN RECORDING
 A screen recording made on a physical iPhone is attached in App Review Information. It shows launch, the main modes, the Full Escape purchase and restore, Game Center and iCloud.
@@ -13,7 +13,7 @@ HOW TO REACH EACH FEATURE
 3. ESCAPE: the main endless climb, free.
 4. HISTORIA / STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
 5. HORDA / HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
-6. DUELO / DUEL: a live race between two devices. On device A open DUEL and create a room; it shows a 4-character code (letters and digits). On device B open DUEL, enter that code, and both press READY. A small relay server only forwards the two players' positions in real time and stores nothing. There are no accounts and no names, and only the chosen hero is sent.
+6. DUELO / DUEL: shown as COMING SOON in this version; it is not playable yet.
 7. SHOP: a cosmetic skin shop that uses in-game coins only, with no real money.
 8. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.
 Controls: an on-screen D-pad plus HIT and JUMP buttons. Other layouts are in Settings.
@@ -27,7 +27,7 @@ IN-APP PURCHASE (non-consumable, com.onemorefloor.escape.full, "Full Escape")
 APPLE SERVICES
 - Game Center: optional, for achievements and leaderboards. If you are not signed in, the game still plays normally.
 - iCloud (key-value storage): progress is backed up and restored automatically. SETTINGS shows the iCloud status and offers RESTORE FROM ICLOUD when a copy exists.
-- No third-party SDKs, ads or analytics. The only network use is the duel relay above, which forwards gameplay positions in real time and keeps nothing.
+- No third-party SDKs, analytics, servers or external services.
 
 REGIONS
 The content is the same in every region. The app is in English and Spanish and follows the device language.
