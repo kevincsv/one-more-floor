@@ -1,0 +1,17 @@
+name = "omf-duel-relay"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# No logs: observability stays off so nothing about players is kept.
+[observability]
+enabled = false
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+# SQLite-backed class: this is the kind of Durable Object the free plan allows.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]
