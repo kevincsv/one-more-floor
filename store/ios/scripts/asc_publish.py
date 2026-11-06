@@ -135,12 +135,22 @@ def main():
     ap.add_argument("--no-media", action="store_true")
     ap.add_argument("--build", default="", help="exact build number to attach (default: newest valid)")
     ap.add_argument("--submit", action="store_true", help="send the version to App Review at the end")
+    ap.add_argument("--cancel", action="store_true", help="only take the waiting submission back out of App Review")
     o = ap.parse_args()
     a = ASC()
 
     app = a.get("/v1/apps", **{"filter[bundleId]": BUNDLE_ID})["data"][0]
     aid = app["id"]
     print("App", app["attributes"]["name"], aid)
+    if o.cancel:
+        subs = a.get("/v1/reviewSubmissions", **{"filter[app]": aid, "filter[platform]": "IOS",
+                                                  "filter[state]": "WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES,READY_FOR_REVIEW"})["data"]
+        for sub in subs:
+            a.call("PATCH", f"/v1/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"canceled": True}}})
+            print("Submission canceled:", sub["id"], sub["attributes"].get("state"))
+        if not subs:
+            print("No submission to cancel")
+        return
 
     # app info: categories, name, subtitle, privacy URL per locale
     infos = a.all(f"/v1/apps/{aid}/appInfos")
