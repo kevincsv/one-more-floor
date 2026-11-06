@@ -17,6 +17,7 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         CAPPluginMethod(name: "showAchievements", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "showLeaderboard", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resetAchievements", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "loadTop", returnType: CAPPluginReturnPromise),
     ]
 
     private let prefix = "omf_"
@@ -116,6 +117,26 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         vc.gameCenterDelegate = self
         bridge?.viewController?.present(vc, animated: true)
         call.resolve(result(true))
+    }
+
+    /// Top N de un marcador más la posición del jugador. Resuelve { ok, entries:[{rank,score,name}], player:{rank,score,total}|null }.
+    @objc func loadTop(_ call: CAPPluginCall) {
+        guard let id = gcId(call.getString("board")) else { call.resolve(["ok": false, "entries": []]); return }
+        guard GKLocalPlayer.local.isAuthenticated else { call.resolve(["ok": false, "signedIn": false, "entries": []]); return }
+        let n = max(1, min(call.getInt("n") ?? 3, 100))
+        GKLeaderboard.loadLeaderboards(IDs: [id]) { boards, error in
+            guard let board = boards?.first, error == nil else {
+                call.resolve(["ok": false, "entries": [], "error": error?.localizedDescription ?? "no board"]); return
+            }
+            board.loadEntries(for: .global, timeScope: .allTime, range: NSRange(location: 1, length: n)) { local, entries, total, error in
+                if let error = error { call.resolve(["ok": false, "entries": [], "error": error.localizedDescription]); return }
+                let list: [[String: Any]] = (entries ?? []).map { ["rank": $0.rank, "score": $0.score, "name": $0.player.displayName] }
+                var res: [String: Any] = ["ok": true, "entries": list]
+                if let l = local { res["player"] = ["rank": l.rank, "score": l.score, "total": total] }
+                else { res["player"] = NSNull() }
+                call.resolve(res)
+            }
+        }
     }
 
     /// PRUEBAS: borra el progreso de todos los logros de este jugador en Game Center.
