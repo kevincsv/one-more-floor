@@ -146,8 +146,14 @@ def main():
         subs = a.get("/v1/reviewSubmissions", **{"filter[app]": aid, "filter[platform]": "IOS",
                                                   "filter[state]": "WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES,READY_FOR_REVIEW"})["data"]
         for sub in subs:
-            a.call("PATCH", f"/v1/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"canceled": True}}})
-            print("Submission canceled:", sub["id"], sub["attributes"].get("state"))
+            print("Submission", sub["id"], sub["attributes"].get("state"), sub["attributes"].get("submittedDate"))
+            try:
+                a.call("PATCH", f"/v1/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"canceled": True}}})
+                print("  canceled")
+            except RuntimeError as e:
+                print("  not canceled:", str(e)[:300])
+        for v in a.all(f"/v1/apps/{aid}/appStoreVersions"):
+            print("Version", v["attributes"].get("versionString"), v["attributes"].get("appStoreState"))
         if not subs:
             print("No submission to cancel")
         return
