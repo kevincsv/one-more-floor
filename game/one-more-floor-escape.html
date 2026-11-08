@@ -799,7 +799,7 @@ const RULES = [
   { id: "ammo", cat: "com", name: "Munición", icon: "\u2059", cost: 2, desc: "Solo 5 ataques. Se recargan al tocar el suelo." },
   { id: "shields", cat: "com", name: "Escudos", icon: "\u26E8", cost: 2, desc: "Todos los enemigos se cubren por delante: golpéalos por detrás o desde arriba." },
   { id: "recoil", cat: "com", name: "Retroceso", icon: "\u21DC", cost: 1, desc: "Cada golpe te empuja con fuerza en sentido contrario." },
-  { id: "rings", cat: "com", name: "Anillos", icon: "\u25CB", cost: 2, desc: "Al recibir daño sueltas oro en vez de vida. Sin oro, mueres." },
+  { id: "rings", cat: "com", name: "Anillos", icon: "\u25CB", cost: 2, desc: "Cada golpe te quita el 40% de tu oro (mínimo 10) en vez de vida. Solo recuperas una parte. Con menos de 10, mueres." },
   { id: "glutton", cat: "com", name: "Glotón", icon: "\u25D5", cost: 2, desc: "Absorbes a los enemigos más pequeños que tú y creces." },
   { id: "hunter", cat: "com", name: "Cazador", icon: "\u25C9", cost: 2, desc: "No haces daño hasta coger un orbe. Luego tienes 8 s y los enemigos huyen." },
   { id: "midnight", cat: "com", name: "Medianoche", icon: "\u263D", cost: 1, desc: "Los primeros 30 s haces el doble de daño. Después, la mitad." },
@@ -1707,7 +1707,7 @@ function buildVertical(rising) {
    Every segment is checked with the same jump simulation as normal floors before it is kept. */
 const ESC_ROWS = 20000, ESC_SEG = 8; // 20000 rows = about 2 hours of climbing at the camera cap: the tower is endless in practice (4000 ended at ~3950 m)
 let ESC_BIOME_T = [60, 135, 225, 330]; // seconds at which biomes 2..5 start (60, 75, 90, 105 s per biome)
-const ESC_MOD_EVERY = 15, ESC_MOD_LAST = 60; // v59 (user): a new modifier every 15 s; at the cap the oldest leaves, so the set changes every 15 s
+const ESC_MOD_EVERY = 15, ESC_MOD_LAST = 20; // v164b (user 2026-11-08: "los modificadores que ahora duren 20 seg") // v59 (user): a new modifier every 15 s; at the cap the oldest leaves, so the set changes every 15 s
 // only modifiers that make the climb harder: helpers like Luna, Rebote, Cámara lenta or Magnetismo made it too easy
 const ESC_MOD_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", "mirror", "echo", "blackout", "crumbs", "quake", "sweep", "shields", "recoil"]; // v90 (user): Munición removed from Escape (ground reload made it do nothing)
 // v164 (user: "deberían ser siempre completamente aleatorios"): the climb used to draw only from 15 modifiers, so with half the
@@ -1736,7 +1736,7 @@ const ESC_TIERS = [
 const ESC_TIER_M = 100; // v99: was 60
 const escD = () => Math.max(0, (S.t - S.escT0) / ESC_TIER_T + (S.escBest || 0) / ESC_TIER_M);
 const escTier = () => Math.min(ESC_TIERS.length - 1, Math.floor(escD()));
-const escModLife = (el = 0) => el + ESC_MOD_LAST + 15 * escTier(); // 60 s, +15 s per difficulty tier, so late climbs stack up to 4
+const escModLife = (el = 0) => el + ESC_MOD_LAST; // v164b: every modifier lasts 20 s, at any difficulty // 60 s, +15 s per difficulty tier, so late climbs stack up to 4
 const escMaxMods = () => Math.min(S.easy ? 2 : 4, 1 + Math.floor(escD() / (S.easy ? 2.5 : 1.5))) + (trk("pacto") ? 1 : 0); // v86: Pacto en blanco // was 0 for the first ~70 s, so nothing happened
 function escBiomeAt(t) { let z = 0; for (const b of ESC_BIOME_T) if (t >= b) z++; return Math.min(4, Math.max(z, S.testBiome || 0)); } // S.testBiome: PRUEBAS · Biomas
 function buildEscape() {
@@ -4030,10 +4030,14 @@ function hurt(dir, drown) {
   S.chain = 0;
   if (rel("escudo") && !S.shieldUsed) { S.shieldUsed = true; p.inv = 1; toast("Escudo de bronce"); burst(p.x + 8, p.y + 11, "#c9a36a", 10); return; }
   if (has("rings") && !drown) {
-    let n = Math.min(8, S.coins + S.carry);
-    if (n <= 0) { toast("Sin oro que soltar"); S.hp = 0; die(); return; }
-    const fromCarry = Math.min(S.carry, n); S.carry -= fromCarry; S.coins -= n - fromCarry;
-    for (let i = 0; i < n; i++) S.coinsL.push({ x: p.x + 4, y: p.y, w: 10, h: 12, v: 1, vx: rnd(-200, 200), vy: rnd(-380, -200) * S.gdir, grace: 0.8 });
+    // v164b (user 2026-11-08: "Anillos te hace inmortal"): each hit costs 40% of your gold (at least 10) and only a quarter of it
+    // falls where you can pick it up again; with less than 10 gold the hit kills you
+    const have = S.coins + S.carry, n = Math.max(10, Math.ceil(have * 0.4));
+    if (have < 10) { toast("Sin oro que soltar"); S.hp = 0; die(); return; }
+    const fromCarry = Math.min(S.carry, n); S.carry -= fromCarry; S.coins -= n - fromCarry; toast("−" + n + " " + T("oro"));
+    const back = Math.floor(n / 4), k = Math.min(6, back);
+    for (let i = 0; i < k; i++) S.coinsL.push({ x: p.x + 4, y: p.y, w: 10, h: 12, v: Math.floor(back / k) + (i < back % k ? 1 : 0), vx: rnd(-200, 200), vy: rnd(-380, -200) * S.gdir, grace: 0.8 });
+    burst(p.x + 8, p.y + 10, "#f2c14e", 16);
     p.inv = 1.1; knockPlayer(dir || -p.face, 260, 300); return;
   }
   if (has("onehit") && !S.shieldOneHit) { S.shieldOneHit = true; p.inv = 1; toast("Escudo del piso gastado"); burst(p.x + 8, p.y + 11, "#5fd1c4", 10); return; }
@@ -4912,7 +4916,7 @@ const EN_RULES = {
   ammo: ["Ammo", "Only 5 attacks. They reload when you touch the ground."],
   shields: ["Shields", "Every enemy guards its front: hit them from behind or above."],
   recoil: ["Recoil", "Every hit knocks you hard the other way."],
-  rings: ["Rings", "Taking damage drops gold instead of health. With no gold, you die."],
+  rings: ["Rings", "Each hit takes 40% of your gold (at least 10) instead of health. You only win part of it back. Under 10, you die."],
   glutton: ["Glutton", "You swallow enemies smaller than you and grow."],
   hunter: ["Hunter", "You deal no damage until you grab an orb. Then you have 8 s and enemies flee."],
   midnight: ["Midnight", "Double damage for the first 30 s. After that, half."],
@@ -5031,7 +5035,7 @@ const EN_PATTERNS = [
   [/^(Desafío diario\. )?Oro: (\d+)\. Reglas al final: (.+?)\.( Reliquias: (.+)\.)?$/, (m, d, g, r, x, rl) => (d ? "Daily challenge. " : "") + "Gold: " + g + ". Final rules: " + (r === "ninguna" ? "none" : r) + "." + (x ? " Relics: " + rl + "." : "")],
   [/^Bloqueado: (.+)$/, "Locked: $1"],
 ];
-Object.assign(EN_TEXT, { "Aspecto desbloqueado:": "Skin unlocked:", "Llega a 300 m en Escape": "Reach 300 m in Escape", "Encuentra 3 salas ocultas": "Find 3 hidden rooms", "Vence a un jefe": "Defeat a boss", "Vence a 3 jefes": "Defeat 3 bosses", "Junta 500 monedas en total": "Collect 500 coins in total", "Haz un combo x20": "Land a x20 combo", "Llega al Reino de las máquinas": "Reach the Machine Kingdom", "Compra 5 veces al mercader": "Buy from the merchant 5 times", "Llega a nivel 10 en Escape": "Reach level 10 in Escape", "Llega a 600 m en Escape": "Reach 600 m in Escape", "Cuervo": "Raven", "Explorador": "Explorer", "Escudero": "Squire", "Caballero": "Knight", "Minero": "Miner", "Bruto con cuernos": "Horned brute", "Gólem": "Golem", "Enano herrero": "Dwarf smith", "Bruja": "Witch", "Sombra": "Shadow" });
+Object.assign(EN_TEXT, { "oro": "gold", "Aspecto desbloqueado:": "Skin unlocked:", "Llega a 300 m en Escape": "Reach 300 m in Escape", "Encuentra 3 salas ocultas": "Find 3 hidden rooms", "Vence a un jefe": "Defeat a boss", "Vence a 3 jefes": "Defeat 3 bosses", "Junta 500 monedas en total": "Collect 500 coins in total", "Haz un combo x20": "Land a x20 combo", "Llega al Reino de las máquinas": "Reach the Machine Kingdom", "Compra 5 veces al mercader": "Buy from the merchant 5 times", "Llega a nivel 10 en Escape": "Reach level 10 in Escape", "Llega a 600 m en Escape": "Reach 600 m in Escape", "Cuervo": "Raven", "Explorador": "Explorer", "Escudero": "Squire", "Caballero": "Knight", "Minero": "Miner", "Bruto con cuernos": "Horned brute", "Gólem": "Golem", "Enano herrero": "Dwarf smith", "Bruja": "Witch", "Sombra": "Shadow" });
 Object.assign(EN_TEXT, { "⚙ AJUSTES": "⚙ SETTINGS", "CONTROLES": "CONTROLS", "Franja": "Strip", "Invisible": "Invisible", "Combinado": "Combined", "Mitad izquierda: stick que aparece donde tocas. A la derecha, los botones GOLPE y SALTO.": "Left half: a stick appears where you touch. On the right, the HIT and JUMP buttons.", "Clásico": "Classic", "Mandos en una franja debajo del juego: no tapan nada y el borde dorado es la línea de caída.": "Controls on a strip below the game: they cover nothing, and the gold edge is the fall line.", "Pantalla limpia. Mitad izquierda: stick que aparece donde tocas. Mitad derecha: toca para golpear, desliza hacia arriba para saltar.": "Clean screen. Left half: a stick appears where you touch. Right half: tap to strike, swipe up to jump.", "Cruceta y botones semitransparentes encima del juego.": "See-through d-pad and buttons over the game." });
 Object.assign(EN_TEXT, { "Saltar escena": "Skip", "Ecos de Velo": "Velo's Echoes", "Eco de Velo": "Velo's Echo", "Finales": "Endings", "FINAL": "ENDING" });
 Object.assign(EN_TEXT, { "Mira cuáles te faltan en el Códice.": "See which ones you're missing in the Codex.", "Logros": "Achievements", "Ranking": "Leaderboard", "ELIGE TU PRIMER MODIFICADOR": "PICK YOUR FIRST MODIFIER", "Empiezas la subida con él. Cada 15 s llega otro y el más antiguo se va.": "You start the climb with it. Every 15 s another one arrives and the oldest leaves." });
@@ -8943,7 +8947,9 @@ function omfSfx(name) {
 // Y como "reto" y "record" no existen en OMF_SFX, cambiar la primera linea de omfSfx para que no salga antes:
 //   const N = OMF_SFX[name]; if (!N && !OMF_SFX2_USE[name]) return;
 // Anadir reto y record a la lista de duckSfx si se quiere que bajen la musica (opcional).
-var OMF_SFX2_USE = {jump: 1, swing: 1, hit: 1, coin: 1, heart: 1, ach: 1, reto: 1, record: 1, nope: 1, mod: 1, door: 1, spring: 1, bell: 1, roar: 1, zap: 1, devbeat: 1, devroar: 1};
+// v164b (user 2026-11-08: "vuelve a los sonidos anteriores, me gustaban más todos"): every sound is back to the old one.
+// Only Reto and Record keep the v2 sound, because they had no sound before.
+var OMF_SFX2_USE = {reto: 1, record: 1};
 
 // One More Floor Escape · efectos 8-bit v2 (propuesta, todavia NO esta en el juego).
 // Estilo consola de 8 bits: pulsos de ancho 12.5 / 25 / 50 %, triangulo, ruido LFSR largo y corto (metalico).
@@ -10833,7 +10839,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v164";
+var OMF_VER = "Escape v165";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12516,6 +12522,7 @@ escWardrobe = function (ch) {
 .a3name .eskin{margin:0}
 .a3dif{display:flex;justify-content:center;gap:0}
 .a3dif button{display:inline-flex;align-items:center;gap:5px}
+.a3dif button+button{border-left:2px solid var(--line)} /* v164b (user): NORMAL and HARDCORE get the same full border as EASY when not selected */
 .a3dif button .sk{display:inline-flex;gap:1px}
 .a3hint{margin:-2px auto 0;background:rgba(10,8,18,.6);padding:1px 6px;text-align:center}
 .a3modes{display:flex;flex-direction:column;gap:8px}
@@ -12863,6 +12870,7 @@ var cx2 = { cat: "mod", flt: "all", fresh: null };
 .dstk .day.fut{opacity:.45}
 .dstk .sk-bot{display:grid;gap:3px;font-size:13px;color:#9a94b8}
 .dstk .sk-bot b{font-family:var(--font-display);font-weight:400;color:#ece8f5}
+.dstk .sk-bot .ddline{display:flex;justify-content:space-between;align-items:center;height:18px;white-space:nowrap;overflow:hidden}.dstk .sk-bot .ddline i{font-style:normal;font-family:var(--font-display);font-size:10px;letter-spacing:1px;color:#ff8a66}
 `; document.head.appendChild(st); })();
 
 // tiny hand-drawn pixel sprites (from the mockup): flame for played days, skull silhouette for missed ones
@@ -13022,7 +13030,7 @@ function ddHTML() {
     return `<div class="day${today ? " today" : played ? " ok" : ""}${fut ? " fut" : ""}"><span>${played ? cx2Spr("flame", 2) : fut || today ? "" : cx2Spr("skull", 2, true)}</span><span>${D[i]}</span></div>`; };
   const k = String(t) + (META.easy ? "e" : META.hard ? "h" : ""), best = (META.daily || {})[k] || 0, b = META.easy ? null : META.hard ? "daily_hard" : "daily", c = b && prlCache[b], me = c && c.me;
   return `<div class="dstk"><div class="sk-top"><span>${T("RACHA")}</span><b>${n} ${n === 1 ? T("DÍA") : T("DÍAS")}</b></div><div class="days">${[0, 1, 2, 3, 4, 5, 6].map(box).join("")}</div>
-    <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span><span>${T("Hoy")}: <b>${best} m</b>${me && me.rank ? ` · ${Lx("puesto", "rank")} <b>${me.rank}</b>${me.total ? ` ${Lx("de", "of")} ${me.total}` : ""}` : ""}</span></div></div>`;
+    <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span>${ddBotLine(best, me)}</div></div>`;
 }
 var ddTimer = 0;
 function ddTick() { clearInterval(ddTimer); ddTimer = setInterval(() => { const el = document.querySelector(".ddcd"); if (!el) { clearInterval(ddTimer); return; } el.textContent = ddLeft(); }, 1000); }
@@ -13093,7 +13101,7 @@ function duRx(m) {
     return; }
   if (m.t === "msg") duState(m.d);
 }
-var DUEL_GV = 4; // v164: every modifier + shuffled biome order in the duel, so older duel towers differ // duel rules version: bump whenever the tower or the messages change
+var DUEL_GV = 5; // v164b: modifiers last 20 s // v164: every modifier + shuffled biome order in the duel, so older duel towers differ // duel rules version: bump whenever the tower or the messages change
 function duHello() { duTx({ t: "msg", d: { v: 1, gv: DUEL_GV, role: DU.role, name: duName(), pid: duPid(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff } }); }
 function duMine() { const p = S.player, dead = S.mode === "dead" || DU.quit;
   return { v: 1, gv: DUEL_GV, ts: Math.round(duNow() * 1000) / 1000, role: DU.role, name: duName(), pid: duPid(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, w: Math.round(p.w), f: p.face < 0 ? -1 : 1,
@@ -13209,19 +13217,21 @@ function duMenu() {
   S.mode = "menu"; ov.hidden = false; ov.classList.remove("dead");
   const R = [Lx("La misma torre y los mismos modificadores para los dos.", "The same tower and the same modifiers for both."), Lx("Tu rival es un fantasma: no choca contigo.", "Your rival is a ghost: it can't touch you."),
     Lx("Cada 25 m le mandas una maldición de 20 s.", "Every 25 m you send them a 20 s curse."), Lx("Pierde quien cae. A los 3:00 gana el más alto. Al mejor de 3.", "Whoever falls loses. At 3:00 the higher one wins. Best of 3.")];
-  ov.innerHTML = `<div class="menu duel"><h2>${pxi("ghost", "#ff8c50", 2)} ${Lx("DUELO", "DUEL")}</h2><p class="tagline">${duName()} · ${duDifName(DU.diff)}</p>
+  ov.innerHTML = `<div class="menu duel"><h2>${pxi("ghost", "#ff8c50", 2)} ${Lx("DUELO", "DUEL")}</h2><p class="tagline">${duName()}</p>
+    ${difChips(["e", "n", "h"][DU.diff], "dudif")}
     <ol class="durules">${R.map(x => `<li>${x}</li>`).join("")}</ol>
     <div class="rowbig"><button class="go" id="duHost">${Lx("CREAR SALA", "CREATE ROOM")}</button></div>
     <p class="dusub">${Lx("¿Tienes un código? Escríbelo:", "Got a code? Type it:")}</p>
     <div class="ducode">${[0, 1, 2, 3].map(i => `<input id="duC${i}" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="${Lx("Letra", "Letter")} ${i + 1}">`).join("")}<button id="duJoin">${Lx("ENTRAR", "JOIN")}</button></div>
     <div class="tools"><button id="duRand">${pxi("target", "#ff8c50")} ${Lx("RIVAL AL AZAR", "RANDOM RIVAL")}</button></div>
     <p class="dunote" id="duNote" role="status"></p>
-    <p class="dusub">${Lx("La dificultad la elige quien crea la sala (se cambia en el menú). No cuenta para los récords.", "The room creator's difficulty is used (change it in the menu). It doesn't count for records.")}</p>
+    <p class="dusub">${Lx("Se juega en la dificultad de quien crea la sala; el rival al azar se busca en la tuya. No cuenta para los récords.", "The room creator's difficulty is used; a random rival is searched at yours. It doesn't count for records.")}</p>
     <div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov);
   const ins = [0, 1, 2, 3].map(i => document.getElementById("duC" + i));
   ins.forEach((el, i) => { el.oninput = () => { el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(-1); if (el.value && ins[i + 1]) ins[i + 1].focus(); };
     el.onkeydown = e => { if (e.key === "Backspace" && !el.value && ins[i - 1]) ins[i - 1].focus(); if (e.key === "Enter") document.getElementById("duJoin").click(); e.stopPropagation(); }; });
+  ov.querySelectorAll("[data-dudif]").forEach(b => b.onclick = () => { const k = b.dataset.dudif; if (k === ["e", "n", "h"][DU.diff]) return; difSet(k); duMenu(); });
   document.getElementById("duHost").onclick = () => { omfSfx("click"); DU.bot = null; duConnect(() => duTx({ t: "create" })); };
   document.getElementById("duJoin").onclick = () => { omfSfx("click"); const c = ins.map(x => x.value).join("").toUpperCase(); if (c.length < 4) { duNote(Lx("Escribe las 4 letras del código.", "Type the 4 letters of the code.")); (ins.find(x => !x.value) || ins[0]).focus(); return; }
     DU.bot = null; duConnect(() => duTx({ t: "join", code: c })); };
@@ -13483,6 +13493,16 @@ var tri_lc0 = escLevelCards; escLevelCards = function () { const r = tri_lc0.app
 // ===== v137 (user: "que en streak puedas tocar los días anteriores y ver cuánto hiciste"): each day of the streak strip is a
 // button. Tapping a day you played shows that day's best height for each difficulty under the strip. ◀ ▶ move a week back/forward.
 var DD_WK = 0, DD_SEL = 0;
+// v164b (user 2026-11-08): the fixed "TODAY 0 m" line follows the selected day: its date and how high you got (at the chosen
+// difficulty), and NO REWARD on the right for a past day. Same line, same height, so nothing moves.
+function ddBotLine(best, me) {
+  const t = todayKey();
+  if (!(typeof DD_SEL !== "undefined" && DD_SEL && DD_SEL < t)) return `<span class="ddline"><span>${T("Hoy")}: <b>${best} m</b>${me && me.rank ? ` · ${Lx("puesto", "rank")} <b>${me.rank}</b>` : ""}</span><i></i></span>`;
+  const mo = Math.floor(DD_SEL / 100) % 100, da = DD_SEL % 100;
+  const M = LANG === "en" ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const key = String(DD_SEL) + (META.easy ? "e" : META.hard ? "h" : ""), d = META.daily || {}, m = key in d ? (d[key] || 0) + " m" : "—";
+  return `<span class="ddline"><span>${da} ${M[mo - 1]}: <b>${m}</b></span><i>${Lx("SIN RECOMPENSA", "NO REWARD")}</i></span>`;
+}
 function ddDayRes(k) { const d = META.daily || {}, o = []; for (const [suf, name] of [["e", "FÁCIL"], ["", "NORMAL"], ["h", "HARDCORE"]]) { const key = String(k) + suf; if (key in d) o.push([name, d[key] || 0]); } return o; }
 function ddDetail() {
   if (!DD_SEL) return "";
@@ -13500,7 +13520,7 @@ ddHTML = function () {
   const k = String(t) + (META.easy ? "e" : META.hard ? "h" : ""), best = (META.daily || {})[k] || 0, b = META.easy ? null : META.hard ? "daily_hard" : "daily", c = b && prlCache[b], me = c && c.me;
   return `<div class="dstk"><div class="sk-top"><span>${T("RACHA")}</span><b>${n} ${n === 1 ? T("DÍA") : T("DÍAS")}</b></div>
     <div class="days">${[0, 1, 2, 3, 4, 5, 6].map(box).join("")}</div>${ddDetail()}
-    <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span><span>${T("Hoy")}: <b>${best} m</b>${me && me.rank ? ` · ${Lx("puesto", "rank")} <b>${me.rank}</b>${me.total ? ` ${Lx("de", "of")} ${me.total}` : ""}` : ""}</span></div></div>`;
+    <div class="sk-bot"><span>${T("Nuevo diario en")} <b class="ddcd">${ddLeft()}</b></span>${ddBotLine(best, me)}</div></div>`;
 };
 ddDetail = function () { return ""; }; // v164 (user): the orange box of the picked day is gone on phone and PC; only the week row and "new daily in" stay
 function ddRedraw() { const el = ov.querySelector(".dstk"); if (el) { el.outerHTML = ddHTML(); ddTick(); } }
@@ -13702,17 +13722,24 @@ PXE_ART["🧪"] = PXE_ART["🧪"]; PXE_ART["❤️"] = PXE_ART["❤"];
 // text drawn straight on the game canvas (toasts, the message log) can't hold an <img>: emoji there are dropped
 { const t0 = toast; toast = function (text) { try { text = String(T(text)).replace(/\p{Extended_Pictographic}️?/gu, "").replace(/^\s+/, ""); } catch (_) {} return t0.call(this, text); }; }
 // v155 (user): tapping HORDA when you own it first shows what the mode is, with a button to start
+// v164b (user 2026-11-08): the same skull difficulty chips as the home screen, for Horde, Duel and Friend's tower
+function difChips(d, attr) { return `<div class="difsel a3dif mdif" role="group" aria-label="${T("Dificultad")}">${[["e", "FÁCIL", 1], ["n", "NORMAL", 2], ["h", "HARDCORE", 3]].map(([k, n, sk]) => `<button data-${attr}="${k}" class="${d === k ? "on" : ""}${k === "h" ? " hc" : ""}"><span class="sk">${Array.from({ length: sk }, () => pxi("skull", d === k ? (k === "h" ? "#ffffff" : "#1a1206") : (k === "h" ? "#e0566b" : "#9a94b8"), 1)).join("")}</span>${T(n)}</button>`).join("")}</div>`; }
+function difMeta() { return META.easy ? "e" : META.hard ? "h" : "n"; }
+function difSet(k) { META.easy = k === "e"; META.hard = k === "h"; try { saveMeta(); } catch (_) {} try { omfSfx("click"); } catch (_) {} }
+(() => { const st = document.createElement("style"); st.textContent = "#ov .a3dif.mdif{margin:8px auto;width:100%;max-width:340px;box-sizing:border-box}#ov .a3dif.mdif > button{font-size:9px !important;letter-spacing:0 !important;justify-content:center;gap:3px}#ov .a3dif.mdif > button .sk{display:inline-flex;gap:1px}@media (max-width:370px){#ov .a3dif.mdif > button .sk{display:none}}"; document.head.appendChild(st); })();
 function hordeInfo() {
   try { omfSfx("click"); } catch (_) {}
   ov.hidden = false; ov.classList.remove("dead");
   const row = (ic, c, es, en) => `<li>${pxi(ic, c, 2)}<span>${Lx(es, en)}</span></li>`;
   ov.innerHTML = `<div class="menu setpage fullpg hordeinfo"><h2>${pxi("swords", "#e0566b", 2)} ${T("HORDA")}</h2>
     <p class="rsub">${Lx("La misma torre sin fin, pero llena de enemigos.", "The same endless tower, but packed with enemies.")}</p>
+    ${difChips(difMeta(), "hdif")}
     <ul class="fulllist">${row("swords", "#e0566b", "Más enemigos: cada tramo trae 1 o 2 más, y a menudo uno que vuela.", "More enemies: every stretch brings 1 or 2 extra, and often a flyer.")}${row("up", "#f2c14e", "La torre aprieta antes: cada tramo es tan duro como 3 pisos más arriba.", "The tower gets tough sooner: each stretch is as hard as 3 floors higher.")}${row("check", "#9be07a", "Sin modificadores: nada cambia las reglas, solo cuenta pelear y subir.", "No modifiers: nothing changes the rules, it's all about fighting and climbing.")}${row("star", "#5fd1c4", "Subes de nivel y eliges cartas como en Escalar.", "You level up and pick cards just like in Climb.")}${row("trophy", "#f2c14e", "Tiene su propio récord. No cuenta para el ranking.", "It has its own record. It doesn't count for the ranking.")}</ul>
     <p class="hbest">${Lx("Tu mejor altura en Horda", "Your best Horde height")}: <b>${bestOf("escape-horde")} m</b></p>
     <div class="rowbig"><button class="go" id="hordeGo">${Lx("¡A LA HORDA!", "INTO THE HORDE!")}</button></div>
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov); ov.scrollTop = 0;
+  ov.querySelectorAll("[data-hdif]").forEach(b => b.onclick = () => { if (b.dataset.hdif === difMeta()) return; difSet(b.dataset.hdif); const y = ov.scrollTop; hordeInfo(); ov.scrollTop = y; });
   ov.querySelector("#hordeGo").onclick = () => { try { omfSfx("click"); } catch (_) {} newRun({ char: S.char.id, kind: "escape", horde: true }); startFloor(); };
   ov.querySelector("#backBtn").onclick = () => { try { omfSfx("click"); } catch (_) {} showTitle(); };
 }
@@ -14705,15 +14732,33 @@ function frMenu() {
   const recent = (META.friend || []).slice(0, 4);
   ov.innerHTML = `<div class="menu setpage fullpg frpage"><h2>${modeIcon("amigo", 24)} ${Lx("TORRE DE UN AMIGO", "FRIEND'S TOWER")}</h2>
     <p class="rsub">${Lx("Un código de 8 letras guarda la torre: la semilla, la dificultad y hasta 3 modificadores fijos. Pásaselo a quien quieras y comparad quién sube más.", "An 8-letter code holds the tower: the seed, the difficulty and up to 3 fixed modifiers. Send it to anyone and see who climbs higher.")}</p>
+    ${difChips(difMeta(), "frmd")}
+    <p class="frdn">${Lx("Para CREAR. Al entrar un código se juega en la dificultad que guarda.", "For CREATE. A code is played at the difficulty it holds.")}</p>
     <div class="rowbig"><button class="go" id="frNew">${Lx("CREAR", "CREATE")}</button></div>
     <div class="rowbig"><button class="go alt" id="frIn">${Lx("ENTRAR CÓDIGO", "ENTER CODE")}</button></div>
     ${recent.length ? `<div class="mlabel">${Lx("ÚLTIMOS CÓDIGOS", "RECENT CODES")}</div><div class="frrecent">${recent.map(e => `<button data-c="${e.c}"><b>${e.c}</b><span>${e.b} m</span></button>`).join("")}</div>` : ""}
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
   ov.scrollTop = 0;
   ov.querySelector("#frNew").onclick = () => frCreate();
+  ov.querySelectorAll("[data-frmd]").forEach(b => b.onclick = () => { if (b.dataset.frmd === difMeta()) return; difSet(b.dataset.frmd); const y = ov.scrollTop; frMenu(); ov.scrollTop = y; });
   ov.querySelector("#frIn").onclick = () => frEnter("");
   ov.querySelectorAll(".frrecent button").forEach(b => b.onclick = () => frEnter(b.dataset.c));
   ov.querySelector("#backBtn").onclick = () => { try { omfSfx("click"); } catch (_) {} showTitle(); };
+}
+function frModPop(id, st) {
+  const r = RULE[id]; if (!r) return; try { omfSfx("click"); } catch (_) {}
+  const on = st.mods.includes(id), full = !on && st.mods.length >= 3;
+  const el = document.createElement("div"); el.className = "infopop frpop";
+  el.innerHTML = `<div class="ipc"><span class="gi">${r.icon}</span><b>${T(r.name)} ${skullsHTML(r.cost, true)}</b><p class="frpd">${T(r.desc)}</p>
+    <p class="frpf">${full ? Lx("Ya tienes 3. Quita uno para elegir este.", "You already have 3. Remove one to pick this.") : ""}</p>
+    <div class="frpb"><button class="go alt" id="frpX">${Lx("CERRAR", "CLOSE")}</button><button class="go" id="frpOk"${full ? " disabled" : ""}>${on ? Lx("QUITAR", "REMOVE") : Lx("ELEGIR", "SELECT")}</button></div></div>`;
+  const close = () => { el.remove(); const b = ov.querySelector(`[data-m="${id}"]`); if (b) try { b.focus({ preventScroll: true }); } catch (_) {} };
+  el.onclick = e => { if (e.target === el) close(); };
+  el.querySelector("#frpX").onclick = () => { try { omfSfx("click"); } catch (_) {} close(); };
+  el.querySelector("#frpOk").onclick = () => { if (full) { omfSfx("hurt"); return; }
+    if (on) st.mods = st.mods.filter(x => x !== id); else st.mods.push(id);
+    el.remove(); const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; };
+  document.body.appendChild(el); try { paintPxi(el); } catch (_) {}
 }
 function frCreate(st) {
   try { omfSfx("click"); } catch (_) {}
@@ -14723,7 +14768,7 @@ function frCreate(st) {
   ov.hidden = false; ov.classList.remove("dead");
   ov.innerHTML = `<div class="menu setpage fullpg frpage"><h2>${modeIcon("amigo", 24)} ${Lx("CREAR TORRE", "CREATE TOWER")}</h2>
     <div class="mlabel">${Lx("DIFICULTAD", "DIFFICULTY")}</div>
-    <div class="difsel">${FR_DIFS.map((D, i) => `<button data-fd="${i}" class="${st.diff === i ? "on" : ""}${i === 2 ? " hc" : ""}">${Lx(D[0], D[1])}</button>`).join("")}</div>
+    ${difChips(["e", "n", "h"][st.diff], "fd")}
     <div class="mlabel">${Lx("MODIFICADORES", "MODIFIERS")} <small>${st.mods.length}/3</small></div>
     <div class="frgrid">${pool.map(id => `<button data-m="${id}" class="${st.mods.includes(id) ? "on" : ""}"><span class="ic">${RULE[id].icon}</span><span class="nm">${T(RULE[id].name)}</span></button>`).join("")}</div>
     <p class="rsub">${Lx("Solo salen los que ya has visto. Duran toda la subida.", "Only the ones you've already met. They last the whole climb.")}</p>
@@ -14733,10 +14778,9 @@ function frCreate(st) {
     <div class="rowbig two"><button class="go alt" id="frCopy">${Lx("COPIAR", "COPY")}</button><button class="go" id="frPlay">${Lx("JUGAR", "PLAY")}</button></div>
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov);
-  ov.querySelectorAll("[data-fd]").forEach(b => b.onclick = () => { st.diff = +b.dataset.fd; frCreate(st); });
-  ov.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { const id = b.dataset.m;
-    if (st.mods.includes(id)) st.mods = st.mods.filter(x => x !== id); else if (st.mods.length < 3) st.mods.push(id); else { omfSfx("hurt"); return; }
-    const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; });
+  ov.querySelectorAll("[data-fd]").forEach(b => b.onclick = () => { st.diff = { e: 0, n: 1, h: 2 }[b.dataset.fd]; const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; });
+  // v164b (user 2026-11-08): tapping a modifier opens a pop-up with what it does, and SELECT / CLOSE
+  ov.querySelectorAll("[data-m]").forEach(b => b.onclick = () => frModPop(b.dataset.m, st));
   ov.querySelector("#frDice").onclick = () => { st.seed = (Math.random() * 65536) | 0; const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; };
   ov.querySelector("#frCopy").onclick = () => frCopy(code, ov.querySelector("#frTa"), ov.querySelector("#frNote"));
   ov.querySelector("#frPlay").onclick = () => frStart(frDecode(code));
@@ -14807,6 +14851,8 @@ function frStart(d) {
 .frpage{text-align:center;max-width:440px;margin:0 auto}.frpage h2 .pxmode{margin-right:4px;vertical-align:-4px}
 .frpage .rowbig{margin:8px 0}.frpage .rowbig.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .frpage .go.alt,.frdead .go.alt{background:#1b1829;color:#f2c14e;border-color:#f2c14e}
+.frpop .ipc{width:300px;max-width:calc(100vw - 32px);height:300px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center}.frpop .ipc b .skulls{vertical-align:middle}.frpop .frpd{flex:1;overflow-y:auto;margin:0 0 4px}.frpop .frpf{min-height:16px;margin:0 0 6px;font-size:11px;color:#e0566b}.frpop .frpb{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}.frpop .frpb .go{min-width:0;width:100%;height:44px;padding:0 6px}.frpop .frpb .go{background:#f2c14e;color:#1b1829;border:2px solid #f2c14e;font-family:Silkscreen,monospace;box-shadow:inset -2px -2px 0 rgba(0,0,0,.35)}.frpop .frpb .go.alt{background:#1b1829;color:#f2c14e;border-color:#f2c14e}.frpop .frpb .go[disabled]{opacity:.45}
+.frpage .frdn{font-size:11px;color:#9a94b8;margin:0 0 8px;min-height:28px}
 .frgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
 .frgrid button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;background:#14102a;border:2px solid #3e3960;color:#c9c3e6;box-shadow:inset -2px -2px 0 rgba(0,0,0,.4);min-width:0}
 .frgrid button .ic img.pxe{width:28px;height:28px}.frgrid button .nm{font:700 9px Silkscreen,monospace;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -15321,7 +15367,11 @@ const DESC_TOP = 52; // rows above this stay solid (the secret rooms live in row
 const descD = () => Math.max(0, (S.t - S.escT0) / ESC_TIER_T + (S.dBest || 0) / ESC_TIER_M);
 const descTier = () => Math.min(ESC_TIERS.length - 1, Math.floor(descD()));
 const DESC_NO = ["grav", "wax", "tide", "bean"]; // modifiers that make no sense going down
-function descOk() { return fullOwned() || !!META.descOk; }
+// v164b (user 2026-11-08): DESCENT unlocks by beating the first two story levels (La Campana and the second boss), or with Full Escape.
+// Players who already unlocked it the old way (reaching the Void) keep it.
+function descStory() { try { const B = huM().boss; return B.includes(0) && B.includes(1); } catch (_) { return false; } }
+function descOk() { return fullOwned() || !!META.descOk || descStory(); }
+{ const hr0 = huReward; huReward = function (z) { const was = descOk(); const r = hr0.apply(this, arguments); if (!was && descOk() && !(S && S.test)) toast(Lx("¡Modo DESCENSO desbloqueado!", "DESCENT mode unlocked!")); return r; }; }
 function descBest(d) { const B = META.descent || {}; return B[d] || 0; }
 function descDifKey() { return S && S.easy ? "e" : S && S.hard ? "h" : "n"; }
 function descStart() {
@@ -15394,8 +15444,8 @@ function descGenSeg() {
 }
 { const et = escapeTick; escapeTick = function (p, dt) { if (S && S.descent) return descTick(p, dt);
     const r = et.apply(this, arguments);
-    // unlock: reach the Void climbing on Normal or Hardcore
-    if (S && S.escape && !S.easy && !S.horde && !S.duel && !S.test && !META.descOk && (S.camZone || 0) >= 3) { META.descOk = true; try { saveMeta(); } catch (_) {} toast(Lx("¡Modo DESCENSO desbloqueado!", "DESCENT mode unlocked!")); }
+    // (v164b: reaching the Void no longer unlocks it; see descStory)
+    if (false) { META.descOk = true; try { saveMeta(); } catch (_) {} toast(Lx("¡Modo DESCENSO desbloqueado!", "DESCENT mode unlocked!")); }
     return r; }; }
 function descTick(p, dt) {
   if (S.lvlUp > 0 && S.mode === "play" && !(S.xpOrbs && S.xpOrbs.length)) {
@@ -15408,10 +15458,11 @@ function descTick(p, dt) {
   if (S.secret) { escSecretTick(p, dt); return false; }
   for (const d of S.doors) if (!d.used && Math.floor((p.x + p.w / 2) / TS) === d.tx && p.y + p.h > d.y0 * TS && p.y < (d.y1 + 1) * TS) { if (!S.fade) escFade(() => { S.roomTest = false; escEnterRoom(d, d.kind); }); return false; }
   const el = S.t - S.escT0, D = descD();
-  // camera: follows you down, never goes back up, and creeps down on its own a little faster over time
-  const target = p.y + p.h / 2 - CH * 0.38;
-  if (target > S.camY) S.camY = target;
-  if (el > 3 && S.banner <= 0 && !S.roomTest) S.camY += Math.min(66, 16 + D * 7) * (1 - 0.15 * perk("freno")) * (S.easy ? 0.7 : S.hard ? 1.15 : 1) * dt;
+  // v164b (user 2026-11-08): the camera does NOT follow you down. It scrolls down on its own at its own pace (never slow, a bit
+  // faster over time) and you have to keep up with it. It only moves early if you drop to the bottom edge, so you never fall out of view.
+  const low = p.y + p.h - CH * 0.88;
+  if (low > S.camY) S.camY = low;
+  if (el > 3 && S.banner <= 0 && !S.roomTest) S.camY += Math.min(95, 42 + D * 8) * (1 - 0.15 * perk("freno")) * (S.easy ? 0.75 : S.hard ? 1.15 : 1) * dt;
   S.camY = Math.min(S.camY, (S.LH - S.viewRows - 4) * TS);
   if (S.escCH && S.escCH !== CH && el > 3) S.camY -= 0; S.escCH = CH;
   // the ceiling: under the HUD, a row of spikes; touching it ends the run
@@ -15483,10 +15534,10 @@ function descInfo() {
   const ok = descOk(), row = (ic, c, es, en) => `<li>${pxi(ic, c, 2)}<span>${Lx(es, en)}</span></li>`, d = META.easy ? "e" : META.hard ? "h" : "n";
   ov.innerHTML = `<div class="menu setpage fullpg hordeinfo descinfo"><h2>${modeIcon("descenso", 24)} ${Lx("DESCENSO", "DESCENT")}</h2>
     <p class="rsub">${Lx("La torre al revés: empiezas arriba y bajas. El techo te persigue.", "The tower upside down: you start at the top and go down. The ceiling is after you.")}</p>
-    <ul class="fulllist">${row("up", "#e0566b", "La cámara solo baja y empuja desde arriba. Si el techo te alcanza, se acabó.", "The camera only goes down and pushes from above. If the ceiling catches you, it's over.")}${row("target", "#f2c14e", "Caer no duele: lo peligroso es dónde aterrizas. Pinchos, enemigos y murciélagos que suben.", "Falling doesn't hurt: the danger is where you land. Spikes, foes and bats coming up.")}${row("chart", "#5fd1c4", "Del Desconocido al Castillo: los biomas, al revés. Los modificadores siguen rotando.", "From the Unknown to the Castle: the biomes, in reverse. Modifiers still rotate.")}</ul>
+    <ul class="fulllist">${row("up", "#e0566b", "La cámara baja sola, a su ritmo, y empuja desde arriba. Tienes que seguirla: si el techo te alcanza, se acabó.", "The camera scrolls down on its own and pushes from above. Keep up with it: if the ceiling catches you, it's over.")}${row("target", "#f2c14e", "Caer no duele: lo peligroso es dónde aterrizas. Pinchos, enemigos y murciélagos que suben.", "Falling doesn't hurt: the danger is where you land. Spikes, foes and bats coming up.")}${row("chart", "#5fd1c4", "Del Desconocido al Castillo: los biomas, al revés. Los modificadores siguen rotando.", "From the Unknown to the Castle: the biomes, in reverse. Modifiers still rotate.")}</ul>
     ${ok ? `${escDifHTML()}<p class="hbest">${Lx("Tu mejor profundidad", "Your best depth")}: <b>${descBest(d)} m</b></p>
     <div class="rowbig"><button class="go" id="descGo">${Lx("¡A BAJAR!", "GO DOWN!")}</button></div>`
-      : `<p class="hbest">${pxi("lock", "#f2c14e", 2)} ${Lx("Se desbloquea al llegar al Vacío subiendo en Normal o Hardcore, o con Escape completo.", "Unlocks when you reach the Void climbing on Normal or Hardcore, or with Full Escape.")}</p>`}
+      : `<p class="hbest">${pxi("lock", "#f2c14e", 2)} ${Lx("Se desbloquea al superar los dos primeros niveles del modo historia, o con Escape completo.", "Unlocks when you beat the first two levels of story mode, or with Full Escape.")}</p>`}
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov); ov.scrollTop = 0;
   { const di = ov.querySelector(".difinfo"); if (di) di.remove(); }
@@ -15771,11 +15822,16 @@ for (const k of ["kai_golem", "nyx_estelar"]) { const f = SKIN_RULES[k]; if (typ
 (() => { const st = document.createElement("style"); st.id = "uiFijo"; st.textContent = `
 /* title hero switcher: the name row, the skin button and the text under it never change size between heroes */
 .etitle.a3 .a3name{height:34px;flex-wrap:nowrap;gap:8px;overflow:hidden}
-.etitle.a3 .a3name .ename{width:96px;flex:0 0 96px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.etitle.a3 .a3name .ename{width:72px;flex:0 0 72px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:clip}
 .etitle.a3 .a3name .ename:only-child{width:auto;flex:0 1 auto;text-align:center}
-.etitle.a3 .a3name .eskin{width:150px;flex:0 0 150px;height:34px;box-sizing:border-box;justify-content:center;white-space:nowrap;overflow:hidden}
-.etitle.a3 .a3name .eskin span{overflow:hidden;text-overflow:ellipsis;max-width:92px}
+/* v164b (user): the skin button is wide enough for the longest look name in both languages, and keeps one size */
+.etitle.a3 .a3name .eskin{width:228px;flex:0 0 228px;height:34px;box-sizing:border-box;justify-content:center;white-space:nowrap;overflow:hidden;gap:6px;padding-left:6px;padding-right:6px}
+.etitle.a3 .a3name .eskin span{overflow:visible;max-width:none;font-size:10px;letter-spacing:0}
 .etitle.a3 .edesc{height:3.9em;min-height:3.9em;max-height:3.9em;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;box-sizing:border-box}
+/* home: the hero button never clips its canvas, so winged looks (Moth) show their wings (user, v165) */
+.etitle .pedhero,.ped .pedhero{clip-path:none !important;overflow:visible !important}
+/* shop: the look you are viewing is marked like the wardrobe one (teal ring + tint) */
+.shoppg .sitem.on{box-shadow:0 0 0 2px #5fd1c4,inset 0 0 0 2px #5fd1c4 !important;background:#163230 !important}
 /* wardrobe: the text under the grid keeps one size, so the buttons below never jump when you tap another look */
 .wardrobe .winfo{width:300px;max-width:100%;height:54px;min-height:54px;max-height:54px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
 .wardrobe .wbtns{width:248px;max-width:100%;min-height:38px;display:flex;gap:8px;justify-content:center}.wardrobe .wbtns > button{flex:1 1 0;min-width:0;height:38px;box-sizing:border-box;padding-left:6px;padding-right:6px}
@@ -15811,1355 +15867,449 @@ for (const k of ["kai_golem", "nyx_estelar"]) { const f = SKIN_RULES[k]; if (typ
   try { new MutationObserver(mark).observe(ov, { childList: true }); mark(); } catch (_) {}
 })();
 
-// One More Floor Escape: art for the new biomes N1-N5 (alternates of the first biome).
-// Generated from /mnt/project-files/arte/biomas-pxl/biomas.px.js by juego/convertir.py. Do not edit by hand: edit the .px.js, rebuild with pxl, rerun.
-// Per biome: ramp (6 colours light->dark, same order as SPR_RAMP5), pal (grid key -> colour; "o" is the outline = ramp[5], "hi" = flash white),
-// foes (frames = 2 grids, types = existing enemy AIs this sprite replaces), decor (grids, frames), tiles (16x16 wall, block, thin platform).
-const NB_ART = {
- "n1": {
-  "ramp": [
-   "#fff4d6",
-   "#f2c879",
-   "#d89a52",
-   "#a8643a",
-   "#6a3a2c",
-   "#24141a"
-  ],
-  "pal": {
-   "o": "#24141a",
-   "hi": "#fff4d6",
-   "1": "#6a3a2c",
-   "2": "#5fd1c4",
-   "3": "#a8643a",
-   "4": "#d89a52",
-   "5": "#f2c879",
-   "6": "#ffe7a8",
-   "7": "#2f8a80",
-   "8": "#fff4d6",
-   "9": "#e2585e"
-  },
-  "foes": [
-   {
-    "id": "n1_scarab",
-    "es": "Escarabajo de arena",
-    "en": "Sand Scarab",
-    "types": [
-     "walker",
-     "rat"
-    ],
-    "frames": [
-     [
-      "...o........o...",
-      "..o1o..oo..o1o..",
-      "...o1oo11oo1o...",
-      "....o111111o....",
-      "...o11211211o...",
-      "..o1111111111o..",
-      ".o134441144431o.",
-      "o13455511555431o",
-      "o13444411444431o",
-      "o13344411444331o",
-      ".o133331133331o.",
-      "..o1111111111o..",
-      ".o1o1o1oo1o1o1o.",
-      "..o.o.o..o.o.o.."
-     ],
-     [
-      "...o........o...",
-      "..o1o..oo..o1o..",
-      "...o1oo11oo1o...",
-      "....o111111o....",
-      "...o11211211o...",
-      "..o1111111111o..",
-      ".o134441144431o.",
-      "o13455511555431o",
-      "o13444411444431o",
-      "o13344411444331o",
-      ".o133331133331o.",
-      ".oo1111111111oo.",
-      "o11111111111111o",
-      ".oooooooooooooo."
-     ]
-    ]
-   },
-   {
-    "id": "n1_wisp",
-    "es": "Fuego fatuo de polvo",
-    "en": "Dust Wisp",
-    "types": [
-     "bat"
-    ],
-    "frames": [
-     [
-      ".....oooooo.....",
-      "...oo655556oo...",
-      "..o6555445556o..",
-      ".o655444444556o.",
-      ".o554o4444o455o.",
-      ".o544444444445o.",
-      "..o4434444344o..",
-      "...o3o3333o3o...",
-      "....o3o33o3o....",
-      ".....o3oo3o.....",
-      "......o44o......",
-      ".......oo......."
-     ],
-     [
-      ".....oooooo.....",
-      "...oo655556oo...",
-      "..o6555445556o..",
-      ".o655444444556o.",
-      ".o554o4444o455o.",
-      ".o544444444445o.",
-      "..o4434444344o..",
-      "..o3333333333o..",
-      "...o33o33o33o...",
-      "....o33oo33o....",
-      ".....o4444o.....",
-      "......oooo......"
-     ]
-    ]
-   },
-   {
-    "id": "n1_urnsnake",
-    "es": "Serpiente de la urna",
-    "en": "Urn Snake",
-    "types": [
-     "shooter"
-    ],
-    "frames": [
-     [
-      "......oooo......",
-      ".....o2222o.....",
-      "....o277772o....",
-      "...o27777772o...",
-      "...o7o7777o7o...",
-      "...o77777777o...",
-      "....o777777o....",
-      "...oooo77oooo...",
-      "..o1111111111o..",
-      "..o1555555551o..",
-      ".o133443344331o.",
-      "o13444433444431o",
-      "o13344333344331o",
-      ".o133333333331o.",
-      "..o1111111111o..",
-      "...oooooooooo..."
-     ],
-     [
-      "......oooo......",
-      ".....o2222o.....",
-      "....o277772o....",
-      "...o27777772o...",
-      "...o78777787o...",
-      "...o77777777o...",
-      "....o777777o....",
-      "...ooo9999ooo...",
-      "..o1111111111o..",
-      "..o1555555551o..",
-      ".o133443344331o.",
-      "o13444433444431o",
-      "o13344333344331o",
-      ".o133333333331o.",
-      "..o1111111111o..",
-      "...oooooooooo..."
-     ]
-    ]
-   }
-  ],
-  "decor": {
-   "n1_hourglass": [
-    [
-     "333333333",
-     "111111111",
-     ".2.....2.",
-     "..55555..",
-     "..25552..",
-     "...2.2...",
-     "...252...",
-     "...2.2...",
-     "..2.6.2..",
-     "..25552..",
-     ".2555552.",
-     ".2555552.",
-     "111111111",
-     "111111111"
-    ],
-    [
-     "333333333",
-     "111111111",
-     ".2.....2.",
-     "..55555..",
-     "..25552..",
-     "...2.2...",
-     "...2.2...",
-     "...252...",
-     "..2...2..",
-     "..25652..",
-     ".2555552.",
-     ".2555552.",
-     "111111111",
-     "111111111"
-    ]
-   ],
-   "n1_urn": [
-    [
-     "..oooo....",
-     ".o1111o...",
-     "..o33o....",
-     ".o3443o...",
-     "o344443o..",
-     "o344443o..",
-     "o334433o..",
-     ".o3333o...",
-     "..oooo....",
-     "..........",
-     ".........."
-    ]
-   ]
-  },
-  "tiles": {
-   "wall": [
-    [
-     "1444444444444444",
-     "1333333333333333",
-     "1333433333333333",
-     "1311111333333333",
-     "1333333333333333",
-     "1333333333333333",
-     "1333333333333333",
-     "1111111111111111",
-     "4444444414444444",
-     "3333333313333333",
-     "3333333313333333",
-     "3333333313334333",
-     "3333333313111133",
-     "3333333313333333",
-     "3333333313333333",
-     "1111111111111111"
-    ]
-   ],
-   "plat": [
-    [
-     "8888888888888888",
-     "5556655555555555",
-     "5555555555555555",
-     "1111111111111111",
-     "1333333333333333",
-     "1333333333333333",
-     "1333333333333333",
-     "1111111111111111",
-     "4444444414444444",
-     "3333333313333333",
-     "3333333313333333",
-     "3333333313333333",
-     "3333333313333333",
-     "3333333313333333",
-     "3333333313333333",
-     "1111111111111111"
-    ]
-   ],
-   "thin": [
-    [
-     "8888888888888888",
-     "3555555555555553",
-     "3444444334444443",
-     "3444444444444443",
-     "1111111111111111"
-    ]
-   ]
-  }
- },
- "n2": {
-  "ramp": [
-   "#f4fbff",
-   "#9fd4e0",
-   "#5f9cb4",
-   "#3e6688",
-   "#263a5a",
-   "#0e1426"
-  ],
-  "pal": {
-   "o": "#0e1426",
-   "hi": "#f4fbff",
-   "1": "#3e6688",
-   "2": "#263a5a",
-   "3": "#5f9cb4",
-   "4": "#ffe45e",
-   "5": "#fff6c0",
-   "6": "#8a4a2a",
-   "7": "#d88a4a",
-   "8": "#9fd4e0",
-   "9": "#f4fbff",
-   "b": "#7fc8d8"
-  },
-  "foes": [
-   {
-    "id": "n2_sparkbat",
-    "es": "Murciélago chispa",
-    "en": "Spark Bat",
-    "types": [
-     "bat"
-    ],
-    "frames": [
-     [
-      ".o............o.",
-      "o1o...o..o...o1o",
-      "o11ooo2oo2ooo11o",
-      "o13112222221131o",
-      "o13312422421331o",
-      "o1o3322222233o1o",
-      ".o.oo2o22o2oo.o.",
-      ".....o.oo.o.....",
-      "................"
-     ],
-     [
-      ".o............o.",
-      "o1o...o..o...o1o",
-      "o11ooo2oo2ooo11o",
-      "o13112222221131o",
-      "o11311244211311o",
-      "o13332222223331o",
-      "o13oo2o22o2oo31o",
-      "o4o..o.oo.o..o4o",
-      ".o............o."
-     ]
-    ]
-   },
-   {
-    "id": "n2_rodbeetle",
-    "es": "Escarabajo pararrayos",
-    "en": "Rod Beetle",
-    "types": [
-     "walker",
-     "charger"
-    ],
-    "frames": [
-     [
-      ".......oo.......",
-      "......o55o......",
-      "......o44o......",
-      ".....oo66oo.....",
-      "...oo666666oo...",
-      "..o6777777776o..",
-      ".o675777777576o.",
-      ".o677777777776o.",
-      "o67777777777776o",
-      "o66666666666666o",
-      "o62242222224226o",
-      ".o2o2o2oo2o2o2o.",
-      "..o.o.o..o.o.o.."
-     ],
-     [
-      ".......oo.......",
-      "......o44o......",
-      "......o55o......",
-      ".....oo66oo.....",
-      "...oo666666oo...",
-      "..o6777777776o..",
-      ".o675777777576o.",
-      ".o677777777776o.",
-      "o67777777777776o",
-      "o66666666666666o",
-      "o62242222224226o",
-      "o22222222222222o",
-      ".oooooooooooooo."
-     ]
-    ]
-   },
-   {
-    "id": "n2_raincloud",
-    "es": "Nube de lluvia",
-    "en": "Rain Cloud",
-    "types": [
-     "wisp"
-    ],
-    "frames": [
-     [
-      ".....oooooo.....",
-      "...oo888888oo...",
-      "..o8899999988o..",
-      ".o889999999988o.",
-      "o88999999999988o",
-      "o8399o9999o9938o",
-      "o83333333333338o",
-      ".o311111111113o.",
-      "..o3ooo33ooo3o..",
-      "..ooo3oooo3ooo..",
-      ".o3o.o....o.o3o.",
-      "..o..........o.."
-     ],
-     [
-      ".....oooooo.....",
-      "...oo888888oo...",
-      "..o8899999988o..",
-      ".o889999999988o.",
-      "o88999999999988o",
-      "o8399o9999o9938o",
-      "o83333333333338o",
-      ".o311111111113o.",
-      "..o3o3o33o3o3o..",
-      "..o3o3o33o3o3o..",
-      ".o3o3o.oo.o3o3o.",
-      "..o.o......o.o.."
-     ]
-    ]
-   }
-  ],
-  "decor": {
-   "n2_rod": [
-    [
-     "....7....",
-     "....7....",
-     "....6....",
-     "....6....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "..11111..",
-     "..22222..",
-     "..22222..",
-     "..22222.."
-    ],
-    [
-     "....7....",
-     "....7....",
-     "....6....",
-     "....6....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "..11111..",
-     "..22222..",
-     "..22222..",
-     "..22222.."
-    ],
-    [
-     "....7....",
-     "....7....",
-     "....6....",
-     "....6....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "..11111..",
-     "..22222..",
-     "..22222..",
-     "..22222.."
-    ],
-    [
-     "....5....",
-     "...5.....",
-     "..5.5....",
-     "....4....",
-     "....6....",
-     "....6....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "..11111..",
-     "..22222..",
-     "..22222..",
-     "..22222.."
-    ],
-    [
-     "....7....",
-     "....7....",
-     "....6....",
-     "....6....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "...76....",
-     "..11111..",
-     "..22222..",
-     "..22222..",
-     "..22222.."
-    ]
-   ]
-  },
-  "tiles": {
-   "wall": [
-    [
-     "2333333323333333",
-     "2111111121111111",
-     "2111111121111111",
-     "2222222222222222",
-     "3333233333332333",
-     "1111211111112111",
-     "1111211111112111",
-     "7777777777777777",
-     "666o6666666o6666",
-     "21111b1121111111",
-     "21111b1121111111",
-     "22222b2222222222",
-     "3333233333332333",
-     "1111211111112111",
-     "1111211111112111",
-     "2222222222222222"
-    ]
-   ],
-   "plat": [
-    [
-     "5555555555555555",
-     "7777777777777777",
-     "7777777777777777",
-     "6666666666666666",
-     "3333233333332333",
-     "1111211111112111",
-     "1111211111112111",
-     "2222222222222222",
-     "2333333323333333",
-     "2111111121111111",
-     "2111111121111111",
-     "2222222222222222",
-     "3333233333332333",
-     "1111211111112111",
-     "1111211111112111",
-     "2222222222222222"
-    ]
-   ],
-   "thin": [
-    [
-     "7777777777777777",
-     "6666666666666666",
-     "6766766766766766",
-     "6666666666666666",
-     "oooooooooooooooo"
-    ]
-   ]
-  }
- },
- "n3": {
-  "ramp": [
-   "#fff8e6",
-   "#f3e0b8",
-   "#d8b07a",
-   "#8c5a46",
-   "#58363a",
-   "#1a0e14"
-  ],
-  "pal": {
-   "o": "#1a0e14",
-   "hi": "#fff8e6",
-   "1": "#fff2a0",
-   "2": "#ffd24a",
-   "3": "#ff8a3a",
-   "4": "#f3e0b8",
-   "5": "#fff8e6",
-   "6": "#d8b07a",
-   "7": "#58363a",
-   "8": "#8c5a46"
-  },
-  "foes": [
-   {
-    "id": "n3_wickimp",
-    "es": "Diablillo mecha",
-    "en": "Wick Imp",
-    "types": [
-     "hopper"
-    ],
-    "frames": [
-     [
-      ".......oo.......",
-      "......o11o......",
-      ".....o2332o.....",
-      ".....oooooo.....",
-      "....o444444o....",
-      "...o45555554o...",
-      "..o4555555554o..",
-      "..o45o4554o54o..",
-      "..o4444444444o..",
-      "..o6444444446o..",
-      "...o66444466o...",
-      "..o66o6666o66o..",
-      "...oo.oooo.oo..."
-     ],
-     [
-      ".......oo.......",
-      "......o11o......",
-      ".....o2222o.....",
-      ".....oooooo.....",
-      "....o444444o....",
-      "...o45555554o...",
-      "..o4555555554o..",
-      "..o45o4554o54o..",
-      "..o4444444444o..",
-      "..o6444444446o..",
-      "...o66444466o...",
-      "..o66o6666o66o..",
-      "...oo.oooo.oo..."
-     ]
-    ]
-   },
-   {
-    "id": "n3_waxblob",
-    "es": "Masa de cera",
-    "en": "Wax Blob",
-    "types": [
-     "walker",
-     "rat"
-    ],
-    "frames": [
-     [
-      "......oooo......",
-      "....oo5555oo....",
-      "...o55544555o...",
-      "..o5544444455o..",
-      ".o544o4oo4o445o.",
-      ".o544444444445o.",
-      "o54444444444445o",
-      "o44644466444644o",
-      "o66666666666666o",
-      ".oooooooooooooo."
-     ],
-     [
-      "......oooo......",
-      "....oo5555oo....",
-      "...o55555555o...",
-      "..o5554444555o..",
-      ".o544o4oo4o445o.",
-      "o54444444444445o",
-      "o44444444444444o",
-      "o44644466444644o",
-      "o66666666666666o",
-      ".oooooooooooooo."
-     ]
-    ]
-   },
-   {
-    "id": "n3_candlemoth",
-    "es": "Polilla de vela",
-    "en": "Candle Moth",
-    "types": [
-     "bat"
-    ],
-    "frames": [
-     [
-      "...o...oo...o...",
-      "..o6o.o77o.o6o..",
-      ".o646oo77oo646o.",
-      "o64246o77o64246o",
-      "o64446877864446o",
-      ".o646821128646o.",
-      "..o4688778864o..",
-      ".o6446o88o6446o.",
-      ".o64ooo77ooo46o.",
-      "..o6o..oo..o6o..",
-      "...o........o..."
-     ],
-     [
-      "...o...oo...o...",
-      "..o6o.o77o.o6o..",
-      ".o646oo77oo646o.",
-      "o64646o77o64646o",
-      "o66424677642466o",
-      "o64446211264446o",
-      "o64648877884646o",
-      ".o6446o88o6446o.",
-      ".o66ooo77ooo66o.",
-      "..o6o..oo..o6o..",
-      "...o........o..."
-     ]
-    ]
-   }
-  ],
-  "decor": {
-   "n3_candle": [
-    [
-     "..1..",
-     "..2..",
-     "..3..",
-     "..o..",
-     ".544.",
-     ".546.",
-     ".5464",
-     ".5466",
-     ".546.",
-     ".546.",
-     ".546."
-    ],
-    [
-     "..1..",
-     ".....",
-     ".22..",
-     "..3..",
-     "..o..",
-     ".544.",
-     ".546.",
-     ".5464",
-     ".5466",
-     ".546.",
-     ".546.",
-     ".546."
-    ]
-   ],
-   "n3_skullniche": [
-    [
-     "..ooooooooooo.",
-     ".ooooooooooooo",
-     "oooooooooooooo",
-     "o777444444777o",
-     "o774444444477o",
-     "o774444444477o",
-     "o774oo44oo477o",
-     "o774oo44oo477o",
-     "o774447744477o",
-     "o774444444477o",
-     "o777747477777o",
-     "o777666666777o"
-    ]
-   ]
-  },
-  "tiles": {
-   "wall": [
-    [
-     "7666666676666666",
-     "7888888878888888",
-     "7888888878888888",
-     "7888888878888888",
-     "7888888878888888",
-     "7888888878888888",
-     "7888888878888888",
-     "7777777777777777",
-     "6666766666667666",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "7777777777777777"
-    ]
-   ],
-   "plat": [
-    [
-     "5555555555555555",
-     "4444444444444444",
-     "4444444444444444",
-     "6646664666646646",
-     "7848884878848848",
-     "7848886878848848",
-     "7848888878848868",
-     "7767777777747777",
-     "6666766666647666",
-     "8888788888867888",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "8888788888887888",
-     "7777777777777777"
-    ]
-   ],
-   "thin": [
-    [
-     "5555555555555555",
-     "4444444444444444",
-     "4444444444444444",
-     "6666666666666666",
-     "...4......4.....",
-     "...6............"
-    ]
-   ]
-  }
- },
- "n4": {
-  "ramp": [
-   "#ffe8f0",
-   "#c9b8d8",
-   "#8a7aa8",
-   "#5a4a78",
-   "#342a4e",
-   "#120e18"
-  ],
-  "pal": {
-   "o": "#120e18",
-   "hi": "#ffe8f0",
-   "1": "#ff7a9a",
-   "2": "#c23a5a",
-   "3": "#6a1a3a",
-   "4": "#4a7a3a",
-   "5": "#8ac060",
-   "6": "#24402c",
-   "7": "#ffe8f0",
-   "8": "#c9b8d8",
-   "9": "#ffe08a",
-   "b": "#342a4e",
-   "d": "#8a7aa8",
-   "f": "#5a4a78"
-  },
-  "foes": [
-   {
-    "id": "n4_budspitter",
-    "es": "Capullo escupidor",
-    "en": "Bud Spitter",
-    "types": [
-     "shooter"
-    ],
-    "frames": [
-     [
-      "......oooo......",
-      "....oo1111oo....",
-      "...o11222211o...",
-      "..o1223333221o..",
-      "..o123oooo321o..",
-      "...o22333322o...",
-      "....o452254o....",
-      ".....oo44oo.....",
-      "....o5o44o5o....",
-      "...o54o44o45o...",
-      "..o6445445446o..",
-      ".o666444444666o.",
-      "..oooooooooooo.."
-     ],
-     [
-      "......oooo......",
-      "...ooo1111ooo...",
-      "..o1112222111o..",
-      ".o122233332221o.",
-      ".o1223oooo3221o.",
-      "..o2223333222o..",
-      "...o24522542o...",
-      "....ooo44ooo....",
-      "....o5o44o5o....",
-      "...o54o44o45o...",
-      "..o6445445446o..",
-      ".o666444444666o.",
-      "..oooooooooooo.."
-     ]
-    ]
-   },
-   {
-    "id": "n4_bramble",
-    "es": "Zarza reptante",
-    "en": "Bramble Crawler",
-    "types": [
-     "walker",
-     "rat"
-    ],
-    "frames": [
-     [
-      ".........oo.o.....",
-      "..o..oooo64o4o....",
-      ".o4oo664454454o...",
-      "o644444o44oo457o..",
-      ".o66446oo64444oo..",
-      "..o6oo4o.o6o4o1o..",
-      "...o..o...o.o.o...",
-      "..................",
-      "..................",
-      "..................",
-      ".................."
-     ],
-     [
-      ".........oo.o.....",
-      ".oo..oooo64o4o....",
-      "o44oo664454454o...",
-      "o644444o44oo457o..",
-      ".o66446oo64444oo..",
-      ".o66oo4o.o6o411o..",
-      "..oo..o...o.ooo...",
-      "..................",
-      "..................",
-      "..................",
-      ".................."
-     ]
-    ]
-   },
-   {
-    "id": "n4_thornwasp",
-    "es": "Avispa espina",
-    "en": "Thorn Wasp",
-    "types": [
-     "bat"
-    ],
-    "frames": [
-     [
-      ".o............o.",
-      "o7o...o..o...o7o",
-      "o87o.o3oo3o.o78o",
-      ".o87o322223o78o.",
-      "..o8329oo9238o..",
-      "...o32222223o...",
-      "....o232232o....",
-      "....o323323o....",
-      ".....o2332o.....",
-      "......o66o......",
-      ".......oo......."
-     ],
-     [
-      ".o............o.",
-      "o7o...o..o...o7o",
-      "o87o.o3oo3o.o78o",
-      "o887o322223o788o",
-      ".o88329oo92388o.",
-      "..oo32222223oo..",
-      "....o232232o....",
-      "....o323323o....",
-      ".....o2332o.....",
-      "......o66o......",
-      ".......oo......."
-     ]
-    ]
-   }
-  ],
-  "decor": {
-   "n4_rose": [
-    [
-     "..111..",
-     ".11222.",
-     ".22322.",
-     ".22222.",
-     "...4...",
-     "...4...",
-     "..54...",
-     "...44..",
-     "...4..."
-    ]
-   ]
-  },
-  "tiles": {
-   "wall": [
-    [
-     "bdddddddbddddddd",
-     "bfffffffbfffffff",
-     "bfffffffbfffffff",
-     "bbbbbbbbbbbbbbb6",
-     "ddddbdddddddbd6d",
-     "ffffbff5ffffb6ff",
-     "ffffbf4fffff6fff",
-     "bbbbb4b4bbb6bbbb",
-     "bddd4ddd4d6ddddd",
-     "bff4ffffb6ffffff",
-     "bf4fffffbfffffff",
-     "b4bbbbbbbbbbbbbb",
-     "4dddbdddddddbddd",
-     "ffffbfffffffbfff",
-     "ffffbfffffffbfff",
-     "bbbbbbbbbbbbbbbb"
-    ]
-   ],
-   "plat": [
-    [
-     "5559555555155555",
-     "4444544444444544",
-     "4444444444444444",
-     "6666666666666666",
-     "ddddb6dddddd6ddd",
-     "ffffb6ffffff6fff",
-     "ffffb6ffffffbfff",
-     "bbbbbbbbbbbbbbbb",
-     "bdddddddbddddddd",
-     "bfffffffbfffffff",
-     "bfffffffbfffffff",
-     "bbbbbbbbbbbbbbbb",
-     "ddddbdddddddbddd",
-     "ffffbfffffffbfff",
-     "ffffbfffffffbfff",
-     "bbbbbbbbbbbbbbbb"
-    ]
-   ],
-   "thin": [
-    [
-     "44414444.555555.",
-     "8888888888888888",
-     "dddddddddddddddd",
-     "dddddddddddddddd",
-     "bbbbbbbbbbbbbbbb"
-    ]
-   ]
-  }
- },
- "n5": {
-  "ramp": [
-   "#fff6ea",
-   "#ffd2b0",
-   "#e8a090",
-   "#a87aa8",
-   "#5a5a96",
-   "#1e1a3a"
-  ],
-  "pal": {
-   "o": "#1e1a3a",
-   "hi": "#fff6ea",
-   "1": "#fff6ea",
-   "2": "#ffd2b0",
-   "3": "#ffe08a",
-   "4": "#a87aa8",
-   "5": "#cfe0ff",
-   "6": "#ff9a6a",
-   "7": "#7a5a9a",
-   "8": "#e8a090",
-   "9": "#5a5a96"
-  },
-  "foes": [
-   {
-    "id": "n5_kitegull",
-    "es": "Gaviota cometa",
-    "en": "Kite Gull",
-    "types": [
-     "bat"
-    ],
-    "frames": [
-     [
-      ".o............o.",
-      "o1o..........o1o",
-      "o21o...oo...o12o",
-      "o221ooo11ooo122o",
-      ".o221131131122o.",
-      "..o2211oo1122o..",
-      "...o22111122o...",
-      "....o21oo12o....",
-      ".....o4oo4o.....",
-      "......o..o......"
-     ],
-     [
-      ".o............o.",
-      "o1o..........o1o",
-      "o21o.oooooo.o12o",
-      "o221o111111o122o",
-      "o122111oo111221o",
-      ".o222131131222o.",
-      "..o2221111222o..",
-      "...oo21oo12oo...",
-      ".....o4oo4o.....",
-      "......o..o......"
-     ]
-    ]
-   },
-   {
-    "id": "n5_cloudpuff",
-    "es": "Nubecilla",
-    "en": "Cloud Puff",
-    "types": [
-     "hopper",
-     "wisp"
-    ],
-    "frames": [
-     [
-      ".....oooooo.....",
-      "...oo551155oo...",
-      "..o5511111155o..",
-      ".o511111111115o.",
-      "o5111o1111o1115o",
-      "o51111111111115o",
-      "o55161111116155o",
-      ".o555555555555o.",
-      "..o7o7o77o7o7o..",
-      "...o.o.oo.o.o..."
-     ],
-     [
-      ".....oooooo.....",
-      "...oo551155oo...",
-      "..o5511111155o..",
-      ".o511111111115o.",
-      "o5111o1111o1115o",
-      "o51111111111115o",
-      "o55161111116155o",
-      ".o555555555555o.",
-      "..o7777777777o..",
-      "...oooooooooo..."
-     ]
-    ]
-   },
-   {
-    "id": "n5_sentry",
-    "es": "Centinela de piedra",
-    "en": "Stone Sentry",
-    "types": [
-     "shooter"
-    ],
-    "frames": [
-     [
-      "...oooooooooo...",
-      "..o4444444444o..",
-      ".o488888888884o.",
-      "o48222222222284o",
-      "o482oo2222oo284o",
-      "o48222222222284o",
-      "o48822222222884o",
-      ".o488883388884o.",
-      ".o488888888884o.",
-      "..o4o4o44o4o4o..",
-      "...o.o.oo.o.o..."
-     ],
-     [
-      "...oooooooooo...",
-      "..o4444444444o..",
-      ".o488888888884o.",
-      "o48222222222284o",
-      "o482o322223o284o",
-      "o48222222222284o",
-      "o48822222222884o",
-      ".o488883388884o.",
-      ".o488888888884o.",
-      "..o4444444444o..",
-      "...oooooooooo..."
-     ]
-    ]
-   }
-  ],
-  "decor": {},
-  "tiles": {
-   "wall": [
-    [
-     "9888888888888888",
-     "9444984444444444",
-     "9444984444444444",
-     "9444984444444444",
-     "9444984444444444",
-     "9444984444444444",
-     "9444984444444444",
-     "9999999999999999",
-     "8888888898888888",
-     "4444444494498444",
-     "4444444494498444",
-     "4444444494498444",
-     "4444444494498444",
-     "4444444494498444",
-     "4444444494498444",
-     "9999999999999999"
-    ]
-   ],
-   "plat": [
-    [
-     "1111111111111111",
-     "2222222222222222",
-     "2222222222222222",
-     "9999999999999999",
-     "9444444444444444",
-     "9444444444444444",
-     "9444444444444444",
-     "9999999999999999",
-     "8888888898888888",
-     "4444444494444444",
-     "4444444494444444",
-     "4444444494444444",
-     "4444444494444444",
-     "4444444494444444",
-     "4444444494444444",
-     "9999999999999999"
-    ]
-   ],
-   "thin": [
-    [
-     "...1111111115...",
-     "..5555555555555.",
-     ".555555555555555",
-     "..5555555555555.",
-     "..777777777777.."
-    ],
-    [
-     "...1111111115...",
-     "..5555555555555.",
-     ".555555555555555",
-     "..5555555555555.",
-     "..777777777777.."
-    ],
-    [
-     "...1111111115...",
-     "..5555555555555.",
-     ".555555555555555",
-     "..5555555555555.",
-     "..777777777777.."
-    ],
-    [
-     "...1111111115...",
-     "..5555555555555.",
-     ".555555555555555",
-     "..5555555555555.",
-     "..777777777777.."
-    ]
-   ]
-  }
- }
+// ===== New first-biome looks N1-N5, v3 (user 2026-11-08: "les falta detalle y calidad como a los anteriores") =====
+// Enemy models in the game's own 16 px grid style. 9 per biome, one per enemy type, like the original biomes
+// (SPRB2). Keys: o outline · a/A body (lit by the game: top row lighter) · c dark · e eyes · y accent · hi flash,
+// plus each biome's fixed keys (NB3_EPAL). Halves (8 chars) are mirrored with nb3M().
+const nb3M = rows => rows.map(r => r + [...r].reverse().join(""));
+const NB3_SPR = {
+// ---------------- N1 Sandglass Spire ----------------
+n1_walker: nb3M([ // sand scarab: turquoise shell, gold rim
+  ".....o..", "......o.", ".....ooo", "....oqeq", "...ogggg", "..ogrrrq", ".ogrkrrq", ".ogrrrrq", ".ogrrrRq", "..ogRRRq", "...ooooo", "..o..o.."]),
+n1_hopper: [ // sand toad (faces left)
+  "...oooo.........", "..oAAaao.oooo...", ".oAeoaaooaaaaoo.", ".oaooaaaaaaaaaao", "oaaaaaaaaanaanao", "okkkkaaaaaaaaaco",
+  ".okkkkaacaaaacco", "..ooooccccccco..", "..oao.....oaao..", "..ooo.....oooo.."],
+n1_bat: nb3M([ // dune bat, tall ears
+  ".....o..", "o...oyo.", "oo..oyoo", "oaoooaaa", "oaaoaeaa", "oacaaaaa", ".occaakk", "..oocaaa", "....oooo"]),
+n1_shooter: [ // urn snake: cobra hood out of a turquoise-banded urn
+  "......oooo......", ".....oaAAao.....", "....oaeaaeao....", "...oaaaRRaaao...", "..oaagaaaagaao..", "..oaaagaagaaao..",
+  "...oaaaaaaaao...", "....oocaacoo....", "..oooooooooooo..", "..onnnnnnnnnno..", ".onrrrrrrrrrrno.", ".onnnnnnnnnnnno.",
+  "..oNnnnnnnnnNo..", "...oooooooooo..."],
+n1_spider: nb3M([ // sand tarantula, gold stripes
+  ".....ooo", "o...oaaa", "oo.oaAaa", ".ooaaeaq", "..oaayaa", ".oooaaaa", "o..oacca", "o.o.occc", "..o..ooo"]),
+n1_charger: [ // dune ram: sandy wool, turquoise horns (faces right)
+  "..........oooo....", ".........orrRRo...", "..ooooooorooooRo..", ".oAAAAAAAoaaaaoRo.", "oAaaaaaaaoaeaaao..",
+  "oaaaaaaaaaaaaaaao.", "oaaaaaaaaaaaaaRRo.", "occaaaaaaaaaccoo..", ".occcccccccccco...", "..oco.oco.oco.....", "..ooo.ooo.ooo....."],
+n1_wisp: [ // dust wisp: a small sand devil
+  ".......o........", "......oAo.......", ".....oAaao......", "....oaaaaAo.....", "...oaaeaaeao....", "...oaaaaaaaao...",
+  "....oaaqqaao....", ".....oaaaao.....", "......oaaao.....", ".......oaao.....", "........oao.....", ".........o......"],
+n1_bomber: [ // vulture with a clay pot (faces right)
+  "...........ooo....", "..........ommmoo..", "..ooo....ommmegGo.", ".oAAAo..okkkkoooo.", "oAaaaaooakkkko....", "oaaaaaaaaaaao.....",
+  ".occaaaaaaaco.....", "..oocccaaacco.....", "....oooocccoo.....", ".......ooo........", "......onnno.......", "......onNno.......", ".......ooo........"],
+n1_knight: [ // tomb guard: wrapped in linen, gold collar, staff
+  ".....oooooo.....", "....obbBbbbo.g..", "...obbbbBbbboG..", "...oqeqqqeqqoG..", "...obBbbbbBbbog.", "...obbbbBbbbbo..",
+  "..oogggggggggoo.", ".obboggrggggobbo", ".obboBbbbBbbobbo", ".oBBobbBbbbbboBo", "..ooBbbbbBbbbo..", "...obbBbbbBbbo..",
+  "...obbbooobbbo..", "...obbo...obbo..", "..oBBBo...oBBBo.", "..ooooo...ooooo."],
+// ---------------- N2 Storm Spire ----------------
+n2_walker: nb3M([ // rod beetle: copper shell, lightning-rod antenna
+  ".......r", ".......y", ".......B", ".....ooB", "....obbb", "...obybb", "..obbbbb", ".obbbbbq", ".oBbbbbq", ".oqqeqqq", "..o.o.o."]),
+n2_hopper: [ // puddle frog (faces left)
+  "..oo..oo........", ".oAAooAAo.......", ".oeaooeao.ooo...", "oaaaaaaaaoaaao..", "oyyyyaaaaaaaaao.", ".oyyyaaaraaaraao",
+  "..ooaaaaaaaaaco.", ".oaao.occcccco..", ".oooo.oaao.oao..", "......oooo.ooo.."],
+n2_bat: nb3M([ // spark bat
+  "o.......", "oo....o.", "oro..oao", "oaao.oaa", "oaaaoaea", "oaraaaaa", ".oaoaakk", "..o.oaaa", "......oo"]),
+n2_shooter: nb3M([ // tesla coil turret
+  "......oo", ".....oyA", "....oAaa", "....oaac", ".....occ", "......ob", ".....obb", "......oB", ".....obb", "......oB",
+  "....oqqq", "...oqeqq", "..oqqqqq", "..oooooo"]),
+n2_spider: nb3M([ // static spider
+  "......oo", ".o..oaaa", "o.ooaAaa", "o.oaeaea", ".oaaarra", "o.oaaaar", "o..ocaaa", ".o..occc", "......oo"]),
+n2_charger: [ // thunder ram: storm-cloud fleece, copper horns
+  "..........oooo....", ".........obbBBo...", "..oo.oo.oboooBo...", ".okkokkoobaaaoBo..", "okkkkkkkkoaeaao...",
+  "okkkkkkkkkaaaaaao.", "okrkkkkkkkaaaaBBo.", "okkrkkkkkkkaacoo..", ".occccccccccco....", "..oco.oco.oco.....", "..ooo.ooo.ooo....."],
+n2_wisp: [ // rain cloud
+  "....oooo........", "...okkkkoooo....", "..okkkkkkkkko...", ".okkkkkkkkkkko..", ".okkeokkkeokko..", "okkkkkkkkkkkkko.",
+  "oAaaaaaaaaaaaao.", ".oaaaaccaaaaco..", "..ooooooooooo...", "...A...A...A....", ".....A...A......"],
+n2_bomber: [ // storm petrel with a spark ball
+  "..........ooo.....", ".........okkko....", "..oo....okkeyyo...", ".oAAo..okkkko.....", "oAaaaooaakko......", "oaaaaaaaaaao......",
+  ".occaaaaaaao......", "..oocccccco.......", "....ooooooo.......", ".......ooo........", "......orRro.......", "......oRrRo.......", ".......ooo........"],
+n2_knight: [ // copper knight with a bolt lance
+  ".....oooooo..r..", "....obbbbbbo.r..", "...obbbbbbbbor..", "...oqqqqqqqqoB..", "...oqeqqqqeqoB..", "...obbbbbbbbo.B.",
+  "..oobbbbbbbboo.B", ".oaaoggggggoaaoB", ".oaaobbrrbbboaao", ".oAAobbrrbbboAAo", "..oobbbbbbbbboo.", "...obbbbbbbbbo..",
+  "...obbbooobbbo..", "...oBBo...oBBo..", "..oqqqo...oqqqo.", "..ooooo...ooooo."],
+// ---------------- N3 Wax Catacombs ----------------
+n3_walker: [ // wax blob with a candle stub
+  ".......y........", ".......r........", "......oko.......", "......oko.......", "....oooaooo.....", "...oAAaaaaAoo...",
+  "..oAaaaaaaaaao..", ".oaaqaaaaqaaaao.", ".oaaaaaaaaaaaao.", "oaaacaaaaaacaaao", "occcccaaaccccco."],
+n3_hopper: [ // wick imp (faces left)
+  ".....y..........", "....yry.........", ".....q..........", "...ooooo........", "..oAAaaao.......", ".oeaaeaaao......",
+  ".oaaqqaaao......", "..oaaaaaaoo.....", "..ocaaaacaao....", "...occccoooo....", "...oao.oao......", "...ooo.ooo......"],
+n3_bat: nb3M([ // candle moth
+  "..oo...o", ".oAAo..o", "oAaeao.o", "oaecaaoq", "oaaaaaoq", ".oaaaoyq", "..oaaoqq", ".oaao.oq", "..oo...o"]),
+n3_shooter: [ // ember acolyte: hooded, swings a censer (faces right)
+  ".....oooo.......", "....onnnno......", "...onnNNNno.....", "...onqeqeNo.....", "...onqqqqNo.....", "...onnNNNno.o...",
+  "..onnnnnnnnoyo..", "..onnnnnnnnorRo.", "..onnNnnnNno.o..", ".onnnnNnnnnno...", ".onnnnnnnnnno...", ".oNNNNNNNNNNo...", ".oooooooooooo..."],
+n3_spider: nb3M([ // wax spider, dripping
+  "......oo", ".o..oAaa", "o.ooaaaa", "o.oaeaea", ".oaaaaaa", "o.oaaaaa", "o..oaaca", ".o..a.oc", "....a..o"]),
+n3_charger: [ // coffin crawler (faces right)
+  "....oooooooooo....", "...oggggggggggo...", "..ogGgggggggggGo..", "..ogggbbbbbggggo..", "..oggggbbbgggggo..", "..ogggggbggggeeo..",
+  "..oGgggggggggggo..", "...oGGGGGGGGGGo...", "...obo.obo.obo....", "...obo.obo.obo....", "...ooo.ooo.ooo...."],
+n3_wisp: nb3M([ // flame skull
+  "....y..y", "...yry.r", "....oooo", "...obbbb", "..obbbbb", "..obeqbb", "..obbbbb", "...obboo", "...obqbq", "....oooo"]),
+n3_bomber: [ // wax crow carrying a hot wax drop
+  "..........ooo.....", ".........oqqqo....", "..oo....oqqeyyo...", ".oggo..oqqqqo.....", "oggggooggqqo......", "oggggggggggo......",
+  ".oGGgggggggo......", "..ooGGGGGGo.......", "....ooooooo.......", ".......ooo........", "......oAaAo.......", "......oaaao.......", ".......ooo........"],
+n3_knight: [ // candle knight: three candles on the helm
+  "....y..y..y.....", "....a..a..a.g...", "...oaooaooaoG...", "...obbbbbbbboG..", "...oqeqqqqeqoG..", "...obbbbbbbbog..",
+  "..oonnnnnnnnoo..", ".obbonnyynnobbo.", ".obbonnnnnnobbo.", ".oBBonnnnnnoBBo.", "..oonnnnnnnnoo..", "...onnnnnnnno...",
+  "...onnnooonnno..", "...onno...onno..", "..oNNNo...oNNNo.", "..ooooo...ooooo."],
+// ---------------- N4 Thorn Garden ----------------
+n4_walker: [ // bramble crawler (faces right)
+  "......R.....R...", ".....oRo...oRo..", "..ooooaooooooao.", ".oAaaaaaaaaaaaeo", "oaqaaqaaaqaaaaao", ".occcccccccccco.", "..o.R..o.R..o..."],
+n4_hopper: [ // leaf-hat frog (faces left)
+  "....ooo.........", "...oAAAo........", "..oAaAaAo.......", ".oeaooeao.ooo...", "oaaaaaaaaoaaao..", "okkkkaaaaaaaaao.",
+  ".okkkaaaraaaraao", "..ooaaaaaaaaaco.", ".oaao.occcccco..", ".oooo.oaao.oao..", "......oooo.ooo.."],
+n4_bat: nb3M([ // thorn wasp
+  "o.......", "ko...o..", "kko.oRo.", ".kkoRnRo", "..ooReRR", "...oRnRn", "....oRnR", ".....oRo", "......oo", ".......q"]),
+n4_shooter: [ // bud spitter
+  ".....oooooo.....", "....orrrrrro....", "...orRrrrrRro...", "...oRRqqqqRRo...", "...oRrqqqqrRo...", "....oRRRRRRo....",
+  ".....oaAAao.....", "..oo..oaao..oo..", ".oAao.oaao.oaAo.", "..oaaooaaooaao..", "...ooooaaoooo...", "......oGGo......",
+  ".....oGGGGo.....", ".....oooooo....."],
+n4_spider: nb3M([ // rose spider
+  "......oo", ".o..oRrr", "o.ooRrRr", "o.oRrerr", ".oRRrrrr", "o.oRRrrr", "o..oRRRR", ".o..oaaa", "......oo"]),
+n4_charger: [ // topiary boar (faces right)
+  "....oooooooo......", "..ooAaAaAaAaoo....", ".oAaaaaaaaaaaao...", "oAaaaaaaaaaaaaaoo.", "oaaaaaaaaaaaaeaako",
+  "oaaaaaaaaaaaaaaaRo", "oaaaaaaaaaaaaaako.", ".occccccccccccco..", "..oGo.oGo.oGo.....", "..ooo.ooo.ooo....."],
+n4_wisp: nb3M([ // firefly cluster
+  "........", "..k....o", ".kko..oo", "..kooonn", "...onnnn", "...onenn", "...onnnn", "....onnN", ".....oNN", "......oo"]),
+n4_bomber: [ // seed moth carrying a burr
+  "..........ooo.....", ".........obbbo....", "..oo....obbeyyo...", ".okko..obbbbo.....", "okkkkoobbbbo......", "okkkkkkbbbbo......",
+  ".oBBkkkkbbbo......", "..ooBBBBBBo.......", "....ooooooo.......", ".......ooo........", "......oGgGo.......", "......ogGgo.......", ".......ooo........"],
+n4_knight: [ // hedge knight: leaf armour, rose crest, shears
+  ".....oooooo.....", "....oaRrRaao.G..", "...oaAaaaAaaoG..", "...oqeqqqeqqoG..", "...oaaaaaaaaog..", "...oaaAaaaaao.g.",
+  "..ooRRRRRRRRoog.", ".oaaoRRyRRRRoaao", ".oaaoaaaAaaaoaao", ".occoaAaaaaaaoco", "..ooaaaaAaaao...", "...oaaAaaaAao...",
+  "...oaaaoooaaao..", "...oaao...oaao..", "..oGGGo...oGGGo.", "..ooooo...ooooo."],
+// ---------------- N5 Sky Ruins at Dusk ----------------
+n5_walker: [ // pebble golem with a sun core
+  ".....oooooo.....", "....oAAaaaao....", "...oAaaaaaaco...", "...oaqeqqeqco...", "..ooaaaaaaacoo..", ".oaaoaagaaaoaao.",
+  ".oaaoagGgaaocao.", ".occoaaaaaaocco.", "..oo.occccco.oo.", "....oao..oao....", "....ooo..ooo...."],
+n5_hopper: [ // sky hare (faces left)
+  "...oo.oo........", "..obboboo.......", "..obbobbo.......", "..obbobbo.......", ".obbbbbbbo......", "obebbbbbbboooo..",
+  "obbbbbbbbbbbbbo.", ".orbbbbbbbbbbbbo", "..obbbbbbbbbbBo.", "..oBBo..oBBBBo..", "..ooo....oooo..."],
+n5_bat: nb3M([ // kite gull
+  "........", "oo......", "okoo....", ".okkoo.o", "..okkkok", "...okkek", "....okkk", ".....okg", "......oo"]),
+n5_shooter: nb3M([ // stone sentry mask with a gold gem
+  "...ooooo", "..oAAaaa", ".oAaaaaa", ".oaqqaaa", ".oaqeaaa", ".oaaaaag", ".oaaaaaG", "..oaaaaa", "..ocacac", "...o.o.o"]),
+n5_spider: nb3M([ // fluff spider
+  "......oo", ".o..obbb", "o.oobkbb", "o.obebbb", ".obbbbbb", "o.oBbbbb", "o..oBBBB", ".o..oooo"]),
+n5_charger: [ // sky ram: cloud fleece, gold horns (faces right)
+  "..........oooo....", ".........oggGGo...", "..oo.oo.ogoooGo...", ".obbobboogaaaoGo..", "obbbbbbbboaeaao...",
+  "obbbbbbbbbaaaaaao.", "obbbbbbbbbaaaarro.", "oBbbbbbbbbbaacoo..", ".oBBBBBBBBBBo.....", "..oco.oco.oco.....", "..ooo.ooo.ooo....."],
+n5_wisp: [ // cloud puff
+  "......oooo......", "...ooobbbbooo...", "..obbbkkbbbbbo..", ".obkkbbbbbbbbbo.", ".obbbebbbbebbbo.", "obbbbbbbbbbbbbbo",
+  "obrrbbbqqbbbrrbo", ".oBbbbbbbbbbbBo.", "..ooBBBBBBBBoo..", "....oooooooo...."],
+n5_bomber: [ // little balloon bomber
+  "....oooooo......", "...orrrrRro.....", "..orkrrrrrRo....", "..orrrrrrrRo....", "..orrgrrgrRo....", "...orrrrrRo.....",
+  "....oRRRRo......", ".....o..o.......", ".....o..o.......", "....oGGGGo......", "....oGeeGo......", "....oooooo......"],
+n5_knight: [ // winged statue knight
+  ".....oooooo.....", "....oaAaaaao.g..", "...oaaaaaaaaog..", "...oqeqqqeqqog..", "...oaaaaaaaaoG..", "...oaacaaacao.G.",
+  "kooooggggggoooG.", "okkkogaAaagokkko", "okkkoaaaaaaokkko", ".okkoaacaacokko.", "..ooaaaaaaaaoo..", "...oaaaaaaaao...",
+  "...oaaaoooaaao..", "...oaao...oaao..", "..occco...occco.", "..ooooo...ooooo."],
 };
-
-// ===== v164 (user 2026-11-07): new biomes N1-N5 as alternates of the FIRST biome =====
-// Spec /mnt/project-files/arte/biomas-pxl/juego/biomas-nuevos-spec.md. Art NB_ART comes from
-// /mnt/project-files/arte/biomas-pxl/juego/biomas-nuevos-arte.js (loaded just before this file by rebuild.sh).
-// Each Escape run rolls one of 6 looks for zone 0 (Castle + N1..N5, 1/6 each) from its own seeded RNG, so
-// daily, duel and friend's tower all see the same look for the same seed. Story always keeps the Castle.
-// Only the LOOK changes: logically it is still zone 0 (timer, modifiers, music, feats stay the same).
-// How: index 0 of every zone art table is swapped for the variant's values, and the zone caches are cleared.
-var NB_ALT = 0, NB_FORCE_NEXT = null;
-const NB_V = [null,
-  { id: "n1", es: "Aguja de arena", en: "Sandglass Spire", acc: "#5fd1c4",
-    mats: [null, ["#dffcf6", "#8ae8dc", "#5fd1c4", "#2f8a80", "#1d5650", "#0a1a18"], ["#fffaf0", "#f8e0b0", "#ecc488", "#c08a5a", "#7a4a34", "#24141a"]],
-    moss: ["#fff4d6", "#f2c879", "#d89a52", "#a8643a"], tops: ["pebbles", "pot", "bones", "pebbles", "pot"], props: ["n1_hourglass", "n1_urn"] },
-  { id: "n2", es: "Aguja de la tormenta", en: "Storm Spire", acc: "#d88a4a",
-    mats: [null, ["#ffd8b0", "#e8a060", "#d88a4a", "#8a4a2a", "#5a2e1c", "#140804"], ["#dfeef6", "#7fb0c4", "#4f86a0", "#345a7a", "#20334f", "#0a101e"]],
-    moss: ["#fff6c0", "#e8a060", "#d88a4a", "#8a4a2a"], tops: ["bolts", "pebbles", "oilcan", "bolts"], props: ["n2_rod"] },
-  { id: "n3", es: "Catacumbas de cera", en: "Wax Catacombs", acc: "#ffd24a",
-    mats: [null, ["#e8c0b0", "#b07a6a", "#8c5a46", "#58363a", "#3a2026", "#100608"], ["#fff8e6", "#e8dcc0", "#c0b090", "#8a7a60", "#4a3e32", "#140e0a"]],
-    moss: ["#fff8e6", "#f3e0b8", "#d8b07a", "#8c5a46"], tops: ["candles", "bones", "candles", "pot", "books"], props: ["n3_candle"] },
-  { id: "n4", es: "Jardín de espinas", en: "Thorn Garden", acc: "#ff7a9a",
-    mats: [null, ["#d8f0b0", "#8ac060", "#5a9a48", "#4a7a3a", "#24402c", "#0a140c"], ["#f0e8ff", "#c9b8d8", "#a898c4", "#7a6a9a", "#4a3e6a", "#140e20"]],
-    moss: ["#c8f090", "#8ac060", "#4a7a3a", "#24402c"], tops: ["flowerW", "fern", "grass", "flowerB", "fern"], props: ["n4_rose"] },
-  { id: "n5", es: "Ruinas del cielo", en: "Sky Ruins at Dusk", acc: "#ffe08a",
-    mats: [null, ["#ffffff", "#eef4ff", "#cfe0ff", "#9ab0e0", "#5a6aa0", "#1e1a3a"], ["#fff6d8", "#ffe08a", "#ffc070", "#e08a5a", "#8a4a4a", "#2a1424"]],
-    moss: ["#ffffff", "#fff6ea", "#ffd2b0", "#a87aa8"], tops: ["pebbles", "flowerW", "grass", "pebbles"], props: [] },
+// fixed colours per biome (merged into the zone-0 enemy palette while the look is on)
+const NB3_EPAL = [null,
+  { o: "#1c100a", a: "#d89a52", A: "#f2c879", c: "#8a5530", e: "#5fd1c4", y: "#ffe08a", hi: "#fff4d6", b: "#efe6d2", B: "#a99c88", r: "#5fd1c4", R: "#2f8a80",
+    g: "#e3b24e", G: "#9a6a20", k: "#fff8e8", q: "#2a1810", n: "#c87a48", N: "#7a3e24", m: "#e89a8a" },
+  { o: "#0a101c", a: "#4f86a0", A: "#8ac8e0", c: "#2a4a66", e: "#ffe45e", y: "#fff6c0", hi: "#f4fbff", b: "#d88a4a", B: "#8a4a2a", r: "#ffe45e", R: "#c8a020",
+    g: "#5fbfa8", G: "#2f7a6a", k: "#dcecf8", q: "#14202e", n: "#c47a40", N: "#6a3a20" },
+  { o: "#140a0e", a: "#f3e0b8", A: "#fff8e6", c: "#c8a070", e: "#ff8a3a", y: "#ffd24a", hi: "#fffaf0", b: "#efe6d2", B: "#a99c88", r: "#ff8a3a", R: "#c84a2a",
+    g: "#8c5a46", G: "#58363a", k: "#fff8e8", q: "#2a1418", n: "#6a2a3a", N: "#3a1420" },
+  { o: "#0a140c", a: "#5a9a48", A: "#8ac060", c: "#2c4a32", e: "#ffe08a", y: "#ff7a9a", hi: "#e8ffd0", b: "#c9b8d8", B: "#7a6a9a", r: "#ff7a9a", R: "#c23a5a",
+    g: "#8a5a3a", G: "#5a3a2a", k: "#ffe8f0", q: "#122014", n: "#f0d860", N: "#a08a30" },
+  { o: "#1e1a3a", a: "#f0c8b8", A: "#fff0e6", c: "#a87aa8", e: "#4aa8f0", y: "#ffe08a", hi: "#ffffff", b: "#e4eeff", B: "#9ab0e0", r: "#ff9a6a", R: "#c85a4a",
+    g: "#ffd06a", G: "#c08a3a", k: "#ffffff", q: "#2a2448", n: "#ffffff", N: "#b8ccf0" },
 ];
-NB_V.forEach((v, i) => { if (v) { v.art = NB_ART[v.id]; v.ramp = v.art.ramp.slice(); v.mats[0] = v.ramp; } });
+const NB3_TYPES = ["walker", "hopper", "bat", "shooter", "spider", "charger", "wisp", "bomber", "knight"];
+// ===== N1-N5 v3: the world kit, in the same shape as the original biomes =====
+// For each look: ramp (pack recolor), ZLIT (back wall), chunky default families (stone, clay), 3 block materials
+// (ramp + 32x32 texture, like SPRV_MAT/sprvPix), moss colours, top decorations, a hanging thing, and 3 themed
+// backdrop bands (static + animated), like sprvBandCanvas/sprvBandLive.
+const NB3_W = [null,
+  { // N1 Sandglass Spire
+    ramp: ["#fff4d6", "#f2c879", "#d89a52", "#a8643a", "#6a3a2c", "#24141a"],
+    zlit: { cbase: "#1a120c", cseam: "#0e0906", cface: "#24180f", tface: "#2e2014", tedge: "#43301e", tbeam: "#3a2614", twin: "255,214,140", clight: "255,200,110" },
+    stone: ["#fff0c8", "#f0c878", "#d09a50", "#a06a38", "#6a4028", "#20120c"], clay: ["#ffd8a8", "#e8a060", "#c07040", "#8a4a2c", "#562a1c", "#160a06"],
+    mats: [["#fff2cc", "#f0cc84", "#d4a05a", "#a8703e", "#6e4428", "#1c100a"], ["#e0fff6", "#8ae8d8", "#46c0b0", "#2a8a84", "#1a5458", "#061418"],
+           ["#f4e4c4", "#d8bc8c", "#b09068", "#80684c", "#4c3c2c", "#140e08"]],
+    moss: ["#fff6dc", "#f4d48c", "#dcaa60", "#8a5e34"], tops: ["nb_urn", "nb_sand", "nb_hglass", "nb_sand", "nb_peb1", "bones", "nb_jar"],
+    props: ["nb_bigglass", "nb_bigurn"], acc: "#5fd1c4" },
+  { // N2 Storm Spire
+    ramp: ["#f4fbff", "#9fd4e0", "#5f9cb4", "#3e6688", "#263a5a", "#0e1426"],
+    zlit: { cbase: "#0e141e", cseam: "#070a10", cface: "#141c2a", tface: "#1c2638", tedge: "#2a3a50", tbeam: "#30241a", twin: "160,220,255", clight: "255,228,94" },
+    stone: ["#d8eef8", "#8ab8cc", "#5a88a0", "#3e6078", "#263e54", "#0a121c"], clay: ["#ffd8b0", "#e8a060", "#c47a40", "#8a4a2a", "#5a2e1c", "#140804"],
+    mats: [["#d8f0f8", "#8ab8cc", "#5a88a0", "#3e6078", "#263e54", "#0a121c"], ["#ffd8b0", "#e8a060", "#c47a40", "#8a4a2a", "#5a2e1c", "#140804"],
+           ["#c0c8d8", "#8890a8", "#60687e", "#424a5c", "#2a3040", "#0a0c14"]],
+    moss: ["#c8f4e0", "#6ccaa8", "#3a8a78", "#1a4a44"], tops: ["nb_rodS", "nb_puddle", "nb_coil", "nb_lichen", "nb_puddle", "nb_lichen"],
+    props: ["n2_rod"], acc: "#ffe45e" },
+  { // N3 Wax Catacombs
+    ramp: ["#fff8e6", "#f3e0b8", "#d8b07a", "#8c5a46", "#58363a", "#1a0e14"],
+    zlit: { cbase: "#170e10", cseam: "#0c0608", cface: "#20141a", tface: "#2c1c20", tedge: "#40282c", tbeam: "#3a2418", twin: "255,210,120", clight: "255,190,90" },
+    stone: ["#e8dccc", "#b8a890", "#8c7c68", "#62544a", "#3c3230", "#100a0a"], clay: ["#e8b0a0", "#b07a6a", "#8c5a46", "#5e3a34", "#3a2026", "#100608"],
+    mats: [["#fff8e6", "#e8dcc0", "#c0b090", "#8a7a60", "#4a3e32", "#140e0a"], ["#e8b0a0", "#b07a6a", "#8c5a46", "#5e3a34", "#3a2026", "#100608"],
+           ["#e0d4c8", "#b0a090", "#887868", "#605248", "#3c3230", "#100a0a"]],
+    moss: ["#f3e0b8", "#d8b07a", "#a87850", "#5a3a30"], tops: ["candles", "nb_skull", "nb_waxpool", "nb_candelabra", "candles", "bones", "nb_skull"],
+    props: ["n3_candle"], acc: "#ffd24a" },
+  { // N4 Thorn Garden
+    ramp: ["#ffe8f0", "#c9b8d8", "#8a7aa8", "#5a4a78", "#342a4e", "#120e18"],
+    zlit: { cbase: "#120e1a", cseam: "#08060e", cface: "#1a1426", tface: "#221a32", tedge: "#342a4a", tbeam: "#2a1e18", twin: "255,170,200", clight: "255,220,150" },
+    stone: ["#f0e8ff", "#c9b8d8", "#a090c0", "#76689a", "#4a3e6a", "#120e20"], clay: ["#ffc8a0", "#e8946a", "#c46a4a", "#8a4434", "#562a24", "#160a08"],
+    mats: [["#d0f0a0", "#8ac060", "#5a9a48", "#3e7238", "#244a2a", "#08140a"], ["#f0e8ff", "#c9b8d8", "#a090c0", "#76689a", "#4a3e6a", "#120e20"],
+           ["#d8d0e4", "#a8a0bc", "#7e7698", "#5a5474", "#3a3650", "#100e18"]],
+    moss: ["#c8f090", "#7cba46", "#3f7a2e", "#1f4220"], tops: ["nb_rosebush", "nb_tulip", "fern", "grass", "nb_tulip", "flowerW", "nb_rosebush"],
+    props: ["n4_rose"], acc: "#ff7a9a" },
+  { // N5 Sky Ruins at Dusk
+    ramp: ["#fff6ea", "#ffd2b0", "#e8a090", "#a87aa8", "#5a5a96", "#1e1a3a"],
+    zlit: { cbase: "#2a1f3e", cseam: "#1a1228", cface: "#33264a", tface: "#3e2e56", tedge: "#584274", tbeam: "#4a3040", twin: "255,200,150", clight: "255,210,140" },
+    stone: ["#fff6ea", "#f0dcd0", "#d8b8b8", "#a888a0", "#6a5a80", "#1e1a3a"], clay: ["#ffd0b0", "#f0986a", "#cc6a48", "#94443a", "#5a2a2e", "#180a10"],
+    mats: [["#fff6ea", "#f0dcd0", "#d8b8b8", "#a888a0", "#6a5a80", "#1e1a3a"], ["#ffffff", "#e0ecff", "#b8ccf0", "#8aa0d0", "#5a6aa0", "#141a3a"],
+           ["#ffe8d8", "#f0c0a8", "#d09888", "#a06e70", "#6a4a5c", "#1e1424"]],
+    moss: ["#ffffff", "#eef4ff", "#c8d8f4", "#8a9ac8"], tops: ["nb_feather", "nb_colstub", "flowerW", "nb_nest", "nb_flag", "nb_colstub"],
+    props: [], acc: "#ffe08a" },
+];
+// ---- 1. block textures: colour of art pixel (X, Y) in a 32x32 block -> ramp index or colour (same contract as sprvPix)
+const NB3_GLYPH = [ // 8x8 carved marks on sandstone (original, abstract)
+  ["..####..", ".#....#.", "#..##..#", "#.#..#.#", "#.#..#.#", "#..##..#", ".#....#.", "..####.."],
+  ["........", "#.#.#.#.", ".#.#.#.#", "........", "#.#.#.#.", ".#.#.#.#", "........", "........"],
+  ["...##...", "...##...", "..####..", "..####..", ".######.", ".######.", "########", "........"],
+  ["#..#..#.", "#..#..#.", "#..#..#.", "##.##.##", "#..#..#.", "#..#..#.", "#..#..#.", "........"],
+];
+const NB3_SKULL = ["..####..", ".######.", "##.##.##", "#..##..#", "########", ".##..##.", ".#.##.#.", "..#..#.."];
+function nb3Pix(a, mi, X, Y, v, h) {
+  if (a === 1) {
+    if (mi === 0) { // big sandstone blocks with carved marks
+      const bx = X % 16, by = Y % 16; if (bx === 15 || by === 15) return 4; if (by === 0 || bx === 0) return 1;
+      const gi = sprHash(X >> 4, Y >> 4, v + 5) % 7; if (gi < 4 && bx >= 4 && bx < 12 && by >= 4 && by < 12) {
+        const G = NB3_GLYPH[gi], gx = bx - 4, gy = by - 4; if (G[gy][gx] === "#") return 4; if (gy > 0 && gx > 0 && G[gy - 1][gx - 1] === "#") return 1; }
+      return h % 13 === 0 ? 3 : h % 31 === 0 ? 1 : 2;
+    }
+    if (mi === 1) { // turquoise faience tiles with gold grout and a lapis dot
+      const tx = X % 8, ty = Y % 8; if (tx === 0 || ty === 0) return (X + Y) % 2 ? "#e3b24e" : "#9a6a20";
+      if (tx === 1 && ty === 1) return 0; if ((tx === 4 || tx === 3) && (ty === 4 || ty === 3)) return tx === 3 && ty === 3 ? "#6a8ae0" : "#2c48a0";
+      if (tx === 7 || ty === 7) return 3; return tx + ty < 6 ? 1 : 2;
+    }
+  }
+  if (a === 2) {
+    if (mi === 0) { // wet slate bricks, rain sheen running down
+      const row = Y >> 2, bx = (X + (row & 1 ? 4 : 0) + v * 2) % 8; if (Y % 4 === 3 || bx === 7) return 4;
+      if ((X + v * 3) % 11 === 0 && sprHash(X, Y >> 3, 51) % 3) return Y % 4 === 0 ? 0 : 1; if (Y % 4 === 0) return 1; return h % 9 === 0 ? 3 : 2;
+    }
+    if (mi === 1) { // copper plates with rivets and verdigris
+      const px = X % 16, py = Y % 16; if (px === 0 || py === 0) return 1; if (px === 15 || py === 15) return 4;
+      if ((px === 2 || px === 13) && (py === 2 || py === 13)) return 0;
+      const vg = sprHash(X >> 2, Y >> 2, v + 61) % 6; if (vg === 0) return (X + Y) % 3 ? "#5fbfa8" : "#2f7a6a";
+      if (sprHash(X >> 1, (Y - 3) >> 3, v + 62) % 9 === 0 && py > 3) return "#3a8a7a"; return h % 11 === 0 ? 3 : 2;
+    }
+  }
+  if (a === 3) {
+    if (mi === 0) { // ossuary: stacked skulls in bone-grey mortar
+      const tx = X % 8, ty = Y % 8, row = Y >> 3, sx = (X + (row & 1 ? 4 : 0)) % 8, sk = NB3_SKULL[ty][sx];
+      if (sk === "#") return sx < 3 && ty < 3 ? 0 : (ty > 4 ? 2 : 1); return h % 5 === 0 ? 5 : 4;
+    }
+    if (mi === 1) { // dark crypt brick with wax runs from the seams
+      const row = Y >> 3, bx = (X + (row & 1 ? 8 : 0)) % 16; const run = sprHash(X, row, v + 70) % 9 === 0, L = 2 + sprHash(X, row, 71) % 5;
+      if (run && Y % 8 < L) return Y % 8 === L - 1 ? "#d8b07a" : "#f3e0b8";
+      if (Y % 8 === 7 || bx === 15) return 4; if (Y % 8 === 0) return 1; return h % 9 === 0 ? 3 : 2;
+    }
+  }
+  if (a === 4) {
+    if (mi === 0) { // clipped hedge: leaf clusters lit from the top-left, a few rosebuds
+      const cx = X % 4, cy = Y % 4, cl = sprHash(X >> 2, Y >> 2, v + 80);
+      if (cl % 23 === 0 && cx > 0 && cx < 3 && cy > 0 && cy < 3) return cx === 1 && cy === 1 ? "#ff9ab0" : "#c23a5a";
+      if (cx === 0 && cy === 0) return 0; if (cx + cy <= 1) return 1; if (cx === 3 || cy === 3) return cl % 3 ? 3 : 4; return 2;
+    }
+    if (mi === 1) { // violet garden stone with an ivy vein
+      const row = Y >> 3, bx = (X + (row & 1 ? 8 : 0)) % 16, iv = Math.round(16 + Math.sin(Y * 0.25 + v) * 6);
+      if (X === iv) return "#3f7a2e"; if (X === iv + 1 && Y % 5 === 0) return "#7cba46";
+      if (Y % 8 === 7 || bx === 15) return 4; if (Y % 8 === 0) return 1; return h % 9 === 0 ? 3 : 2;
+    }
+  }
+  if (a === 5) {
+    if (mi === 0) { // fluted marble with a gilt band
+      const py = Y % 16; if (py === 0) return "#ffd06a"; if (py === 1) return "#c08a3a"; if (py === 15) return 4;
+      const f = X % 4; return f === 0 ? 3 : f === 1 ? 0 : f === 2 ? 1 : 2;
+    }
+    if (mi === 1) { // cloudstone: soft puffs
+      const cx = X % 8 - 3.5, cy = Y % 8 - 3.5, ph = sprHash(X >> 3, Y >> 3, v + 90) % 3, d = cx * cx + cy * cy;
+      if (d < 4 + ph) return cx < 0 && cy < 0 ? 0 : 1; if (d < 10) return 2; return (X + Y) % 2 ? 3 : 2;
+    }
+  }
+  return null; // mi 2 (overgrown) and anything else: the game's own pattern with this look's ramp and moss
+}
+// ---- 2. top decorations and hanging things (same format as SPRV_SPR) ----
+const NB3_SPRV = {
+  nb_urn: { p: { a: "#e8a060", b: "#a85a30", g: "#5fd1c4", o: "#1c100a" }, m: [".ooo.", "oaaao", ".oao.", "oaaao", "ogggo", "obaao", ".ooo."] },
+  nb_jar: { p: { a: "#f0dcb0", b: "#b0906a", g: "#e3b24e", o: "#1c100a" }, m: [".ooo.", "oggo.", ".ooo.", "oaabo", "oaabo", "oabbo", ".ooo."] },
+  nb_sand: { p: { a: "#fff0c8", b: "#f2c879", c: "#d89a52" }, m: ["...aa....", "..abbb...", ".abbbccb.", "abbcccccb"] },
+  nb_peb1: { p: { a: "#f0cc84", b: "#a8703e", o: "#1c100a" }, m: ["..oo..o.", ".oabo.ob", "oabbooab"] },
+  nb_hglass: { p: { w: "#e3b24e", g: "#bfefe8", s: "#f2c879", o: "#1c100a" }, m: ["owwwo", ".gsg.", "..s..", ".gsg.", ".sss.", "owwwo"] },
+  nb_bigglass: { p: { w: "#e3b24e", W: "#9a6a20", g: "#bfefe8", s: "#f2c879", S: "#d89a52", o: "#1c100a" }, m: ["ooooooooo", "owwwwwwwo", ".ogsssgo.", ".oggsgggo", "..ogsgo..", "...oso...", "..ogsgo..", ".oggsggo.", ".ogsssgo.", ".oSSSSSo.", "oWWWWWWWo", "ooooooooo"] },
+  nb_bigurn: { p: { a: "#e8a060", A: "#ffd8a8", b: "#a85a30", g: "#5fd1c4", G: "#2f8a80", o: "#1c100a" }, m: ["..ooooo..", "..oaAao..", "...oao...", ".ooaaaoo.", "oaAaaaabo", "ogggggggo", "oGgGgGgGo", "oaaaaaabo", ".obaaabo.", "..ooooo.."] },
+  nb_rodS: { p: { a: "#e8a060", b: "#8a4a2a", y: "#ffe45e", o: "#0a101c" }, m: ["y.", "a.", "ab", "ab", "ob"] },
+  n2_rod: { p: { a: "#e8a060", b: "#8a4a2a", y: "#ffe45e", Y: "#fff6c0", s: "#3e6078", o: "#0a101c" }, m: ["..Y..", "..y..", "..a..", ".oab.", "..ab.", "..ab.", "..ab.", "..ab.", ".sabs", "osssso"] },
+  nb_puddle: { p: { a: "#bfe6ff", b: "#5f9cb4", c: "#3e6688" }, m: [".aaab.", "abbbbc"] },
+  nb_coil: { p: { a: "#ffd8b0", b: "#c47a40", c: "#8a4a2a", o: "#0a101c" }, m: [".oo.", "oabo", "obco", "oabo", "obco", "oooo"] },
+  nb_lichen: { p: { g: "#6ccaa8", G: "#3a8a78", h: "#c8f4e0" }, m: ["h..h..", "gh.g.h", "gGgGgG"] },
+  nb_skull: { p: { w: "#efe6d2", s: "#a99c88", o: "#140a0e" }, m: [".ooo.", "owwwo", "oowoo", "owwwo", ".oso."] },
+  nb_waxpool: { p: { a: "#fff8e6", b: "#f3e0b8", c: "#d8b07a" }, m: ["..ab...", "abbbbc."] },
+  nb_candelabra: { p: { f: "#ffd24a", F: "#ff8a3a", w: "#f3e0b8", g: "#c8a040", o: "#140a0e" }, m: ["f.f.f", "F.F.F", "w.w.w", "w.w.w", "ggggg", "..g..", ".ggg."] },
+  n3_candle: { p: { f: "#ffd24a", F: "#ff8a3a", w: "#fff8e6", W: "#f3e0b8", s: "#d8b07a", o: "#140a0e" }, m: ["..f..", ".fFf.", "..o..", ".wwW.", ".wWW.", ".wWs.", "wwWWs", "WWWss"] },
+  nb_rosebush: { p: { r: "#ff7a9a", R: "#c23a5a", g: "#5a9a48", G: "#2c4a32" }, m: [".r..r.", "rRgrRg", "ggrGgg", "GgggGg"] },
+  n4_rose: { p: { r: "#ff7a9a", R: "#c23a5a", k: "#ffd0dc", g: "#8ac060", G: "#4a7a3a", h: "#24402c" }, m: ["..rr..r..", ".rkRr.rRr", ".rRRggRR.", "gg.gGGg..", "gGrrgGgg.", "GgRkRGGgg", "hGgGhgGGh"] },
+  nb_tulip: { p: { r: "#ff9a6a", R: "#c85a4a", g: "#7cba46" }, m: ["r.r", "rRr", ".g.", "gg."] },
+  nb_feather: { p: { w: "#ffffff", s: "#c8d8f4", q: "#8a9ac8" }, m: ["...ww", "..wsq", ".wsq.", "wq..."] },
+  nb_colstub: { p: { a: "#fff6ea", b: "#d8b8b8", c: "#a888a0", g: "#ffd06a", o: "#1e1a3a" }, m: [".o.oo.", "oaabbo", "ggggggo", "oabbco", "oabbco", "oooooo"] },
+  nb_nest: { p: { a: "#c08a5a", b: "#8a5a3a", e: "#cfe0ff", o: "#1e1a3a" }, m: [".e.e.", "aobob", ".bab."] },
+  nb_flag: { p: { r: "#ff9a6a", R: "#c85a4a", p: "#d8b8b8" }, m: ["prrr", "pRRr", "prr.", "p...", "p..."] },
+};
+function nb3Hang(a, px, py, A, h) {
+  const t = S.t || 0, R = (x, y, w, hh, c) => { ctx.fillStyle = c; ctx.fillRect(px + x * A, py + y * A, w * A, hh * A); };
+  if (a === 1) { const L = 3 + h % 4; for (let j = 0; j < L; j++) R(j % 2, j * 2, 1, 2, "#a8703e"); const ly = L * 2; // brass oil lamp
+    R(-2, ly, 5, 1, "#9a6a20"); R(-3, ly + 1, 7, 2, "#e3b24e"); R(-2, ly + 3, 5, 1, "#9a6a20"); R(2, ly, 2, 1, "#e3b24e");
+    R(0, ly - 2, 1, 2, `rgba(255,${190 + (Math.sin(t * 7 + h) * 40 | 0)},90,1)`); sprGlow(px + A / 2, py + (ly - 1) * A, 14, "255,200,110", 0.10); }
+  else if (a === 2) { const L = 2 + h % 3; for (let j = 0; j < L; j++) R(0, j * 2, 1, 2, "#3e4a5c"); const ly = L * 2; // storm lantern + drip
+    R(-2, ly, 5, 1, "#8a4a2a"); R(-2, ly + 1, 1, 4, "#8a4a2a"); R(2, ly + 1, 1, 4, "#8a4a2a"); R(-1, ly + 1, 3, 4, Math.floor(t * 9 + h) % 11 ? "#bfe6ff" : "#ffe45e"); R(-2, ly + 5, 5, 1, "#8a4a2a");
+    sprGlow(px + A / 2, py + (ly + 3) * A, 14, "160,220,255", 0.10); const dy = ((t * 30 + h * 7) % 40); R(0, ly + 7 + dy, 1, 2, "#8ac8e0"); }
+  else if (a === 3) { R(0, 0, 1, 3, "#5a4238"); R(-4, 3, 9, 1, "#c8a040"); R(-4, 2, 1, 1, "#c8a040"); R(4, 2, 1, 1, "#c8a040"); // little chandelier
+    for (const k of [-4, 0, 4]) { R(k, 0, 1, 2, "#f3e0b8"); R(k, -1, 1, 1, Math.floor(t * 10 + k + h) % 3 ? "#ffd24a" : "#ff8a3a"); }
+    R(0, 4, 1, 2, "#f3e0b8"); sprGlow(px + A / 2, py + A, 18, "255,200,90", 0.12); }
+  else if (a === 4) { const L = 4 + h % 5; for (let j = 0; j < L; j++) R(Math.round(Math.sin(j * 0.8 + h) * 1), j, 1, 1, j % 3 ? "#3f7a2e" : "#7cba46"); // vine with a basket
+    R(-3, L, 7, 1, "#8a5a3a"); R(-2, L + 1, 5, 2, "#5a3a2a"); R(-3, L - 1, 2, 1, "#ff7a9a"); R(0, L - 2, 2, 1, "#ff9a6a"); R(2, L - 1, 1, 1, "#ffe08a"); R(-1, L - 1, 1, 1, "#7cba46"); }
+  else { const sw = Math.round(Math.sin(t * 2 + h) * 1); R(0, 0, 1, 2, "#a888a0"); R(-3, 2, 7, 1, "#c08a3a"); // wind chimes
+    for (const [k, L] of [[-3, 5], [-1, 7], [1, 4], [3, 6]]) { R(k, 3, 1, 1, "#d8b8b8"); R(k + sw * (L > 5 ? 1 : 0), 4, 1, L - 3, "#ffd06a"); } }
+}
+// ---- 3. backdrop bands (art px, width W; same contract as sprvBandCanvas/Live) ----
+function nb3Band(a, th, c, W, Hh, hs) {
+  const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x | 0, y | 0, w | 0, h | 0); };
+  if (a === 1) {
+    if (th === 0) { // arches open on the dunes
+      for (let x = 14 + hs(0, 0, 1) % 20; x < W - 50; x += 70) { const y0 = 50, w = 44, h = 120;
+        R(x - 4, y0 - 4, w + 8, h + 8, "#2e2014"); for (let k = 0; k < w / 2 + 4; k++) R(x - 4 + k, y0 - 4 - Math.round(Math.sqrt(Math.max(0, (w / 2 + 4) ** 2 - (k - w / 2 - 4) ** 2)) * 0.5), (w / 2 + 4 - k) * 2, 2, "#2e2014");
+        R(x, y0, w, h, "#ffcf8a"); R(x, y0, w, 30, "#ffe0a8"); R(x + w - 14, y0 + 12, 8, 8, "#fff4d6"); // sky + sun
+        for (let k = 0; k < w; k++) { const d1 = Math.round(70 + Math.sin(k * 0.12 + x) * 8), d2 = Math.round(88 + Math.sin(k * 0.09 + 2) * 6); R(x + k, y0 + d1, 1, h - d1, "#e8a860"); R(x + k, y0 + d2, 1, h - d2, "#c88444"); }
+        for (let k = 0; k < w / 2; k++) R(x + k, y0 - Math.round(Math.sqrt(Math.max(0, (w / 2) ** 2 - (k - w / 2) ** 2)) * 0.5), (w / 2 - k) * 2, 1, "#ffe0a8");
+        R(x - 6, y0 + h + 4, w + 12, 4, "#43301e"); R(x - 6, y0 + h + 4, w + 12, 1, "#6a4a2c"); } }
+    else if (th === 1) { // hall of painted cases: upright cases with gold faces, a painted frieze
+      R(0, 24, W, 10, "#2a4a4a"); for (let x = 0; x < W; x += 8) { R(x, 26, 4, 2, "#5fd1c4"); R(x + 4, 30, 3, 2, "#e3b24e"); } R(0, 24, W, 1, "#43301e"); R(0, 34, W, 1, "#43301e");
+      for (let x = 20 + hs(1, 1, 2) % 16; x < W - 30; x += 56) { const y0 = 60; R(x, y0, 22, 120, "#3a2614"); R(x + 2, y0 + 2, 18, 116, "#6a3a2c");
+        R(x + 5, y0 + 6, 12, 14, "#e3b24e"); R(x + 7, y0 + 11, 2, 2, "#1c100a"); R(x + 13, y0 + 11, 2, 2, "#1c100a"); R(x + 5, y0 + 6, 12, 2, "#2c48a0");
+        for (let k = 0; k < 5; k++) R(x + 4, y0 + 30 + k * 16, 14, 3, k % 2 ? "#5fd1c4" : "#e3b24e"); R(x + 2, y0 + 2, 1, 116, "#8a5a3a"); } }
+    else { // great hourglass machine (sand stream drawn live)
+      const x = (W / 2 | 0) - 30 + hs(2, 2, 3) % 20, y0 = 30; R(x, y0, 60, 8, "#6a4028"); R(x, y0 + 172, 60, 8, "#6a4028"); R(x, y0, 60, 2, "#a06a38"); R(x, y0 + 172, 60, 2, "#a06a38");
+      R(x + 2, y0 + 8, 4, 164, "#43301e"); R(x + 54, y0 + 8, 4, 164, "#43301e");
+      for (let k = 0; k < 82; k++) { const half = Math.round(24 - Math.min(k, 82 - k) * 0.28 * (k < 41 ? 1 : 1)); const w = Math.max(2, Math.round(24 * Math.abs(41 - k) / 41)) ; R(x + 30 - w, y0 + 8 + k, w * 2, 1, "rgba(191,239,232,.25)"); R(x + 30 - w, y0 + 8 + k, 1, 1, "#bfefe8"); R(x + 29 + w, y0 + 8 + k, 1, 1, "#bfefe8"); }
+      for (let k = 0; k < 82; k++) { const w = Math.max(2, Math.round(24 * Math.abs(41 - k) / 41)); R(x + 30 - w, y0 + 90 + k, w * 2, 1, "rgba(191,239,232,.25)"); R(x + 30 - w, y0 + 90 + k, 1, 1, "#bfefe8"); R(x + 29 + w, y0 + 90 + k, 1, 1, "#bfefe8"); }
+      for (let k = 0; k < 22; k++) { const w = Math.round(24 * (41 - k - 19) / 41 + 2); if (w > 1) R(x + 30 - w + 1, y0 + 8 + 19 + k, w * 2 - 2, 1, "#f2c879"); }
+      for (let k = 0; k < 24; k++) R(x + 30 - (24 - k) + 1, y0 + 170 - k, (24 - k) * 2 - 2, 1, k % 4 ? "#d89a52" : "#f2c879"); }
+  } else if (a === 2) {
+    if (th === 0) { // tall leaded windows on the storm (rain + lightning live)
+      for (let x = 16 + hs(0, 0, 4) % 20; x < W - 40; x += 64) { const y0 = 30, w = 34, h = 150; R(x - 3, y0 - 3, w + 6, h + 6, "#2a3a50");
+        R(x, y0, w, h, "#3e6688"); R(x, y0, w, 50, "#5f9cb4"); for (let k = 0; k < 6; k++) R(x + 2 + k * 6, y0 + 6 + (k * 7) % 20, 5, 3, "#8ab8cc");
+        R(x + w / 2 - 1, y0, 2, h, "#1c2638"); for (let yy = y0 + 25; yy < y0 + h; yy += 25) R(x, yy, w, 2, "#1c2638"); R(x - 5, y0 + h + 3, w + 10, 4, "#2a3a50"); } }
+    else if (th === 1) { // tesla coils on copper bases (arcs live)
+      for (let k = 0; k < 2; k++) { const x = 30 + k * Math.max(80, W / 2) + hs(k, 1, 5) % 20, y = 60; R(x - 8, y + 120, 24, 10, "#5a2e1c"); R(x - 8, y + 120, 24, 2, "#c47a40");
+        for (let j = 0; j < 110; j += 3) R(x - 2, y + 10 + j, 12, 2, j % 6 ? "#8a4a2a" : "#e8a060"); R(x - 6, y - 4, 20, 14, "#3e6078"); R(x - 4, y - 4, 16, 3, "#8ab8cc"); } }
+    else { // flooded cistern with pipes (ripples live)
+      R(0, Hh - 60, W, 60, "#1c3048"); R(0, Hh - 60, W, 2, "#5f9cb4"); for (let k = 0; k < 3; k++) { const y = 30 + k * 40; R(0, y, W, 6, "#5a2e1c"); R(0, y + 1, W, 2, "#c47a40");
+        for (let x = hs(k, 6, 6) % 40; x < W; x += 60) { R(x, y - 2, 4, 10, "#8a4a2a"); R(x + 1, y + 8, 2, 40 + hs(x, k, 7) % 30, "rgba(138,200,224,.4)"); } } }
+  } else if (a === 3) {
+    if (th === 0) { // niches of skulls and candles
+      for (let y = 30; y < Hh - 40; y += 46) for (let x = 12 + (y / 46 % 2) * 20; x < W - 30; x += 44) { R(x, y, 26, 30, "#0c0608"); R(x + 2, y + 2, 22, 28, "#20141a");
+        for (let k = 0; k < 3; k++) { const sx = x + 3 + k * 7, sy = y + 16; R(sx, sy, 6, 5, "#c0b090"); R(sx + 1, sy + 1, 2, 2, "#140e0a"); R(sx + 4, sy + 1, 1, 2, "#140e0a"); R(sx + 1, sy + 5, 4, 2, "#8a7a60"); }
+        R(x + 3, y + 24, 20, 2, "#3a2026"); } }
+    else if (th === 1) { // candle altar wall: tiers of candles (flames live)
+      const x0 = (W / 2 | 0) - 60; for (let s = 0; s < 4; s++) { const y = 70 + s * 30, w = 120 - s * 24, x = x0 + s * 12; R(x, y + 12, w, 4, "#3a2418"); R(x, y + 12, w, 1, "#5a3a24");
+        for (let k = 0; k < w; k += 8) { const hh = 6 + hs(k, s, 8) % 8; R(x + k + 2, y + 12 - hh, 3, hh, "#f3e0b8"); R(x + k + 2, y + 12 - hh, 1, hh, "#fff8e6"); } } }
+    else { // stacked burial shelves
+      for (let y = 20; y < Hh - 30; y += 34) { R(0, y + 26, W, 4, "#3a2026"); R(0, y + 26, W, 1, "#5e3a34");
+        for (let x = hs(y, 1, 9) % 30; x < W - 40; x += 52) { R(x, y + 6, 40, 20, "#100608"); R(x + 2, y + 8, 36, 18, "#2c1c20"); R(x + 4, y + 14, 30, 10, "#58363a"); R(x + 4, y + 14, 30, 2, "#8c5a46"); R(x + 16, y + 16, 6, 6, "#c0b090"); } } }
+  } else if (a === 4) {
+    if (th === 0) { // moonlit arch on the garden (fireflies live)
+      const x = 30 + hs(0, 0, 10) % Math.max(1, W - 140), y0 = 30, w = 100, h = 150; R(x - 6, y0 - 6, w + 12, h + 6, "#342a4a");
+      R(x, y0, w, h, "#1c2848"); R(x, y0, w, 60, "#24305a"); for (let k = 0; k < 20; k++) R(x + hs(k, 1, 11) % w, y0 + hs(k, 2, 11) % 80, 1, 1, "#c9b8d8");
+      const mx = x + 70, my = y0 + 34; for (let yy = -11; yy <= 11; yy++) for (let xx = -11; xx <= 11; xx++) if (xx * xx + yy * yy <= 121) R(mx + xx, my + yy, 1, 1, (xx + 3) ** 2 + (yy - 2) ** 2 < 70 ? "#fff6e8" : "#e8dcc8");
+      for (let k = 0; k < w; k++) { const hh = 40 + Math.round(Math.sin(k * 0.15) * 8 + Math.sin(k * 0.4) * 3); R(x + k, y0 + h - hh, 1, hh, "#16261a"); if (hs(k, 3, 12) % 9 === 0) R(x + k, y0 + h - hh, 1, 1, "#ff7a9a"); } }
+    else if (th === 1) { // rose trellis (petals fall live)
+      for (let x = 10; x < W; x += 16) R(x, 10, 2, Hh - 20, "#3a2a1c"); for (let y = 10; y < Hh - 10; y += 16) R(0, y, W, 2, "#3a2a1c");
+      for (let k = 0; k < W * 2; k++) { const x = hs(k, 4, 13) % W, y = 10 + hs(k, 5, 13) % (Hh - 20); R(x, y, 2, 2, k % 5 ? "#2c4a2a" : "#3e7238"); if (k % 9 === 0) { R(x, y - 1, 3, 3, "#c23a5a"); R(x, y - 1, 1, 1, "#ff7a9a"); } } }
+    else { // fountain (water live)
+      const x = (W / 2 | 0) - 30; R(x, Hh - 50, 60, 30, "#4a3e6a"); R(x, Hh - 50, 60, 3, "#a090c0"); R(x + 22, Hh - 110, 16, 60, "#4a3e6a"); R(x + 22, Hh - 110, 3, 60, "#76689a");
+      R(x + 10, Hh - 116, 40, 8, "#4a3e6a"); R(x + 10, Hh - 116, 40, 2, "#a090c0"); R(x + 4, Hh - 44, 52, 4, "#2a4a6a"); }
+  } else {
+    if (th === 0) { // open sky hole with the setting sun
+      const x = 20 + hs(0, 0, 14) % Math.max(1, W - 140), y0 = 30, w = 110, h = 130; R(x - 6, y0 - 6, w + 12, h + 12, "#3e2e56");
+      for (let yy = 0; yy < h; yy++) R(x, y0 + yy, w, 1, yy < 40 ? "#5a5a96" : yy < 80 ? "#a87aa8" : yy < 110 ? "#e8a090" : "#ffc49a");
+      for (let yy = -14; yy <= 14; yy++) for (let xx = -14; xx <= 14; xx++) if (xx * xx + yy * yy <= 196 && y0 + 100 + yy < y0 + h) R(x + 60 + xx, y0 + 100 + yy, 1, 1, xx * xx + yy * yy < 120 ? "#fff0b0" : "#ffd06a");
+      R(x - 8, y0 + h + 4, w + 16, 5, "#584274"); R(x - 8, y0 + h + 4, w + 16, 1, "#7a5a9a"); }
+    else if (th === 1) { // distant floating islands (bob live)
+      for (let k = 0; k < 40; k++) R(hs(k, 6, 15) % W, hs(k, 7, 15) % Hh, 1, 1, k % 4 ? "#584274" : "#ffd2b0"); }
+    else { // a great broken arch
+      const x = 20 + hs(2, 2, 16) % Math.max(1, W - 150); R(x, 40, 18, 170, "#584274"); R(x, 40, 4, 170, "#7a5a9a"); R(x + 110, 90, 18, 120, "#584274"); R(x + 110, 90, 4, 120, "#7a5a9a");
+      for (let k = 0; k < 70; k++) { const yy = 40 - Math.round(Math.sin(k / 110 * Math.PI) * 30); R(x + 18 + k, yy, 1, 14, "#584274"); R(x + 18 + k, yy, 1, 2, "#a87aa8"); }
+      for (let k = 0; k < 6; k++) R(x + 92 + k * 3, 60 + k * 4, 3, 3, "#584274"); }
+  }
+}
+function nb3BandLive(a, th, X, Y, A, W, hs) {
+  const t = S.t || 0, R = (x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(X + x * A, Y + y * A, w * A, h * A); };
+  if (a === 1 && th === 2) { const x = (W / 2 | 0) - 30 + hs(2, 2, 3) % 20 + 29; for (let y = 50; y < 196; y += 2) if (((y - t * 60) % 6 + 6) % 6 < 4) R(x, 30 + y - 30, 2, 2, y % 4 ? "#f2c879" : "#fff4d6"); }
+  if (a === 1 && th === 0) for (let k = 0; k < 12; k++) { const x = ((hs(k, 9, 17) % W) + t * 30) % W, y = 60 + hs(k, 10, 17) % 120; R(x, y, 2, 1, "rgba(255,230,170,.5)"); }
+  if (a === 2 && th === 0) { for (let x = 16 + hs(0, 0, 4) % 20; x < W - 40; x += 64) { for (let k = 0; k < 10; k++) { const yy = ((hs(k, x, 18) % 150) + t * 160) % 150; R(x + 2 + (hs(k, 1, 18) % 30), 30 + yy, 1, 4, "rgba(220,240,255,.55)"); }
+      if ((t + x * 0.01) % 7 < 0.12) { ctx.globalAlpha = 0.6; R(x, 30, 34, 150, "#f4fbff"); ctx.globalAlpha = 1; } } }
+  if (a === 2 && th === 1) for (let k = 0; k < 2; k++) { if (Math.sin(t * 5 + k * 3) < 0.2) continue; const x = 30 + k * Math.max(80, W / 2) + hs(k, 1, 5) % 20 + 4, y = 52;
+    let px = 0; for (let j = 0; j < 8; j++) { const nx = Math.round(Math.sin(t * 40 + j * 2 + k) * 6); R(px < nx ? px : nx, y - j * 4, Math.abs(nx - px) + 1, 1, "#fff6c0"); R(nx, y - j * 4 - 3, 1, 4, j % 2 ? "#ffe45e" : "#fff6c0"); px = nx; } }
+  if (a === 2 && th === 2) for (let x = 0; x < W; x += 6) { const w = Math.sin(x * 0.2 + t * 2); if (w > 0.6) R(x, SPRV_BAND - 58 + Math.round(w * 2), 4, 1, "#8ab8cc"); }
+  if (a === 3 && (th === 0 || th === 1)) { if (th === 1) { const x0 = (W / 2 | 0) - 60; for (let s = 0; s < 4; s++) { const y = 70 + s * 30, w = 120 - s * 24, x = x0 + s * 12;
+      for (let k = 0; k < w; k += 8) { const hh = 6 + hs(k, s, 8) % 8, f = Math.floor(t * 9 + k + s) % 3; R(x + k + 3, y + 12 - hh - 2, 1, 2, f ? "#ffd24a" : "#ff8a3a"); if (f === 0) R(x + k + 3, y + 12 - hh - 3, 1, 1, "#fff2a0"); } } }
+    else for (let y = 30; y < SPRV_BAND - 40; y += 46) for (let x = 12 + (y / 46 % 2) * 20; x < W - 30; x += 44) { const f = Math.floor(t * 8 + x + y) % 3; R(x + 12, y + 7, 2, 6, "#f3e0b8"); R(x + 12, y + 4, 2, 3, f ? "#ffd24a" : "#ff8a3a"); } }
+  if (a === 4 && th === 0) for (let k = 0; k < 8; k++) { const x = (hs(k, 20, 19) % W) + Math.sin(t * 0.8 + k) * 10, y = 100 + hs(k, 21, 19) % 70 + Math.cos(t + k * 2) * 6; if (Math.sin(t * 3 + k * 1.7) > 0) R(x, y, 1, 1, "#f0ff9a"); }
+  if (a === 4 && th === 1) for (let k = 0; k < 10; k++) { const x = (hs(k, 22, 20) % W) + Math.sin(t + k) * 6, y = ((hs(k, 23, 20) % SPRV_BAND) + t * 18) % SPRV_BAND; R(x, y, 2, 1, k % 2 ? "#ff7a9a" : "#ffd0dc"); }
+  if (a === 4 && th === 2) { const x = (W / 2 | 0); for (let k = 0; k < 14; k++) { const ph = ((t * 1.2 + k / 14) % 1), dx = (k % 2 ? 1 : -1) * Math.round(ph * 22), dy = Math.round(-6 + ph * ph * 60); R(x + dx, SPRV_BAND - 116 + dy, 1, 2, ph < 0.3 ? "#ffffff" : "#8ad0f0"); } }
+  if (a === 5 && th === 0) { const x = 20 + hs(0, 0, 14) % Math.max(1, W - 140); for (let k = 0; k < 3; k++) { const cx = x + ((k * 40 + t * 6) % 110), cy = 30 + 20 + k * 22; R(Math.min(cx, x + 96), cy, 14, 3, "#fff0e6"); R(Math.min(cx, x + 96) + 3, cy - 2, 7, 2, "#ffffff"); } }
+  if (a === 5 && th === 1) for (let k = 0; k < 3; k++) { const x = 10 + hs(k, 19, 21) % Math.max(1, W - 60), y = 40 + hs(k, 20, 21) % (SPRV_BAND - 90) + Math.round(Math.sin(t * 0.8 + k) * 3), w = 26 + hs(k, 21, 21) % 20;
+    R(x, y, w, 3, "#7a5a9a"); R(x, y, w, 1, "#ffd2b0"); for (let r = 1; r < 8; r++) R(x + r * 2, y + 2 + r, Math.max(2, w - r * 4), 1, "#3e2e56"); R(x + 4, y - 6, 3, 6, "#d8b8b8"); R(x + w - 8, y - 4, 3, 4, "#d8b8b8"); }
+  if (a === 5 && th === 2) for (let k = 0; k < 3; k++) { const x = ((hs(k, 30, 22) % W) + t * 20 * (k + 1)) % (W + 20) - 10, y = 40 + k * 30 + Math.round(Math.sin(t * 4 + k) * 2), f = Math.floor(t * 6 + k) % 2;
+    R(x, y, 1, 1, "#1e1a3a"); R(x - 1, y - f, 1, 1, "#1e1a3a"); R(x + 1, y - f, 1, 1, "#1e1a3a"); R(x - 2, y - 1 + f, 1, 1, "#1e1a3a"); R(x + 2, y - 1 + f, 1, 1, "#1e1a3a"); }
+}
+// ===== N1-N5 v3: wiring. Each Escape run rolls one of 6 looks for zone 0 (Castle + N1..N5, 1/6 each, seeded),
+// Story keeps the Castle. Logic stays zone 0. The look plugs into the SAME art system as the original biomes
+// (chunky tiles, 3 block materials, moss, top decorations, hangs, themed backdrop bands, 9 enemy models), so it
+// gets the same detail; index 0 of the zone tables is swapped and the zone caches are cleared.
+var NB_ALT = 0, NB_FORCE_NEXT = null;
+// looks that can come up in a run, equal share (user 2026-11-08: Castle + N1 + N2 only)
+var NB_POOL = [0, 1, 2];
+const NB_V = [null,
+  { id: "n1", es: "Aguja de arena", en: "Sandglass Spire" }, { id: "n2", es: "Aguja de la tormenta", en: "Storm Spire" },
+  { id: "n3", es: "Catacumbas de cera", en: "Wax Catacombs" }, { id: "n4", es: "Jardín de espinas", en: "Thorn Garden" },
+  { id: "n5", es: "Ruinas del cielo", en: "Sky Ruins at Dusk" }];
+NB_V.forEach((v, i) => { if (v) Object.assign(v, NB3_W[i]); });
+Object.assign(SPRV_SPR, NB3_SPRV);
+Object.assign(SPR, NB3_SPR);
+// castle floor props -> this look's own (null = hide)
+const NB3_PROPMAP = [null,
+  { grave: "nb_bigurn", stand: "nb_jar", rubble: "nb_sand", torch: null },
+  { skull: "nb_coil", bones: "nb_puddle", grave: "n2_rod", urn: "nb_coil", stand: "nb_rodS" },
+  { grave: "nb_candelabra", urn: "nb_skull", stand: "n3_candle" },
+  { skull: "nb_tulip", bones: "fern", grave: "nb_rosebush", urn: "nb_rosebush", rubble: "grass", stand: "flowerW" },
+  { skull: "nb_feather", bones: "nb_feather", grave: "nb_colstub", urn: "nb_nest", rubble: "nb_colstub", stand: "flowerW" }];
 const nbHex = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
 const nbRgb = h => nbHex(h).join(",");
 function nbRoll(seed) { let n = Number(seed); if (!isFinite(n)) { n = 0; for (const ch of String(seed)) n = (n * 31 + ch.charCodeAt(0)) | 0; }
-  return Math.min(5, Math.floor(mulberry(((n | 0) * 131 + 4243) | 0)() * 6)); }
+  return NB_POOL[Math.min(NB_POOL.length - 1, Math.floor(mulberry(((n | 0) * 131 + 4243) | 0)() * NB_POOL.length))]; }
 function nbName(a) { const v = NB_V[a]; return v ? Lx(v.es, v.en) : Lx("Castillo olvidado", "Forgotten Castle"); }
 function nbWant() {
   if (typeof S === "undefined" || !S || !S.escape || S.hu || S.run === "story" || S.mode === "title") return 0;
   if (S.nbForce != null) return S.nbForce;
   return nbRoll(S.seed);
 }
-// ---- the swap ----
 let NB_SAVE = null;
 function nbSnap() {
   if (NB_SAVE) return;
   NB_SAVE = { ramp: SPR_RAMP5[0], biome: Object.assign({}, BIOMES[0]), sb: Object.assign({}, SPR_BIOMES5[0]), mat: SPRV_MAT[0], moss: SPRT_MOSS[0], top: SPRV_TOP[0],
-    sprc: sprcRamps[0], en: Object.assign({}, SPRC_ENEMY[0]), enOld: Object.assign({}, SPRC_ENEMY_OLD[0]), zlit: {} };
+    sprc: sprcRamps[0], en: Object.assign({}, SPRC_ENEMY[0]), enOld: Object.assign({}, SPRC_ENEMY_OLD[0]), zone: Object.assign({}, SPR_ZONE[0]), zlit: {} };
   for (const k in ZLIT) NB_SAVE.zlit[k] = ZLIT[k][0];
 }
-function nbResample(r, L) { const out = []; for (let i = 0; i < L; i++) out.push(r[Math.round(i * (r.length - 1) / Math.max(1, L - 1))]); return out; }
 function nbClearCaches() {
   for (const m of [sprGhostCache, sprCache, sprRecolored, sprRockCache, sprVeloCache, sprcCache, sprmUrchinCache, sprbvVeloCache, sprcnCache, sprsCache, sprvCache, sprvSprCache, sprvBandCache, sprtdCache]) try { m.clear(); } catch (_) {}
   for (const k in sprCharPals) delete sprCharPals[k];
-  nbCanv.clear();
-  try { TL.grid = null; } catch (_) {} // the cached tower band repaints with the new look
+  try { TL.grid = null; } catch (_) {}
 }
 function nbApply(a) {
   nbSnap(); const s = NB_SAVE;
@@ -17170,90 +16320,45 @@ function nbApply(a) {
     SPR_RAMP5[0] = r;
     const bio = { stone: r[3], seam: r[5], edge: r[1], bgA: mix(r[5], r[4], 0.35), bgB: r[5], win: `rgba(${nbRgb(r[0])},.06)` };
     Object.assign(BIOMES[0], bio); Object.assign(SPR_BIOMES5[0], bio);
-    SPRV_MAT[0] = v.mats.map(m => nbResample(m, s.mat[0].length)); SPRT_MOSS[0] = v.moss.slice(); SPRV_TOP[0] = v.tops.slice();
-    sprcRamps[0] = [nbResample(r, s.sprc[0].length), nbResample(v.mats[1], s.sprc[1].length)];
-    const ep = { o: r[5], a: r[2], A: r[1], c: r[3], e: v.acc, y: r[1], hi: r[0] };
-    Object.assign(SPRC_ENEMY[0], ep); Object.assign(SPRC_ENEMY_OLD[0], ep);
-    ZLIT.cbase[0] = mix(r[5], "#000000", 0.25); ZLIT.cseam[0] = mix(r[5], "#000000", 0.55); ZLIT.cface[0] = mix(r[5], r[4], 0.3);
-    ZLIT.tface[0] = mix(r[5], r[4], 0.5); ZLIT.tedge[0] = mix(r[4], r[3], 0.3); ZLIT.tbeam[0] = mix(r[4], r[5], 0.4);
-    ZLIT.twin[0] = nbRgb(v.acc); ZLIT.clight[0] = nbRgb(r[1]);
+    SPRV_MAT[0] = v.mats; SPRT_MOSS[0] = v.moss.slice(); SPRV_TOP[0] = v.tops.slice(); sprcRamps[0] = [v.stone, v.clay];
+    for (const k in v.zlit) ZLIT[k][0] = v.zlit[k];
+    Object.assign(SPRC_ENEMY[0], NB3_EPAL[a]); Object.assign(SPRC_ENEMY_OLD[0], NB3_EPAL[a]);
   }
   try { sprcApplyEnemyPal(); } catch (_) {}
+  if (v) Object.assign(SPR_ZONE[0], NB3_EPAL[a]); else Object.assign(SPR_ZONE[0], s.zone);
+  // castle PixelLab strips (PLE "0_type") make way for this look's own enemies: its strips if it has them
+  // (PLE "n<a>_type"), otherwise the drawn 16 px models below
+  if (typeof PLE !== "undefined") { if (!NB_SAVE.ple) { NB_SAVE.ple = {}; for (const t of NB3_TYPES) NB_SAVE.ple[t] = PLE["0_" + t]; }
+    for (const t of NB3_TYPES) { const own = v ? PLE["n" + a + "_" + t] : NB_SAVE.ple[t] || PLE["0_" + t]; if (own) PLE["0_" + t] = own; else delete PLE["0_" + t]; } }
   NB_ALT = a; nbClearCaches();
 }
 function nbSync() { const w = nbWant(); if (w !== NB_ALT) { nbApply(w);
   if (w && S && S._nbToast !== S.seed) { S._nbToast = S.seed; toast(T("Bioma") + ": " + nbName(w)); } } }
-// ---- sprites from NB_ART grids ----
-const nbCanv = new Map();
-function nbGrid(grid, pal, white, key) {
-  let cv = nbCanv.get(key); if (cv) return cv;
-  cv = document.createElement("canvas"); cv.width = Math.max(...grid.map(r => r.length)); cv.height = grid.length; const c = cv.getContext("2d");
-  grid.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === ".") return; const col = white ? (pal.hi || "#ffffff") : pal[ch]; if (!col) return; c.fillStyle = col; c.fillRect(x, y, 1, 1); }));
-  nbCanv.set(key, cv); return cv;
-}
-function nbFoe(type) { const v = NB_V[NB_ALT]; if (!v) return null; return v.art.foes.find(f => f.types.includes(type)) || null; }
-function nbFrame(e, f) {
-  const t = S.t + (e.ph || 0), mv = Math.abs(e.vx || 0) > 4;
-  switch (e.type) {
-    case "bat": return Math.floor(t * 10) % 2;
-    case "wisp": return Math.floor(t * 5) % 2;
-    case "shooter": return e.tele > 0 ? 1 : 0;
-    case "hopper": return e.ground === false ? 1 : 0;
-    case "charger": return mv && Math.floor(t * (e.st === "charge" ? 16 : 6)) % 2 ? 1 : 0;
-    default: return mv ? Math.floor(t * 8) % 2 : 0;
-  }
-}
-let NB_CAP = null;
-{ const b0 = sprBlit; sprBlit = function (cv, cx, by, sc, flipH, flipV) { if (NB_CAP && !NB_CAP.got) { NB_CAP.got = { cv, cx, by, sc, flipH, flipV, sqx: SQX, sqy: SQY }; return; } return b0.apply(this, arguments); }; }
-{ const d0 = sprDrawEnemy;
-  sprDrawEnemy = function (e, p, white, bobY) {
-    if (!NB_ALT || !e || e.boss || e.mimic || e.bp || sprZone() !== 0) return d0.apply(this, arguments);
-    const foe = nbFoe(e.type); if (!foe) return d0.apply(this, arguments);
-    const v = NB_V[NB_ALT], fi = nbFrame(e), w = white || (e.type === "charger" && e.st === "tele" && Math.floor(S.t * 14) % 2 === 1);
-    const cv = nbGrid(foe.frames[fi], v.art.pal, w, foe.id + fi + (w ? "w" : ""));
-    let g = null;
-    if (e.type !== "rat") { const cap = NB_CAP = { got: null }; let r; try { r = d0.apply(this, arguments); } finally { NB_CAP = null; } g = cap.got; if (!g) return r; }
-    const vf = (S.gdir || 1) < 0, toP = Math.sign(p.x - e.x) || 1;
-    if (!g) g = { cv: { width: 18 }, sc: e.w / 14, cx: e.x + e.w / 2, by: vf ? e.y : e.y + e.h, flipH: (e.dir || toP) < 0, flipV: vf, sqx: 1, sqy: 1 };
-    const sc = (g.cv.width * g.sc) / cv.width;
-    const fH = e.type === "hopper" ? !g.flipH : g.flipH; // the base hopper is drawn facing left, ours face right
-    const qx = SQX, qy = SQY; SQX = g.sqx || 1; SQY = g.sqy || 1;
-    try { sprBlit(cv, g.cx, g.by, sc, fH, g.flipV); } finally { SQX = qx; SQY = qy; }
-    return true;
-  };
-}
-// ---- v2 (user: "la integración fue fatal"): the variant's OWN art, as on the picker page ----
-// plain blocks use the biome's wall / platform tiles, moving and thin ledges its thin tile, the backdrop is the
-// picker scene's back layer (rendered with pxl, back only), and the Castle's dressing (props, banners, torches,
-// chains, moss, statues) is hidden on the rows of the first biome.
-const NB_BACK_SRC = {"n1": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAADACAMAAAD7uJuVAAAAElBMVEUkFBo6ICZqOiyoZDrYmlLyyHl3NSkfAAABb0lEQVR42u3bwQ6CUAxEUS32/3/ZBYiIDzqVRlBul2YyHl3YNOrlsvtc2/OtxwEAAAAAwLFWwR7vBgAAGsD6kZ8okVcA9hwJkMrHAHud6nwIMFturMhHALOVxoJ8BBg6un7mjdvz4S6Y1o2VhfnoLpj3DY1l+XAdv/X1jWX5CNDoW2z8JP8TgK5rNRblAQD4GFCVPwhg/ZO9+Y5W5cO7YKmwKh+uYwAAAAA4B2D3XZDehpbchla9jgEAAADg/wDBLrjNJtoFmbx0F7QKq/LSOh563HMAKZ8AuD8aNYCW1wHuY6MEEPMywB8jAtS8CnCfNAoAOS8CfDoCQM9rAH+dEJDISwBPAhxAFhDtglZhVV66C9Ze0da8tI4BAABwbkDzu+DaPL8j4ndEAAAAAHAAAP8vAAAAAAAA3AUAAAAAAIC7AAAAAAAAcBcAAAAAAADuAgAAAAAAwF0AAAAAAAC4CwAAAAAAAHcBAAAAAJwecAfrmm5PxTtQpQAAAABJRU5ErkJggg==", "n2": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAADACAMAAAD7uJuVAAAAFVBMVEUOFCYUHTMmOlpfnLT/5F7/9sA+ZohAjoMSAAAB0ElEQVR42u2bi46CUAxEXUr5/0/erKxwVaRtMnpRTxMjJuN4fNCZGD2dus/P9bz8NgAApO4wzJN+gIo+YTiskwKo6cMZrkeuj96r4XbE+ghgNjGz86VxFOkjgIvdbPhvKdSnAKwxtARARR8BrH62XO+dXlV9BsBuDC0AKOkjgMbPmqOzo0If7oGHhiJ92AcaP2sPB5E+XMUAADAbjneGKv1BAHb3gC2O7Xmt0od94JGhSp9YxQDY4lgASOsBSAP8OVYAsvrsHrgzVOnzfWDjGSn0+TDqDmBjDSCpB+CdAGysAeT0+T1wY6jSZ/vA5kuq0OdXcXeAZ2bBWwB0j2MvAvhbAaT2gBf7gKv7gBfj2GVxvD0qfSELvBhGrg6j7gDmxTR0EcB0GV8P9wBq+oMA7O6BabVpDFX6RB/YNlTpE6u4MfQigAOgBpi8+BnwjwN40lnQfQ8kN+FU3ISTehUDAMAnA9AHAADg6wHoAwAAAAB9IPgp18Pv/RT64wO84jYA/QH4fwEAAABwmDVAFgAAAH2ALAAAAPoAWQAAAPQBsgAAAOgDZAEAANAHyAIAAKAPkAUAAEAfIAsAAIA+QBYAAAB9gCwAAAD6AFkAAAC9AH4BsQt9EeyWMdUAAAAASUVORK5CYII=", "n3": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAADACAMAAAD7uJuVAAAAD1BMVEUaDhQqGCBYNjrz4LjYsHpIiFJYAAABTklEQVR42u3Y0YrDIBAFUFf7/9+8pLCQlE12qtNW2SP0oQxjDomC3lI+Pr6O4+3/AQAAAAAAAKY5DnzqTQBcAI7fKb/+F+BhpaTX5wfUWtt91FrLC+oBQGs/M5QX1JcAlNK23+kDhupLALa3d/2KB+orrIFaW9020ek2G6pHALf7OH/AUH2a84AjGQAAAAAAgHzA9XwhQE4e0A9Iuo4vDEjKA0YAKVextQEZ1/G1ARl5wNJrICUPGAJk5AHyAWdCAAAAAAAA+YB8AAAAAAAAQD7gTPgE4PfPFH9AsP90gpOFEgZE+2PbY3R79QAe8v+nAdH+iwkO0WsHINY/NWAfv/cAQv1TA/b5f98nCPTPvAYO+X/PNgz1X02wz/97AKF++QAAAAAAAACAfAAAAAAAAABAPgAAAAAAAAAgHwAAAAAAAACQDwAAAAAAAPx7wDcB81c9YlUWzgAAAABJRU5ErkJggg==", "n4": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAADACAMAAAD7uJuVAAAAFVBMVEUcFijJuNj/6PAkQCyKeqhaSng0Kk6fKRltAAABoUlEQVR42u3Zy5KCMBSEYaBn5v0f2QUWk2gSwiWnq/TvjRugP05ISek0EUIIIeTDMq/x1S9rPISt3kTI+g2Cl/54wbyWJh+zpX+tfjqiAc89aAH8DyB9FuZvAywv/fGAJe83AJbc4QJsK/FNgGkuAAr9UtQIigMYV//2GBb6NbR+99twcPve+0BAfeONSDH1tXfCuPbSW7GC6yN3HfXEubj+neUjbM2eMeSl4YT3wtAxVLqiCI2eiDHsVYwldN3hOAJfqO76ny2uu/9d82cbvgWQrr0BkD96piX4FMAde+jaBG6YHwAAACqX6NzhAyfQd2kAAAAAAAAAQABAdoDsgBYhCCA7oEqIA1QIfY/qPQA1AacF6geUSpKjzv5aUgGoBNDtANUAKgNea9S3WVv95TtTPY3DLgDU3Z8c28Yd689P1l5qB13pT86WOgT763O0P/277HwuAXS9/4igcraiAJXTpSCBxsXd3ydwA2QGyAwQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgGDAA92GfnwxJ0P5AAAAAElFTkSuQmCC", "n5": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAADACAMAAAD7uJuVAAAAGFBMVEVaWpZ6WpqoeqjooJD/9ur/0rD/4Ir/mmp5KwQ1AAACaUlEQVR42u2agW7DIAxEwQvl//94atN2acFgOwYy6S5CijaSexykinBCgCAIgiAIgiAIgkJc3NaPf8BBRK9zImr2HZPq7vo4v592+vseP6y4BJzHT6ymjP8x54z4NeB7GFZ79G11e67/iFlQj99dlfHzfaP/HBQErb5DEvgi6PSMozPo9+9ru8uaQadf439p126vRpD5NwDSS9t2hiBaAdJpgCjxVwKkpCSIVoB01ME/KRGsAOlLf/buBJIEPjUlAR7B/zeT+Tv7XjULYJoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFwBgOLKtj4BimuPsHgGrpDA4lV4r/fHQe1RZ+n1C+6ZltXGZv/gPO5ara15jXMC1WJfJwFXMdXGxhVhSP5ltZG9JgwZfqXa2EhgHMFBNAWARWivAUdx1cZpAAYBAAAAAAAAAACA6wLw34hjCqYBMN+IT0xghn97Cib4d9bAeP/eIhzu330Kmv63l0Y+hqz/7VMTAFr2doT+tNb8n5bvLYATCIJ1xfhvn7ISSBZ2zX8rZSMQPVkifyOB/tFm/W0EwdHfRBA8/S0EBoBtaxMMBej56wn+GUDfX00AgODtryUAAADWA2QikjYNgPSeV5gCeQZyAPk91/8SZlIcQgDNPQN5r0LdDCgTEL4PaBNwnQPlDOSQcyZFE7wTqu6nTYDK0nT5VqxMQMNbq42X/qpMVQmkDoB+/PsaEIv5OuDon7UKhvzLrwOs+asSaH4d8NwfyNmSgJXgoOcOSR4LwCKcsNcBcPv3J+yVCXzrvUF24h6nADwEAAAAAAAAAAAAAAAAAPwCHe7baIDz22cAAAAASUVORK5CYII="}, NB_BG = {"n1": "#3a2026", "n2": "#141d33", "n3": "#2a1820", "n4": "#1c1628", "n5": "#7a5a9a"}, NB_BACK = {};
-const NB_TOP = {}; // colour of the back layer's first row (open skies fill the screen above it with that colour)
-for (const k in NB_BACK_SRC) { const im = new Image(); im.onload = () => { NB_BACK[k] = im; try { const c = document.createElement("canvas"); c.width = im.width; c.height = 1; const g = c.getContext("2d"); g.drawImage(im, 0, 0); const d = g.getImageData(2, 0, 1, 1).data; NB_TOP[k] = `rgb(${d[0]},${d[1]},${d[2]})`; } catch (_) {} }; im.src = NB_BACK_SRC[k]; }
-const NB_SKY = { n4: 1, n5: 1 }; // open-air scenes: one moon / one sun, not repeated up the screen
-function nbTileCv(kind) { const v = NB_V[NB_ALT], g = v.art.tiles[kind]; return nbGrid(g[0], v.art.pal, false, v.id + "_t_" + kind); }
+{ const bd0 = sprDrawBackdrop; sprDrawBackdrop = function (cx, cy) { try { nbSync(); } catch (_) {} return bd0.apply(this, arguments); }; }
+// ---- the look's block textures, hangs and backdrop bands, inside the original renderer ----
+{ const p0 = sprvPix; sprvPix = function (zi, mi, X, Y, v, h, r) { if (zi === 0 && NB_ALT) { const c = nb3Pix(NB_ALT, mi === 2 ? (v & 1) : mi, X, Y, v, h); if (c !== null) return c; } return p0.apply(this, arguments); }; }
+{ const h0 = sprvHang; sprvHang = function (zi, px, py, A, h) { if (zi === 0 && NB_ALT) return nb3Hang(NB_ALT, px, py, A, h); return h0.apply(this, arguments); }; }
+{ const b0 = sprvBandCanvas; sprvBandCanvas = function (zi, th, vv, W) {
+    if (zi !== 0 || !NB_ALT) return b0.apply(this, arguments);
+    const key = "nb" + NB_ALT + "|" + th + "|" + vv + "|" + W; let cv = sprvBandCache.get(key); if (cv) return cv;
+    cv = document.createElement("canvas"); cv.width = W; cv.height = SPRV_BAND; const c = cv.getContext("2d");
+    nb3Band(NB_ALT, th, c, W, SPRV_BAND, (a, b, k) => sprHash(a, b, k + vv * 17)); sprvBandCache.set(key, cv); return cv; }; }
+{ const l0 = sprvBandLive; sprvBandLive = function (zi, th, X, Y, A, W, vv) {
+    if (zi !== 0 || !NB_ALT) return l0.apply(this, arguments); nb3BandLive(NB_ALT, th, X, Y, A, W, (a, b, k) => sprHash(a, b, k + vv * 17)); }; }
+// ---- enemies: every type gets this look's own model (like SPRB2 does per biome) ----
+{ const c0 = sprCanvas; sprCanvas = function (name, palKey, pal, white) {
+    if (NB_ALT && typeof name === "string" && palKey === "z0") {
+      const base = name.split("#")[0], t = sprb2Type(base), to = t && "n" + NB_ALT + "_" + t;
+      if (to && SPR[to]) { Object.assign(pal, NB3_EPAL[NB_ALT]); name = to + name.slice(base.length); } }
+    return c0.call(this, name, palKey, pal, white); }; }
+// ---- floor props: castle ones swapped for this look's own; castle statue/door hidden ----
 const nbRow0 = y => { if (!S || !S.rowZone || !S.rowZone.length) return true; const r = Math.max(0, Math.min(S.rowZone.length - 1, Math.floor(y / TS))); return S.rowZone[r] === 0; };
-function nbBlock(g, x, y, px, py) { // true when the block was drawn with the variant's own tile
-  if (!NB_ALT || sprZone() !== 0 || !g[y] || g[y][x] !== 1) return false;
-  const up = y > 0 && !isSolidTile(g[y - 1][x]), cv = nbTileCv(up ? "plat" : "wall");
-  ctx.drawImage(cv, Math.round(px), Math.round(py), TS, TS);
-  try { nbProp(g, x, y, px, py); } catch (_) {}
-  return true;
-}
-{ const t0 = sprDrawTile;
-  sprDrawTile = function (g, x, y, px, py) {
-    if (!NB_ALT || sprZone() !== 0 || !g[y] || g[y][x] !== 1) return t0.apply(this, arguments);
-    if (typeof TL !== "undefined" && TL.skip && y >= TL.y0 && y <= TL.y1 && !TL.anim.has(y * 64 + x)) return; // already in the cached band
-    nbBlock(g, x, y, px, py);
-  };
-}
-// the cached tower band paints blocks through tl_tile0 directly: route it through the variant too
-if (typeof tl_tile0 === "function") { const tt0 = tl_tile0; tl_tile0 = function (g, x, y, px, py) { if (nbBlock(g, x, y, px, py)) return; return tt0.apply(this, arguments); }; }
-{ const s0 = sprDrawSlab;
-  sprDrawSlab = function (x, y, w, h) {
-    if (!NB_ALT || !nbRow0(y)) return s0.apply(this, arguments);
-    const cv = nbTileCv("thin"), A = TS / 16; for (let k = 0; k < w; k += TS) ctx.drawImage(cv, 0, 0, Math.min(16, (w - k) / A), cv.height, Math.round(x + k), Math.round(y), Math.min(TS, w - k), cv.height * A);
-  };
-}
+{ const d0 = sprDrawProp; sprDrawProp = function (k, x, y, s = 0) {
+    if (NB_ALT && S && S.escape && nbRow0(y + 2)) {
+      if (k === "pl_statue" || k === "pl_door") return true;
+      const m = NB3_PROPMAP[NB_ALT]; if (m && k in m) { const to = m[k]; if (!to) return true; const A = TS / 16, cv = sprvSprite(to);
+        if (cv) { sprvDrawSpr(to, x - cv.width * A / 2 + 4, y, A, s > 0.5); if (to === "n3_candle" || to === "nb_candelabra") sprGlow(x + 4, y - cv.height * A, 12 * A, "255,210,74", 0.08); return true; } } }
+    return d0.apply(this, arguments); }; }
 // which prop (if any) stands on block (x, y): the same answer for drawing and for the biome rules
 function nbPropAt(x, y) {
   const v = NB_V[NB_ALT]; if (!v || !v.props.length) return null; const g = S.grid;
@@ -17262,45 +16367,171 @@ function nbPropAt(x, y) {
   const h = sprHash(x, y, 909); if (h % 9 !== 0 || sprHash(x, y, 11) % 3 === 0) return null;
   return v.props[(h >> 5) % v.props.length];
 }
-function nbProp(g, x, y, px, py) {
-  const v = NB_V[NB_ALT], A = TS / 16, name = nbPropAt(x, y); if (!name) return;
-  const fr = v.art.decor[name]; if (!fr) return;
-  const h = sprHash(x, y, 909), f = Math.floor((S.t + (h % 7)) * (name === "n3_candle" ? 8 : 3)) % fr.length, cv = nbGrid(fr[f], v.art.pal, false, name + f);
-  ctx.drawImage(cv, Math.round(px + (TS - cv.width * A) / 2), Math.round(py - cv.height * A), cv.width * A, cv.height * A);
-  if (name === "n3_candle") sprGlow(px + TS / 2, py - cv.height * A, 10 * A, "255,210,74", 0.08 + 0.03 * Math.sin(S.t * 9 + h));
+function nbDrawProps(cx, cy) {
+  const A = TS / 16, y0 = Math.max(1, Math.floor(cy / TS)), y1 = Math.min(S.LH - 1, y0 + Math.ceil(CH / TS) + 1);
+  for (let y = y0; y <= y1; y++) { if (S.rowZone && S.rowZone[y] !== 0) continue; for (let x = 1; x < S.LW - 1; x++) { const name = nbPropAt(x, y); if (!name) continue;
+    const cv = sprvSprite(name); if (!cv) continue; const px = x * TS + (TS - cv.width * A) / 2, py = y * TS;
+    sprvDrawSpr(name, px, py, A, false);
+    if (name === "n3_candle") { const f = Math.floor(S.t * 9 + x) % 3; ctx.fillStyle = f ? "#ffd24a" : "#ff8a3a"; ctx.fillRect(px + 2 * A, py - cv.height * A, A, A); sprGlow(px + 2.5 * A, py - cv.height * A, 12 * A, "255,210,74", 0.1); }
+    if (name === "nb_bigglass") { const ph = Math.floor(S.t * 8) % 3; ctx.fillStyle = "#f2c879"; ctx.fillRect(px + 4 * A, py - (7 - ph) * A, A, A); } } }
 }
-// the backdrop: flat biome colour + the scene's back layer, tiled, at the game's 0.35 parallax
-{ const bd0 = sprDrawBackdrop;
-  sprDrawBackdrop = function (cx, cy) {
-    if (!NB_ALT || sprZone() !== 0) return bd0.apply(this, arguments);
-    const v = NB_V[NB_ALT], im = NB_BACK[v.id], A = TS / 16;
-    ctx.fillStyle = NB_BG[v.id]; ctx.fillRect(0, 0, CW, CH);
-    if (!im) return;
-    const w = im.width * A, h = im.height * A, ox = (((cx || 0) * 0.35) % w + w) % w, oy = (((cy || 0) * 0.35) % h + h) % h;
-    ctx.save(); ctx.imageSmoothingEnabled = false;
-    if (NB_SKY[v.id]) { const y0 = CH - h; if (y0 > 0) { ctx.fillStyle = NB_TOP[v.id] || NB_BG[v.id]; ctx.fillRect(0, 0, CW, y0 + 1); } for (let x = -ox; x < CW; x += w) ctx.drawImage(im, Math.round(x), Math.round(y0), w, h); }
-    else for (let y = -oy; y < CH; y += h) for (let x = -ox; x < CW; x += w) ctx.drawImage(im, Math.round(x), Math.round(y), w, h);
-    ctx.restore();
-  };
+{ const pd0 = platDraw; platDraw = function (cx, cy) { const r = pd0.apply(this, arguments); try { if (NB_ALT && S.escape) nbDrawProps(cx, cy); } catch (_) {} return r; }; }
+// the chunky tile layer draws castle ivy in fixed greens: recolour it to this look's moss while that layer runs
+{ const IVY = { "#8be06a": 0, "#3f9c45": 1, "#1d5a2c": 3 }, t0 = sprtPrev.tile;
+  sprtPrev.tile = function (g, x, y, px, py) {
+    if (!NB_ALT || sprZone() !== 0) return t0.apply(this, arguments);
+    const M = SPRT_MOSS[0], d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "fillStyle");
+    Object.defineProperty(ctx, "fillStyle", { configurable: true, get() { return d.get.call(this); }, set(v) { const i = IVY[v]; d.set.call(this, i == null ? v : M[i]); } });
+    try { return t0.apply(this, arguments); } finally { delete ctx.fillStyle; } }; }
+// thin platforms: same plank as the castle, then this look's own trim
+{ const s0 = sprcPrev.slab === undefined ? null : sprtPrev.slab; if (s0) sprtPrev.slab = function (x, y, w, h) {
+    const r = s0.apply(this, arguments); if (!NB_ALT || sprZone() !== 0) return r;
+    const A = TS / 16, H2 = Math.max(h, 6 * A), R = (xx, yy, ww, hh, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(xx), Math.round(yy), Math.round(ww), Math.round(hh)); };
+    const n = Math.floor(w / A), sd = Math.round(w / A) * 7 + Math.round(h / A) * 3;
+    if (NB_ALT === 1) { R(x + A, y + A, w - 2 * A, A, "#ffe9a0"); for (let i = 3; i < n - 3; i += 5) { R(x + i * A, y + 3 * A, 2 * A, A, "#3aa8a0"); R(x + i * A, y + 4 * A, 2 * A, A, "#1f5c64"); } }
+    else if (NB_ALT === 2) { R(x + A, y + H2 - 2 * A, w - 2 * A, A, "#4fb39a"); for (let i = 2; i < n - 2; i += 6) { R(x + i * A, y + 2 * A, A, A, "#ffe2b0"); R(x + i * A, y + 3 * A, A, A, "#5a2e1c"); }
+      for (let i = 4; i < n - 2; i += 9) if (sprHash(sd + i, 2, 3) % 2) R(x + i * A, y + H2, A, (1 + (Math.floor(S.t * 3 + i) % 3)) * A, "#8ad8ff"); }
+    else if (NB_ALT === 3) { R(x, y - A, w, 2 * A, "#f3e0b8"); R(x, y - A, w, A, "#fff8e6"); for (let i = 1; i < n - 1; i += 3) { const L = 1 + sprHash(sd + i, 3, 5) % 4; R(x + i * A, y + H2, A, L * A, "#d8b07a"); if (L > 2) R(x + i * A, y + H2 + L * A, A, A, "#a87850"); } }
+    else if (NB_ALT === 4) { for (let i = 0; i < n; i++) { const hh = sprHash(sd + i, 4, 9); if (hh % 3 === 0) continue; R(x + i * A, y - A, A, A + (hh % 5 === 0 ? A : 0), hh % 2 ? "#7cba46" : "#3f7a2e"); if (hh % 11 === 0) R(x + i * A, y - 2 * A, A, A, "#ff7a9a"); } }
+    else if (NB_ALT === 5) { ctx.globalAlpha = 0.85; for (let i = 0; i < n; i += 4) { const hh = sprHash(sd + i, 5, 4); R(x + i * A - A, y + H2 - A, 5 * A, (2 + hh % 2) * A, "#eef4ff"); R(x + i * A, y + H2 + (1 + hh % 2) * A, 3 * A, A, "#c8d8f4"); } ctx.globalAlpha = 1; R(x + A, y + A, w - 2 * A, A, "#ffe9b0"); }
+    return r; }; }
+// ===== v3 variants of N1 and N2 (user 2026-11-08: "dame más de esos con menos detalles y con más") =====
+// Each variant is a full look on top of a base (1 = sand, 2 = storm): its own palette and materials, and a detail
+// level: 0 = simple (plain blocks, calm backdrop, few decorations), 2 = rich (inlays, extra backdrop pieces, more
+// props and particles). The base keeps its enemies and its biome rule. Looks 6..9; 1..5 stay as they were.
+const NB_LOOKS = {
+  6: { base: 1, lv: 0, id: "n1a", es: "Dunas", en: "Dune Spire",
+    ramp: ["#fff8e4", "#f6d8a0", "#e2b070", "#b47c48", "#7a4c30", "#2a1810"],
+    zlit: { cbase: "#2a1c12", cseam: "#1a110a", cface: "#33241a", tface: "#3c2c1e", tedge: "#523a26", tbeam: "#4a3220", twin: "255,226,170", clight: "255,214,140" },
+    stone: ["#fff4d8", "#f4d49a", "#dcae6c", "#ac7a46", "#70482c", "#22140c"], clay: ["#ffe0b8", "#eeb47a", "#cc8a52", "#946038", "#5e3a24", "#180c06"],
+    mats: [["#fff4d8", "#f4d49a", "#dcae6c", "#ac7a46", "#70482c", "#22140c"], ["#ffe8c4", "#eebe84", "#d09a60", "#a06c40", "#664428", "#1c100a"],
+           ["#f8ecd4", "#e0c8a0", "#c0a47c", "#907858", "#5a4834", "#18100a"]],
+    moss: ["#fff8e4", "#f6dca8", "#e2b878", "#9a6c40"], tops: ["nb_sand", "nb_peb1", "nb_sand", "nb_urn"], props: ["nb_bigurn"], acc: "#e2b070" },
+  7: { base: 1, lv: 2, id: "n1b", es: "Tumba dorada", en: "Golden Tomb",
+    ramp: ["#fff0c0", "#f0c060", "#c88a38", "#8a5228", "#542c20", "#1a0c10"],
+    zlit: { cbase: "#140c0a", cseam: "#0a0605", cface: "#1e140e", tface: "#281a10", tedge: "#3e2a16", tbeam: "#36220e", twin: "255,200,110", clight: "255,190,90" },
+    stone: ["#ffe8b0", "#eebc64", "#c88c40", "#925a2c", "#5a3420", "#1a0c08"], clay: ["#d8f4ff", "#7ab8e8", "#3a78c8", "#2a4c96", "#1a2c5c", "#060a1c"],
+    mats: [["#ffeab8", "#f0c070", "#cc9040", "#94602c", "#5a3820", "#1a0e08"], ["#d8fff4", "#6ee0cc", "#2cb0a0", "#1c7a78", "#104850", "#041216"],
+           ["#d8e4ff", "#86a8f0", "#4a6ad0", "#2c449a", "#1a2862", "#060a1c"]],
+    moss: ["#fff4c8", "#f0c870", "#c89040", "#7a4c24"], tops: ["nb_urn", "nb_hglass", "nb_jar", "nb_sand", "bones", "nb_urn", "nb_peb1", "nb_jar"],
+    props: ["nb_bigglass", "nb_bigurn", "nb_bigurn"], acc: "#ffd75a" },
+  8: { base: 2, lv: 0, id: "n2a", es: "Llovizna", en: "Drizzle Spire",
+    ramp: ["#eef4f8", "#b4c8d4", "#7e98aa", "#56708a", "#384c64", "#121a28"],
+    zlit: { cbase: "#141a22", cseam: "#0a0e14", cface: "#1a222c", tface: "#222c38", tedge: "#34404e", tbeam: "#2c2620", twin: "190,215,235", clight: "230,220,170" },
+    stone: ["#e4eef4", "#a8bccc", "#7890a4", "#566c82", "#3a4a5e", "#10161e"], clay: ["#f0dcc8", "#c8a888", "#a08068", "#76604e", "#4c3e34", "#140e0a"],
+    mats: [["#e4eef4", "#a8bccc", "#7890a4", "#566c82", "#3a4a5e", "#10161e"], ["#f0dcc8", "#c8a888", "#a08068", "#76604e", "#4c3e34", "#140e0a"],
+           ["#d0d8e0", "#98a4b4", "#707c8e", "#505a6a", "#343c4a", "#0c1018"]],
+    moss: ["#d8ece4", "#9ccab8", "#6a9a8a", "#3a5a52"], tops: ["nb_puddle", "nb_lichen", "nb_puddle"], props: ["n2_rod"], acc: "#cfe4f0" },
+  9: { base: 2, lv: 2, id: "n2b", es: "Tormenta eléctrica", en: "Thunder Spire",
+    ramp: ["#f0fcff", "#8ad8f0", "#4a8cc0", "#2c5288", "#1a2c58", "#080c1e"],
+    zlit: { cbase: "#0a0e1c", cseam: "#04060e", cface: "#0e1426", tface: "#141c34", tedge: "#22304e", tbeam: "#2a1c14", twin: "140,220,255", clight: "255,236,110" },
+    stone: ["#d0ecff", "#7ab4e0", "#4a80b4", "#305884", "#1c3458", "#060c1a"], clay: ["#ffe4a8", "#f0b050", "#c87a30", "#8a4c22", "#562c18", "#160804"],
+    mats: [["#d0ecff", "#7ab4e0", "#4a80b4", "#305884", "#1c3458", "#060c1a"], ["#ffe4a8", "#f0b050", "#c87a30", "#8a4c22", "#562c18", "#160804"],
+           ["#b8c4dc", "#7a88a8", "#525e80", "#36405c", "#20283c", "#080a14"]],
+    moss: ["#d8fff0", "#6ef0c8", "#2ab894", "#146a5a"], tops: ["nb_rodS", "nb_coil", "nb_puddle", "nb_lichen", "nb_coil", "nb_rodS", "nb_puddle"],
+    props: ["n2_rod", "n2_rod"], acc: "#fff04a" },
+};
+var NB_LOOK = 0, NB_LV = 1, NB_CUR = null;
+// ---- textures: simple = clean bevelled blocks; rich = the base pattern plus inlays
+function nb3PixSimple(a, mi, X, Y, v, h) {
+  if (a === 1 && mi === 0) { const bx = X % 16, by = Y % 16; if (bx === 15 || by === 15) return 4; if (bx === 0 || by === 0) return 1; if (bx === 14 || by === 14) return 3; return h % 29 === 0 ? 3 : 2; }
+  if (a === 1 && mi === 1) { const row = Y >> 3, bx = (X + (row & 1 ? 8 : 0)) % 16, by = Y % 8; if (by === 7 || bx === 15) return 4; if (by === 0 || bx === 0) return 1; return h % 23 === 0 ? 3 : 2; }
+  if (a === 2 && mi === 0) { const row = Y >> 2, bx = (X + (row & 1 ? 4 : 0)) % 8; if (Y % 4 === 3 || bx === 7) return 4; if (Y % 4 === 0) return 1; return 2; }
+  if (a === 2 && mi === 1) { const px = X % 16, py = Y % 16; if (px === 0 || py === 0) return 1; if (px === 15 || py === 15) return 4; if (px === 14 || py === 14) return 3; return 2; }
+  return null;
 }
-// hide the Castle's dressing on first-biome rows while a variant is on
-{ const dr0 = draw;
-  draw = function () {
-    if (!NB_ALT || !S || !S.escape) return dr0.apply(this, arguments);
-    const keep = {}, f = it => !nbRow0(it.y != null ? it.y : it.top != null ? it.top : 0);
-    for (const k of ["props", "hangs", "backs", "decor", "torches"]) if (Array.isArray(S[k])) { keep[k] = S[k]; S[k] = S[k].filter(f); }
-    try { return dr0.apply(this, arguments); } finally { for (const k in keep) S[k] = keep[k]; }
-  };
+function nb3PixRich(a, mi, X, Y, v, h) {
+  const b = nb3Pix(a, mi, X, Y, v, h);
+  if (a === 1 && mi === 0) { const bx = X % 16, by = Y % 16, on = (bx === 2 || bx === 13) && by >= 2 && by <= 13 || (by === 2 || by === 13) && bx >= 2 && bx <= 13;
+    if (on) return (bx === 2 || bx === 13) && (by === 2 || by === 13) ? "#2c48a0" : (bx + by) % 2 ? "#ffd75a" : "#c8902c"; return b; }
+  if (a === 1 && mi === 1) { const cx = X % 16, cy = Y % 16; if ((cx === 8 && cy > 4 && cy < 12) || (cy === 8 && cx > 4 && cx < 12)) return cx === 8 && cy === 8 ? "#fff4d6" : "#ffd75a"; return b; }
+  if (a === 2 && mi === 0) { const row = Y >> 2, bx = (X + (row & 1 ? 4 : 0) + v * 2) % 8; if (row % 3 === 1 && bx === 3 && Y % 4 === 2) return "#e8a060"; return b; }
+  if (a === 2 && mi === 1) { const px = X % 16, py = Y % 16; if ((px === 8 && py > 3 && py < 13) || (py === 8 && px > 3 && px < 13)) return px === 8 && py === 8 ? "#fff6c0" : "#7ff6ff"; return b; }
+  return b;
 }
-// apply the right look before anything is drawn each frame
-{ const bd0 = sprDrawBackdrop; sprDrawBackdrop = function (cx, cy) { try { nbSync(); } catch (_) {} return bd0.apply(this, arguments); }; }
-// N5 skies have no hanging chains under ledges
-{ const h0 = sprvHang; sprvHang = function (zi) { if (zi === 0 && NB_ALT === 5) return; return h0.apply(this, arguments); }; }
+// ---- hanging things: simple = fewer, no glow; rich = the base lamp plus banners / pipes
+function nb3HangRich(a, px, py, A, h) {
+  const t = S.t || 0, R = (x, y, w, hh, c) => { ctx.fillStyle = c; ctx.fillRect(px + x * A, py + y * A, w * A, hh * A); };
+  if (a === 1 && h % 3 === 0) { const L = 10 + h % 6, sw = Math.round(Math.sin(t * 1.5 + h) * 0.6); // striped banner
+    R(-4, 0, 9, 1, "#9a6a20"); for (let j = 1; j < L; j++) { const c = j % 4 === 0 ? "#2c48a0" : j % 4 === 2 ? "#5fd1c4" : "#e3b24e"; R(-3 + (j > L / 2 ? sw : 0), j, 7, 1, c); }
+    R(-3 + sw, L, 2, 1, "#e3b24e"); R(2 + sw, L, 2, 1, "#e3b24e"); R(0 + sw, L + 1, 1, 1, "#e3b24e"); return; }
+  if (a === 2 && h % 3 === 0) { R(-6, 0, 13, 2, "#8a4a2a"); R(-6, 0, 13, 1, "#e8a060"); R(-1, 2, 3, 5, "#5a2e1c"); R(-2, 7, 5, 4, "#3e6078"); R(-1, 8, 3, 2, "#bfe6ff"); // pipe + gauge
+    R(0, 8, 1, 1, Math.floor(t * 3 + h) % 2 ? "#ff5a4a" : "#1c2638"); const dy = ((t * 34 + h * 5) % 44); R(0, 12 + dy, 1, 2, "#8ac8e0"); return; }
+  nb3Hang(a, px, py, A, h);
+}
+// ---- backdrop bands: simple = one calm theme; rich = the base band plus extra pieces
+function nb3BandSimple(a, th, c, W, Hh, hs) {
+  const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x | 0, y | 0, w | 0, h | 0); };
+  if (th !== 0) return;
+  if (a === 1) for (let x = 20 + hs(0, 0, 1) % 20; x < W - 40; x += 80) { R(x - 3, 70, 30, 86, "#3c2c1e");
+    for (let k = 0; k < 12; k++) R(x - 3 + k, 70 - Math.round(Math.sqrt(144 - (12 - k) * (12 - k)) * 0.7), (12 - k) * 2 + 6, 1, "#3c2c1e");
+    R(x, 72, 24, 82, "#c8905a"); R(x, 72, 24, 30, "#dca870"); for (let k = 0; k < 10; k++) R(x + k, 72 - Math.round(Math.sqrt(100 - (10 - k) * (10 - k)) * 0.6), (10 - k) * 2 + 4, 1, "#dca870");
+    for (let k = 0; k < 24; k++) R(x + k, 72 + 56 + Math.round(Math.sin(k * 0.18 + x) * 4), 1, 26, "#a87040"); R(x - 5, 156, 34, 3, "#523a26"); }
+  else for (let x = 20 + hs(0, 0, 4) % 20; x < W - 40; x += 80) { R(x - 3, 50, 30, 110, "#34404e"); R(x, 53, 24, 104, "#56708a"); R(x + 11, 53, 2, 104, "#222c38"); R(x, 100, 24, 2, "#222c38"); R(x - 5, 160, 34, 3, "#34404e"); }
+}
+function nb3BandRich(a, th, c, W, Hh, hs) {
+  nb3Band(a, th, c, W, Hh, hs);
+  const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x | 0, y | 0, w | 0, h | 0); };
+  if (a === 1) { R(0, 4, W, 8, "#3e2a16"); for (let x = 0; x < W; x += 12) { R(x + 2, 6, 4, 4, "#ffd75a"); R(x + 8, 7, 2, 2, "#2c48a0"); } R(0, 12, W, 1, "#1a0c10"); // gold frieze
+    for (const x of [4, W - 18]) { R(x, 40, 14, 150, "#2a1a0e"); for (let k = 0; k < 150; k++) { const w = 12 - Math.floor(k / 30); R(x + 7 - w / 2, 40 + k, w, 1, k % 20 < 2 ? "#c8902c" : "#5a3820"); } // obelisks
+      for (let k = 0; k < 5; k++) R(x + 5, 60 + k * 24, 4, 3, k % 2 ? "#5fd1c4" : "#ffd75a"); R(x + 3, 36, 8, 4, "#ffd75a"); } }
+  else { R(0, 6, W, 6, "#5a2e1c"); R(0, 7, W, 2, "#e8a060"); for (let x = 10 + hs(5, 5, 5) % 30; x < W; x += 52) { R(x, 4, 10, 10, "#3e6078"); R(x + 2, 6, 6, 6, "#bfe6ff"); R(x + 4, 8, 3, 1, "#1c2638"); } // pipe with gauges
+    for (const x of [6, W - 16]) { for (let y = 20; y < Hh - 10; y += 4) R(x + (y % 8 ? 0 : 2), y, 6, 3, "#2a3a50"); R(x + 2, 20, 2, Hh - 30, "#141c34"); } } // hanging chains
+}
+function nb3BandLiveRich(a, th, X, Y, A, W, hs) {
+  nb3BandLive(a, th, X, Y, A, W, hs);
+  const t = S.t || 0, R = (x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(X + x * A, Y + y * A, w * A, h * A); };
+  if (a === 1) for (let k = 0; k < 16; k++) { const x = (hs(k, 31, 9) % W), y = ((hs(k, 32, 9) % 200) - t * 8 + 400) % 200 + 10; if ((t * 2 + k) % 3 < 2) R(x, y, 1, 1, k % 3 ? "#ffd75a" : "#fff4d6"); }
+  else { const f = (t * 0.9) % 5; if (f < 0.08 || (f > 0.2 && f < 0.26)) { ctx.globalAlpha = 0.18; R(0, 0, W, SPRV_BAND, "#e8f8ff"); ctx.globalAlpha = 1; }
+    for (let k = 0; k < 18; k++) { const x = hs(k, 41, 3) % W, y = ((hs(k, 42, 3) % 220) + t * 200) % 220; R(x, y, 1, 5, "rgba(200,232,255,.35)"); } }
+}
+// ---- wiring: re-point the core wrappers at the current look and level
+{ const ap0 = nbApply; nbApply = function (a) { const L = NB_LOOKS[a];
+    if (L) { const v0 = NB_V[L.base], keep = { ramp: v0.ramp, zlit: v0.zlit, mats: v0.mats, moss: v0.moss, tops: v0.tops, stone: v0.stone, clay: v0.clay };
+      const art = {}; for (const k in keep) art[k] = L[k]; Object.assign(v0, art); try { ap0.call(this, L.base); } finally { Object.assign(v0, keep); }
+      NB_LOOK = a; NB_LV = L.lv; NB_CUR = Object.assign({}, NB_V[L.base], L); }
+    else { ap0.call(this, a); NB_LOOK = a; NB_LV = 1; NB_CUR = NB_V[a] || null; }
+    try { sprvBandCache.clear(); } catch (_) {} }; }
+nbSync = function () { const w = nbWant(); if (w !== NB_LOOK) { nbApply(w); if (w && S && S._nbToast !== S.seed) { S._nbToast = S.seed; toast(T("Bioma") + ": " + nbName(w)); } } };
+{ const n0 = nbName; nbName = function (a) { const L = NB_LOOKS[a]; return L ? Lx(L.es, L.en) : n0.apply(this, arguments); }; }
+{ const p1 = sprvPix; sprvPix = function (zi, mi, X, Y, v, h, r) {
+    if (zi === 0 && NB_ALT && NB_LV !== 1) { const m = mi === 2 ? (v & 1) : mi, c = NB_LV === 0 ? nb3PixSimple(NB_ALT, m, X, Y, v, h) : nb3PixRich(NB_ALT, m, X, Y, v, h); if (c !== null) return c; }
+    return p1.apply(this, arguments); }; }
+{ const h1 = sprvHang; sprvHang = function (zi, px, py, A, h) {
+    if (zi === 0 && NB_ALT && NB_LV === 0) { if (h % 3) return; const R = (x, y, w, hh, c) => { ctx.fillStyle = c; ctx.fillRect(px + x * A, py + y * A, w * A, hh * A); };
+      R(0, 0, 1, 4, NB_CUR.ramp[4]); R(-2, 4, 5, 3, NB_CUR.ramp[3]); R(-1, 5, 3, 1, NB_CUR.ramp[1]); return; }
+    if (zi === 0 && NB_ALT && NB_LV === 2) return nb3HangRich(NB_ALT, px, py, A, h);
+    return h1.apply(this, arguments); }; }
+{ const b1 = sprvBandCanvas; sprvBandCanvas = function (zi, th, vv, W) {
+    if (zi !== 0 || !NB_ALT || NB_LV === 1) return b1.apply(this, arguments);
+    const key = "nbl" + NB_LOOK + "|" + th + "|" + vv + "|" + W; let cv = sprvBandCache.get(key); if (cv) return cv;
+    cv = document.createElement("canvas"); cv.width = W; cv.height = SPRV_BAND; const c = cv.getContext("2d"), hs = (a, b, k) => sprHash(a, b, k + vv * 17);
+    (NB_LV === 0 ? nb3BandSimple : nb3BandRich)(NB_ALT, th, c, W, SPRV_BAND, hs); sprvBandCache.set(key, cv); return cv; }; }
+{ const l1 = sprvBandLive; sprvBandLive = function (zi, th, X, Y, A, W, vv) {
+    if (zi !== 0 || !NB_ALT || NB_LV === 1) return l1.apply(this, arguments);
+    const hs = (a, b, k) => sprHash(a, b, k + vv * 17);
+    if (NB_LV === 0) { if (th === 0 && NB_ALT === 2) { const t = S.t || 0; for (let k = 0; k < 10; k++) { const x = hs(k, 7, 3) % W, y = ((hs(k, 8, 3) % 200) + t * 150) % 200; ctx.fillStyle = "rgba(220,235,245,.3)"; ctx.fillRect(X + x * A, Y + y * A, A, 4 * A); } } return; }
+    nb3BandLiveRich(NB_ALT, th, X, Y, A, W, hs); }; }
+// props: frequency by level, list from the current look
+nbPropAt = function (x, y) {
+  const v = NB_CUR; if (!v || !v.props || !v.props.length) return null; const g = S.grid;
+  const solid = (xx, yy) => yy >= 0 && yy < S.LH && xx >= 0 && xx < S.LW && isSolidTile(g[yy][xx]);
+  if (!solid(x, y) || solid(x, y - 1) || solid(x, y - 2) || x < 1 || x > S.LW - 2) return null;
+  const h = sprHash(x, y, 909), every = NB_LV === 0 ? 15 : NB_LV === 2 ? 5 : 9; if (h % every !== 0 || sprHash(x, y, 11) % 3 === 0) return null;
+  return v.props[(h >> 5) % v.props.length];
+};
+// slabs: simple looks drop the trim (drawn by core); rich ones add a second row of detail
+{ const s1 = sprtPrev.slab; sprtPrev.slab = function (x, y, w, h) {
+    if (NB_ALT && NB_LV === 0 && sprZone() === 0) { const keep = NB_ALT; NB_ALT = 0; try { return s1.apply(this, arguments); } finally { NB_ALT = keep; } }
+    const r = s1.apply(this, arguments);
+    if (NB_ALT && NB_LV === 2 && sprZone() === 0) { const A = TS / 16, H2 = Math.max(h, 6 * A), n = Math.floor(w / A);
+      for (let i = 2; i < n - 2; i += 4) { ctx.fillStyle = NB_ALT === 1 ? (i % 8 ? "#ffd75a" : "#2c48a0") : (Math.floor((S.t || 0) * 4 + i) % 5 ? "#7ff6ff" : "#fff6c0"); ctx.fillRect(Math.round(x + i * A), Math.round(y + H2 - 3 * A), A, A); } }
+    return r; }; }
 // ---- PRUEBAS · Biomas: one button per look of the first biome ----
 { const tb0 = testBiome; testBiome = function (z) { const f = NB_FORCE_NEXT; NB_FORCE_NEXT = null; const r = tb0.apply(this, arguments); if (S) { S.nbForce = z === 0 ? (f || 0) : 0; if (z === 0 && f) { S.toasts = []; toast(T("Bioma") + ": " + nbName(f)); S._nbToast = S.seed; } } return r; }; }
 (() => { if (typeof document === "undefined") return;
   const fix = () => { const b0 = document.querySelector('#ov [data-bz="0"]'); if (!b0 || b0.dataset.nbdone) return; b0.dataset.nbdone = 1; b0.textContent = "1 · " + Lx("Castillo olvidado", "Forgotten Castle");
-    let prev = b0; for (let i = 1; i <= 5; i++) { const b = document.createElement("button"); b.dataset.nb = i; b.textContent = "1" + "abcdef"[i] + " · " + nbName(i); b.onclick = () => { NB_FORCE_NEXT = i; testBiome(0); }; prev.after(b); prev = b; } };
+    let prev = b0; for (const i of NB_POOL) { if (!i) continue; const b = document.createElement("button"); b.dataset.nb = i; b.textContent = "1" + "abcdef"[i] + " · " + nbName(i); b.onclick = () => { NB_FORCE_NEXT = i; testBiome(0); }; prev.after(b); prev = b; } };
   const go = () => { const ov = document.getElementById("ov"); if (!ov) return setTimeout(go, 300); new MutationObserver(fix).observe(ov, { childList: true, subtree: true }); };
   go(); })();
 // ===== biome rules: soft effects of each look (not timer modifiers). Off in secret rooms and boss fights. =====
