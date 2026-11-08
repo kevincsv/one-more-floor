@@ -1707,7 +1707,7 @@ function buildVertical(rising) {
    Every segment is checked with the same jump simulation as normal floors before it is kept. */
 const ESC_ROWS = 20000, ESC_SEG = 8; // 20000 rows = about 2 hours of climbing at the camera cap: the tower is endless in practice (4000 ended at ~3950 m)
 let ESC_BIOME_T = [60, 135, 225, 330]; // seconds at which biomes 2..5 start (60, 75, 90, 105 s per biome)
-const ESC_MOD_EVERY = 15, ESC_MOD_LAST = 20; // v164b (user 2026-11-08: "los modificadores que ahora duren 20 seg") // v59 (user): a new modifier every 15 s; at the cap the oldest leaves, so the set changes every 15 s
+const ESC_MOD_EVERY = 20, ESC_MOD_LAST = 20; // v167 (user 2026-11-08 "a 20"): one arrives every 20 s // v164b (user 2026-11-08: "los modificadores que ahora duren 20 seg") // v59 (user): a new modifier every 15 s; at the cap the oldest leaves, so the set changes every 15 s
 // only modifiers that make the climb harder: helpers like Luna, Rebote, Cámara lenta or Magnetismo made it too easy
 const ESC_MOD_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", "mirror", "echo", "blackout", "crumbs", "quake", "sweep", "shields", "recoil"]; // v90 (user): Munición removed from Escape (ground reload made it do nothing)
 // v164 (user: "deberían ser siempre completamente aleatorios"): the climb used to draw only from 15 modifiers, so with half the
@@ -4992,7 +4992,7 @@ const EN_TEXT = {
   "AIRE": "AIR", "ARRASTRA Y SUELTA PARA LANZARTE": "DRAG AND RELEASE TO LAUNCH", "ATRAPA TU SOMBRA": "CATCH YOUR SHADOW", "CALOR": "HEAT", "CERA": "WAX",
   "SALA OCULTA · TIEMPO DETENIDO": "HIDDEN ROOM · TIME STOPPED", "SALIDA": "EXIT", "CERRADA": "LOCKED", "SALTO DE PARED": "WALL JUMP", "TIEMPO DETENIDO": "TIME STOPPED",
   "ESCUDO GASTADO": "SHIELD USED", "ESCUDO LISTO": "SHIELD READY", "OÍDOS TAPADOS": "EARS COVERED", "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS": "SIRENS · HOLD ATTACK TO COVER YOUR EARS",
-  "PASADA LA MEDIANOCHE · DAÑO ½": "PAST MIDNIGHT · DAMAGE ½", "Sin reglas": "No rules", "PAUSA": "PAUSED", "Seguir": "Resume", "GIRA EL TELÉFONO": "TURN YOUR PHONE", "Escape se juega en vertical.": "Escape is played upright.", "Bolsa de oro": "Bag of gold", "Sin modificadores": "No modifiers", "MODIFICADORES": "MODIFIERS", "Ver cajas": "Show boxes", "Fácil": "Easy", "Media": "Medium", "Difícil": "Hard", "¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas": "Boss! Time and modifiers stop until you beat it", "Izquierda y derecha están invertidas al moverte. El ataque apunta normal.": "Left and right are swapped when moving. Attacks aim normally.", "BIOMAS": "BIOMES", "Bioma": "Biome", "NORMAL": "NORMAL", "FÁCIL": "EASY", "Dificultad": "Difficulty", "Escape · Fácil": "Escape · Easy", "Diario · Fácil": "Daily · Easy", "Mímico": "Mimic", "Fantasma: dos tajos lo matan": "Ghost: two slashes kill it", "El Espejo se acaba en 3 s": "Mirror ends in 3 s", "ESPEJO EN": "MIRROR IN", "EN": "IN", "NUEVO MODIFICADOR EN": "NEW MODIFIER IN", "PRÓXIMO MODIFICADOR EN": "NEXT MODIFIER IN", "OBJETOS": "ITEMS", "Sin descubrir": "Not found yet", "Poción": "Potion", "Rubí": "Ruby", "SONIDO": "SOUND", "MÚSICA": "MUSIC", "ASPECTOS": "SKINS", "Listo para usar": "Ready to wear", "Cambiar aspecto": "Change skin", "Anterior": "Previous", "Siguiente": "Next", "DIARIO": "DAILY", "Torre sin fin": "Endless tower", "Ajustes": "Settings", "Plataformas": "Platforms", "Te alcanzó la lava": "The lava got you", "Te alcanzó el ácido": "The acid got you", "Te alcanzó el aceite": "The burning oil got you", "Te alcanzó el éter": "The ether got you", "Te alcanzó la marea": "The tide got you", "HORDA": "HORDE", "Horda": "Horde", "Sin modificadores: solo muchos más enemigos": "No modifiers: just way more enemies", "CASI": "SO CLOSE", "ACTIVO": "ACTIVE", "LOGROS": "ACHIEVEMENTS", "LOGRO": "ACHIEVEMENT", "Todas las hazañas y cuánto te falta": "Every feat and how far you are", "Toca para cerrar": "Tap to close", "Aspecto de": "Skin of", "100 metros": "100 metres", "250 metros": "250 metres", "Nivel 10": "Level 10", "Llega a 100 m en Escape.": "Reach 100 m in Escape.", "Llega a 250 m en Escape.": "Reach 250 m in Escape.", "Llega al nivel 10 en una partida de Escape.": "Reach level 10 in one Escape run.", "🧪 Sala de objetos": "🧪 Object room", "Corazón": "Heart", "Reliquia": "Relic", "Cobre ·1": "Copper ·1", "Plata ·2": "Silver ·2", "Oro ·5": "Gold ·5", "Gema ·10": "Gem ·10", "Pinchos": "Spikes", "Pinchos cíclicos": "Cycling spikes", "Trampa": "Trap", "Antorcha": "Torch", "Orbe de XP": "XP orb", "Reponer": "Refill", "Sala de objetos: tócalos para recogerlos": "Object room: touch them to pick them up", "Sube. No mires abajo.": "Climb. Don't look down.", "racha": "streak", "PERSONAJES": "HEROES", "ASPECTOS": "SKINS", "Héroes y aspectos, y cómo conseguirlos": "Heroes and skins, and how to get them", "Llega a 150 m en una partida de Escape": "Reach 150 m in one Escape run", "Personaje desbloqueado: Nyx": "Hero unlocked: Nyx", "Desbloqueado": "Unlocked", "(en una partida)": "(in one run)", "Cómo se juega": "How to play", "Sube sin parar": "Keep climbing", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó.": "The tower builds itself upward forever and the camera only goes up. Fall below the screen and it's over.", "Golpea": "Attack", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño.": "Attack with HIT (3-hit combo). Jumping on an enemy also hurts it.", "Modificadores": "Modifiers", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una.": "Every 15 seconds a new rule joins and the oldest leaves. Each biome brings its own. The skulls tell how hard each one is.", "Sube de nivel": "Level up", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador.": "Enemies give experience. On level up you pick a bonus or remove a modifier.", "Salas secretas": "Secret rooms", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos.": "Hit cracked walls twice: inside, time stops and there are treasures, shops and pacts.", "Jefes": "Bosses", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo.": "In arenas the camera stops. Beat the boss to keep climbing.", "Hazañas": "Feats", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice.": "Complete challenges to unlock new modifiers and bonuses. See them in the Codex.", "IDIOMA": "LANGUAGE", "CÓDICE": "CODEX", "MODIFICADORES": "MODIFIERS", "MEJORAS": "BONUSES", "COMBINACIONES": "COMBOS", "Reglas malas que entran durante la subida": "Bad rules that join during the climb", "Modificadores buenos: los eliges al subir de nivel": "Good modifiers: you pick them when you level up", "Dos modificadores juntos dan un efecto nuevo": "Two modifiers together make a new effect", "TOCA PARA EMPEZAR": "TAP TO START", "PULSA PARA EMPEZAR": "PRESS TO START", "NUEVO RÉCORD": "NEW RECORD", "MODIFICADOR": "MODIFIER", "REGLA": "RULE", "MEJORA": "BONUS", "PERSONAJE": "HERO", "ASPECTO": "SKIN", "DESBLOQUEADO": "UNLOCKED", "y": "and", "más en el Códice": "more in the Codex", "AJUSTES": "SETTINGS", "Ajustes": "Settings", "APAGADO": "OFF", "CONTROLES": "CONTROLS", "Volver": "Back", "Sí": "On",
+  "PASADA LA MEDIANOCHE · DAÑO ½": "PAST MIDNIGHT · DAMAGE ½", "Sin reglas": "No rules", "PAUSA": "PAUSED", "Seguir": "Resume", "GIRA EL TELÉFONO": "TURN YOUR PHONE", "Escape se juega en vertical.": "Escape is played upright.", "Bolsa de oro": "Bag of gold", "Sin modificadores": "No modifiers", "MODIFICADORES": "MODIFIERS", "Ver cajas": "Show boxes", "Fácil": "Easy", "Media": "Medium", "Difícil": "Hard", "¡Jefe! El tiempo y los modificadores se detienen hasta que lo venzas": "Boss! Time and modifiers stop until you beat it", "Izquierda y derecha están invertidas al moverte. El ataque apunta normal.": "Left and right are swapped when moving. Attacks aim normally.", "BIOMAS": "BIOMES", "Bioma": "Biome", "NORMAL": "NORMAL", "FÁCIL": "EASY", "Dificultad": "Difficulty", "Escape · Fácil": "Escape · Easy", "Diario · Fácil": "Daily · Easy", "Mímico": "Mimic", "Fantasma: dos tajos lo matan": "Ghost: two slashes kill it", "El Espejo se acaba en 3 s": "Mirror ends in 3 s", "ESPEJO EN": "MIRROR IN", "EN": "IN", "NUEVO MODIFICADOR EN": "NEW MODIFIER IN", "PRÓXIMO MODIFICADOR EN": "NEXT MODIFIER IN", "OBJETOS": "ITEMS", "Sin descubrir": "Not found yet", "Poción": "Potion", "Rubí": "Ruby", "SONIDO": "SOUND", "MÚSICA": "MUSIC", "ASPECTOS": "SKINS", "Listo para usar": "Ready to wear", "Cambiar aspecto": "Change skin", "Anterior": "Previous", "Siguiente": "Next", "DIARIO": "DAILY", "Torre sin fin": "Endless tower", "Ajustes": "Settings", "Plataformas": "Platforms", "Te alcanzó la lava": "The lava got you", "Te alcanzó el ácido": "The acid got you", "Te alcanzó el aceite": "The burning oil got you", "Te alcanzó el éter": "The ether got you", "Te alcanzó la marea": "The tide got you", "HORDA": "HORDE", "Horda": "Horde", "Sin modificadores: solo muchos más enemigos": "No modifiers: just way more enemies", "CASI": "SO CLOSE", "ACTIVO": "ACTIVE", "LOGROS": "ACHIEVEMENTS", "LOGRO": "ACHIEVEMENT", "Todas las hazañas y cuánto te falta": "Every feat and how far you are", "Toca para cerrar": "Tap to close", "Aspecto de": "Skin of", "100 metros": "100 metres", "250 metros": "250 metres", "Nivel 10": "Level 10", "Llega a 100 m en Escape.": "Reach 100 m in Escape.", "Llega a 250 m en Escape.": "Reach 250 m in Escape.", "Llega al nivel 10 en una partida de Escape.": "Reach level 10 in one Escape run.", "🧪 Sala de objetos": "🧪 Object room", "Corazón": "Heart", "Reliquia": "Relic", "Cobre ·1": "Copper ·1", "Plata ·2": "Silver ·2", "Oro ·5": "Gold ·5", "Gema ·10": "Gem ·10", "Pinchos": "Spikes", "Pinchos cíclicos": "Cycling spikes", "Trampa": "Trap", "Antorcha": "Torch", "Orbe de XP": "XP orb", "Reponer": "Refill", "Sala de objetos: tócalos para recogerlos": "Object room: touch them to pick them up", "Sube. No mires abajo.": "Climb. Don't look down.", "racha": "streak", "PERSONAJES": "HEROES", "ASPECTOS": "SKINS", "Héroes y aspectos, y cómo conseguirlos": "Heroes and skins, and how to get them", "Llega a 150 m en una partida de Escape": "Reach 150 m in one Escape run", "Personaje desbloqueado: Nyx": "Hero unlocked: Nyx", "Desbloqueado": "Unlocked", "(en una partida)": "(in one run)", "Cómo se juega": "How to play", "Sube sin parar": "Keep climbing", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó.": "The tower builds itself upward forever and the camera only goes up. Fall below the screen and it's over.", "Golpea": "Attack", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño.": "Attack with HIT (3-hit combo). Jumping on an enemy also hurts it.", "Modificadores": "Modifiers", "Cada 20 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una.": "Every 20 seconds a new rule joins and the oldest leaves. Each biome brings its own. The skulls tell how hard each one is.", "Sube de nivel": "Level up", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador.": "Enemies give experience. On level up you pick a bonus or remove a modifier.", "Salas secretas": "Secret rooms", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos.": "Hit cracked walls twice: inside, time stops and there are treasures, shops and pacts.", "Jefes": "Bosses", "En las arenas la cámara se detiene. Vence al jefe para seguir subiendo.": "In arenas the camera stops. Beat the boss to keep climbing.", "Hazañas": "Feats", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice.": "Complete challenges to unlock new modifiers and bonuses. See them in the Codex.", "IDIOMA": "LANGUAGE", "CÓDICE": "CODEX", "MODIFICADORES": "MODIFIERS", "MEJORAS": "BONUSES", "COMBINACIONES": "COMBOS", "Reglas malas que entran durante la subida": "Bad rules that join during the climb", "Modificadores buenos: los eliges al subir de nivel": "Good modifiers: you pick them when you level up", "Dos modificadores juntos dan un efecto nuevo": "Two modifiers together make a new effect", "TOCA PARA EMPEZAR": "TAP TO START", "PULSA PARA EMPEZAR": "PRESS TO START", "NUEVO RÉCORD": "NEW RECORD", "MODIFICADOR": "MODIFIER", "REGLA": "RULE", "MEJORA": "BONUS", "PERSONAJE": "HERO", "ASPECTO": "SKIN", "DESBLOQUEADO": "UNLOCKED", "y": "and", "más en el Códice": "more in the Codex", "AJUSTES": "SETTINGS", "Ajustes": "Settings", "APAGADO": "OFF", "CONTROLES": "CONTROLS", "Volver": "Back", "Sí": "On",
   "PISO": "FLOOR", "ORO": "GOLD", "REGLAS": "RULES", "LABORATORIO": "LAB", "Atacar": "Attack", "COMBO": "COMBO", "Combo roto": "Combo broken", "Saltar": "Jump", "Subir": "Climb", "Empujar": "Shove", "Parpadeo": "Blink",
   "Gira el teléfono para jugar en horizontal.": "Turn your phone sideways to play in landscape.",
   "Mover A/D · Saltar Espacio (también contra la pared) · Apuntar W/S o haz clic donde quieras golpear · Atacar J · Escaleras W/S · Honda: arrastra · Reiniciar R": "Move A/D · Jump Space (also off walls) · Aim W/S or click where you want to hit · Attack J · Ladders W/S · Slingshot: drag · Restart R",
@@ -5038,7 +5038,7 @@ const EN_PATTERNS = [
 Object.assign(EN_TEXT, { "oro": "gold", "Aspecto desbloqueado:": "Skin unlocked:", "Llega a 300 m en Escape": "Reach 300 m in Escape", "Encuentra 3 salas ocultas": "Find 3 hidden rooms", "Vence a un jefe": "Defeat a boss", "Vence a 3 jefes": "Defeat 3 bosses", "Junta 500 monedas en total": "Collect 500 coins in total", "Haz un combo x20": "Land a x20 combo", "Llega al Reino de las máquinas": "Reach the Machine Kingdom", "Compra 5 veces al mercader": "Buy from the merchant 5 times", "Llega a nivel 10 en Escape": "Reach level 10 in Escape", "Llega a 600 m en Escape": "Reach 600 m in Escape", "Cuervo": "Raven", "Explorador": "Explorer", "Escudero": "Squire", "Caballero": "Knight", "Minero": "Miner", "Bruto con cuernos": "Horned brute", "Gólem": "Golem", "Enano herrero": "Dwarf smith", "Bruja": "Witch", "Sombra": "Shadow" });
 Object.assign(EN_TEXT, { "⚙ AJUSTES": "⚙ SETTINGS", "CONTROLES": "CONTROLS", "Franja": "Strip", "Invisible": "Invisible", "Combinado": "Combined", "Mitad izquierda: stick que aparece donde tocas. A la derecha, los botones GOLPE y SALTO.": "Left half: a stick appears where you touch. On the right, the HIT and JUMP buttons.", "Clásico": "Classic", "Mandos en una franja debajo del juego: no tapan nada y el borde dorado es la línea de caída.": "Controls on a strip below the game: they cover nothing, and the gold edge is the fall line.", "Pantalla limpia. Mitad izquierda: stick que aparece donde tocas. Mitad derecha: toca para golpear, desliza hacia arriba para saltar.": "Clean screen. Left half: a stick appears where you touch. Right half: tap to strike, swipe up to jump.", "Cruceta y botones semitransparentes encima del juego.": "See-through d-pad and buttons over the game." });
 Object.assign(EN_TEXT, { "Saltar escena": "Skip", "Ecos de Velo": "Velo's Echoes", "Eco de Velo": "Velo's Echo", "Finales": "Endings", "FINAL": "ENDING" });
-Object.assign(EN_TEXT, { "Mira cuáles te faltan en el Códice.": "See which ones you're missing in the Codex.", "Logros": "Achievements", "Ranking": "Leaderboard", "ELIGE TU PRIMER MODIFICADOR": "PICK YOUR FIRST MODIFIER", "Empiezas la subida con él. Cada 15 s llega otro y el más antiguo se va.": "You start the climb with it. Every 15 s another one arrives and the oldest leaves." });
+Object.assign(EN_TEXT, { "Mira cuáles te faltan en el Códice.": "See which ones you're missing in the Codex.", "Logros": "Achievements", "Ranking": "Leaderboard", "ELIGE TU PRIMER MODIFICADOR": "PICK YOUR FIRST MODIFIER", "Empiezas la subida con él. Cada 15 s llega otro y el más antiguo se va.": "You start the climb with it. Every 20 s another one arrives and the oldest leaves." });
 EN_PATTERNS.unshift([/^Haz hazañas para añadir reglas a tu mazo · (\d+)\/(\d+)$/, "Pull off feats to add rules to your deck · $1/$2"],
   [/^REGLAS (\d+)\/(\d+) · HAZ HAZAÑAS PARA AÑADIRLAS A TU MAZO$/, "RULES $1/$2 · PULL OFF FEATS TO ADD THEM TO YOUR DECK"], [/^MEJORAS (\d+)\/(\d+)$/, "UPGRADES $1/$2"]);
 Object.assign(EN_TEXT, {"Torre sin fin: la cámara solo sube": "Endless tower: the camera only goes up", "MEJOR": "BEST", "HISTORIA": "STORY", "50 pisos · 5 biomas · jefes cada 5": "50 floors · 5 biomes · a boss every 5", "INFINITO": "ENDLESS", "Sin final: compite por llegar más alto": "No end: compete to climb highest", "DESAFÍO DIARIO": "DAILY CHALLENGE", "La misma torre para todos hoy": "The same tower for everyone today", "HOY": "TODAY", "JEFE · TIEMPO DETENIDO": "BOSS · TIME STOPPED", "¡Jefe! El tiempo se detiene hasta que lo venzas": "Boss! Time stops until you beat it", "El techo se abre: ¡sigue subiendo!": "The ceiling opens: keep climbing!", "Dificultad:": "Difficulty:", "Nuevo modificador:": "New modifier:", "Nuevo bioma:": "New biome:", "Se acaba:": "Ends:", "Paseo": "Stroll", "Calentando": "Warming up", "Cuesta arriba": "Uphill", "Peligroso": "Dangerous", "Despiadado": "Merciless", "Pesadilla": "Nightmare", "La torre despierta": "The tower awakens", "NO MIRES ABAJO": "DON'T LOOK DOWN", "PASEO": "STROLL", "CALENTANDO": "WARMING UP", "CUESTA ARRIBA": "UPHILL", "PELIGROSO": "DANGEROUS", "BRUTAL": "BRUTAL", "DESPIADADO": "MERCILESS", "PESADILLA": "NIGHTMARE", "LA TORRE DESPIERTA": "THE TOWER AWAKENS", "ESCALAR": "CLIMB", "+5 de oro": "+5 gold", "Sube sin parar. Si caes por debajo de la pantalla, se acabó.": "Keep climbing. Fall below the screen and it's over.", "Cada piso impone una regla nueva. ¿Hasta dónde llegas?": "Every floor adds a new rule. How high can you go?", "Modo vertical": "Portrait mode", "CÓMO SE JUEGA": "HOW TO PLAY", "La torre se genera hacia arriba sin fin y la cámara solo sube. Cada pocos minutos cambia el bioma, y cada 30 segundos entra un modificador nuevo que dura 60 (más cuanto más difícil). Cuidado con los fantasmas que atraviesan paredes y los erizos que rodean las plataformas.": "The tower builds itself upward forever and the camera only goes up. Every few minutes the biome changes, and every 30 seconds a new modifier kicks in for 60 (longer as it gets harder). Watch out for ghosts that drift through walls and urchins that crawl around platforms.", "Cruza cada piso hasta la columna de luz. Antes de cada piso eliges la siguiente regla; empiezas con 1 activa y llegan a 5. Cada 5 pisos espera un jefe.": "Cross each floor to the column of light. Before each floor you pick the next rule; you start with 1 active and it grows to 5. Every 5 floors a boss awaits.", "Rompe una regla 3 pisos seguidos para desbloquear otra en tu mazo.": "Survive a rule for 3 floors to unlock another in your deck.", "Reglas en tu mazo": "Rules in your deck", "CAÍSTE": "YOU FELL", "CAÍSTE EN EL PISO": "YOU FELL ON FLOOR", "Altura": "Height", "Tiempo": "Time", "Oro": "Gold", "Piso": "Floor", "Puesto": "Rank", "REGLAS": "RULES", "RELIQUIAS": "RELICS", "Otra vez": "Again", "Menú": "Menu", "Escape": "Escape", "Un piso más": "One more floor"});
@@ -9702,7 +9702,7 @@ function showHow() {
   ov.hidden = false; ov.classList.remove("dead");
   const rows = [["▲", "Sube sin parar", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó."],
     ["⚔", "Golpea", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño."],
-    ["◐", "Modificadores", "Cada 15 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una."],
+    ["◐", "Modificadores", "Cada 20 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una."],
     ["★", "Sube de nivel", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador."],
     ["▣", "Salas secretas", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos."],
     ["📖", "Hazañas", "Cumple retos para desbloquear modificadores y mejoras nuevas. Míralos en el Códice."]];
@@ -10781,6 +10781,87 @@ if (ESCAPE) { let sw = null; const tip = document.createElement("div"); tip.clas
   addEventListener("touchend", () => { if (sw && sw.ok) { omfSfx("click"); navBack(); } end(); }, { passive: true, capture: true });
   addEventListener("touchcancel", end, { passive: true, capture: true }); }
 
+// ===== v167 (user 2026-11-08 "usa el logo y el nombre del estudio como en la web para el splash"): studio card before the
+// boot tower, same IS badge sprite and "IRON SPRITE / GAMES" lockup as ironspritegames.com, in pixel style. ~1.6 s, a tap skips it.
+var STUDIO_LOGO = ["..kkkkkkkkkkkk..", ".kqqqqqqqqqqqqk.", "kqqqqqqqqqqqqqqk", "kqllllqqqggggqqk", "kqqllkkqgggggkqk", "kqqllkqqggkkkkqk", "kqqllkqqggkqqqqk", "kqqllkqqggggqqqk",
+  "kqqsskqqqooooqqk", "kqqsskqqqqqookqk", "kqqsskqqqqqookqk", "kqqsskqqoooookqk", "kqssssqqooookkqk", "kqqkkkkqqkkkkqqk", ".kqqqqqqqqqqqqk.", "..kkkkkkkkkkkk.."];
+var STUDIO_PAL = { k: "#070a14", q: "#18213a", l: "#cdd5ea", s: "#8d97b2", g: "#f6c544", o: "#c98a1f" };
+// the wordmark: the website's blocky letters (IRON in steel, SPRITE in gold) dropping into place, GAMES under it
+var STUDIO_FONT = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"], R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"], N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"], P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"], E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"], " ": ["000", "000", "000", "000", "000", "000", "000"] };
+// v167 (user 2026-11-08): studio splash = the Iron Sprite kit splash (kit-iron-sprite/splash/iron-sprite-splash.js), copied verbatim, id "studio".
+/* Iron Sprite Games: splash de estudio listo para cualquier juego HTML/JS (web, Capacitor iOS/Android, Electron PC).
+   Sin dependencias, sin fuentes externas, todo pixel art dibujado en canvas con escalado entero.
+   Uso:
+     (script tag loading iron-sprite-splash.js)
+     IronSpriteSplash.show({ onDone: () => arrancarJuego() });
+   Opciones: duracion (ms, 2300), fondo ('#0d1322'), zIndex (9999), maxAncho (520 px CSS).
+   Se salta con toque, clic, cualquier tecla o cualquier botón de mando. Respeta "reducir movimiento". */
+(function (root) {
+  var LOGO = ["..kkkkkkkkkkkk..", ".kqqqqqqqqqqqqk.", "kqqqqqqqqqqqqqqk", "kqllllqqqggggqqk", "kqqllkkqgggggkqk", "kqqllkqqggkkkkqk", "kqqllkqqggkqqqqk", "kqqllkqqggggqqqk", "kqqsskqqqooooqqk", "kqqsskqqqqqookqk", "kqqsskqqqqqookqk", "kqqsskqqoooookqk", "kqssssqqooookkqk", "kqqkkkkqqkkkkqqk", ".kqqqqqqqqqqqqk.", "..kkkkkkkkkkkk.."];
+  var LPAL = { k: "#070a14", q: "#18213a", l: "#cdd5ea", s: "#8d97b2", g: "#f6c544", o: "#c98a1f" };
+  var F = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"], R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+    O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"], N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+    S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"], P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+    T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"], E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+    G: ["01111", "10000", "10000", "10011", "10001", "10001", "01111"], A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+    M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"], " ": ["000", "000", "000", "000", "000", "000", "000"] };
+  var TONE = { steel: ["#8d97b2", "#cdd5ea", "#2f3c63"], gold: ["#f6c544", "#fff2a8", "#b8691f"] };
+
+  function show(opt) {
+    opt = opt || {};
+    var onDone = opt.onDone || function () {}, DUR = opt.duracion || 2300, BG = opt.fondo || "#0d1322";
+    if (document.getElementById("studio")) { onDone(); return; }
+    var RM = root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // art layout in art pixels: badge 16x16 at x2, gap, wordmark (3 px blocks), gap, GAMES (2 px blocks)
+    var B = 3, cells = [], cx = 0;
+    "IRON SPRITE".split("").forEach(function (ch, i) { var g = F[ch];
+      g.forEach(function (row, y) { row.split("").forEach(function (v, x) { if (v === "1") cells.push({ x: cx + x, y: y, t: i > 4 ? "gold" : "steel" }); }); });
+      cx += g[0].length + 1; });
+    // layout (art pixels): badge 16x16 at x3 on the left (as tall as name + GAMES), IRON SPRITE to its right, GAMES under the name
+    var TW = cx * B - B + 2, BADGE = 48, GAPX = 8, TH = 7 * B + 2, GAP2 = 5, GH = 14, BODY = Math.max(BADGE, TH + GAP2 + GH), DROP = 24;
+    var WW = BADGE + GAPX + TW, H = BODY, TX = BADGE + GAPX, TY = DROP + ((BODY - (TH + GAP2 + GH)) / 2 | 0);
+    var el = document.createElement("div"); el.id = "studio"; el.setAttribute("role", "img"); el.setAttribute("aria-label", "Iron Sprite Games");
+    el.style.cssText = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;touch-action:none;z-index:" + (opt.zIndex || 9999) + ";background:" + BG;
+    var cv = document.createElement("canvas"); cv.width = WW; cv.height = H + DROP;
+    var dpr = Math.max(1, Math.round(root.devicePixelRatio || 1)), maxW = Math.min(root.innerWidth, opt.maxAncho || 520) - 40;
+    var k = Math.max(1, Math.min(4 * dpr, Math.floor(maxW * dpr / WW))) / dpr; // whole device pixels per art pixel, never blurry
+    cv.style.cssText = "image-rendering:pixelated;image-rendering:crisp-edges;width:" + WW * k + "px;height:" + (H + DROP) * k + "px";
+    el.appendChild(cv); document.body.appendChild(el);
+    var g = cv.getContext("2d"), T0 = performance.now(), raf = 0, done = false;
+    function R(c, x, y, w, h) { g.fillStyle = c; g.fillRect(x, y, w, h); }
+    function draw(now) {
+      var t = RM ? 1e9 : now - T0, all = true; g.clearRect(0, 0, cv.width, cv.height);
+      // badge pops in (3 steps)
+      var bs = t < 60 ? 1 : t < 120 ? 2 : 3, bx = (BADGE - 16 * bs) / 2 | 0, by = DROP + ((BODY - 16 * bs) / 2 | 0);
+      LOGO.forEach(function (row, y) { row.split("").forEach(function (c, x) { if (LPAL[c]) R(LPAL[c], bx + x * bs, by + y * bs, bs, bs); }); });
+      var top = TY;
+      cells.forEach(function (c) { var d = c.x * 18 + (6 - c.y) * 10, p = Math.min(1, Math.max(0, (t - d) / 260)); if (p < 1) all = false; if (p <= 0) return;
+        var x = TX + c.x * B, y = top + c.y * B + Math.round((1 - p) * (1 - p) * -DROP), T = TONE[c.t];
+        R("#070a14", x + 1, y + 1, B, B + 1); R(T[0], x, y, B, B); R(T[1], x, y, B - 1, 1); R(T[2], x + B - 1, y + 1, 1, B - 1); });
+      // GAMES: letter by letter from 1.25 s, 110 ms apart; each letter wipes in top to bottom, one pixel row per step
+      var gy = top + TH + GAP2, L = "GAMES".split(""), lw = 10, gp = Math.max(2, (TW - 2 - lw * 5) / 4 | 0), gx = TX;
+      L.forEach(function (ch, i) { var rows = Math.min(7, Math.max(0, Math.floor((t - 1250 - i * 110) / 30) + 1)); if (rows < 7) all = false;
+        F[ch].forEach(function (row, y) { if (y >= rows) return; row.split("").forEach(function (v, x) { if (v === "1") R("#8d97b2", gx + i * (lw + gp) + x * 2, gy + y * 2, 2, 2); }); }); });
+      if (!all && !done) raf = requestAnimationFrame(draw);
+    }
+    raf = requestAnimationFrame(draw);
+    function finish() { if (done) return; done = true; cancelAnimationFrame(raf); clearTimeout(tm); clearInterval(pad);
+      removeEventListener("keydown", finish); el.style.transition = "opacity .3s steps(3)"; el.style.opacity = "0";
+      setTimeout(function () { el.remove(); }, 320); onDone(); }
+    var tm = setTimeout(finish, RM ? 1400 : DUR);
+    el.addEventListener("pointerdown", function (e) { e.preventDefault(); finish(); });
+    addEventListener("keydown", finish);
+    // any pad button skips (Xbox, PlayStation, Switch, Steam Deck)
+    var pad = setInterval(function () { var ps = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (var i = 0; i < ps.length; i++) { var p = ps[i]; if (p && p.buttons.some(function (b) { return b.pressed; })) { finish(); return; } } }, 60);
+  }
+  root.IronSpriteSplash = { show: show };
+})(window);
+function showStudio(next) { if (!ESCAPE || document.getElementById("studio")) { next(); return; } IronSpriteSplash.show({ onDone: next, zIndex: 140 });
+  const st = document.createElement("style"); st.textContent = "#studio canvas{background:none !important;border:0 !important;box-shadow:none !important;max-width:none !important}"; document.getElementById("studio").appendChild(st); } // game-wide canvas styles must not paint the splash
 // ===== v68 (user): boot splash. A pixel tower builds itself brick by brick, a tiny climber runs up it, the logo drops in
 // and a pixel bar fills; then the TAP TO START screen. About 2.2 s, a tap skips it. Same in web, APK, IPA and PC.
 function showBoot(next) {
@@ -10836,10 +10917,10 @@ const escLandscape = () => ESCAPE && !!escLandMQ && escLandMQ.matches;
 // the title was drawn before this add-on loaded: draw it again so the picker shows the heroes
 if (S && S.mode === "title") showTitle();
 { let re = null; try { re = sessionStorage.getItem("omf-reopen"); sessionStorage.removeItem("omf-reopen"); } catch (_) {}
-  if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
+  if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v166";
+var OMF_VER = "Escape v167";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -13101,7 +13182,7 @@ function duRx(m) {
     return; }
   if (m.t === "msg") duState(m.d);
 }
-var DUEL_GV = 5; // v164b: modifiers last 20 s // v164: every modifier + shuffled biome order in the duel, so older duel towers differ // duel rules version: bump whenever the tower or the messages change
+var DUEL_GV = 6; // v167: modifiers every 20 s // v164b: modifiers last 20 s // v164: every modifier + shuffled biome order in the duel, so older duel towers differ // duel rules version: bump whenever the tower or the messages change
 function duHello() { duTx({ t: "msg", d: { v: 1, gv: DUEL_GV, role: DU.role, name: duName(), pid: duPid(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff } }); }
 function duMine() { const p = S.player, dead = S.mode === "dead" || DU.quit;
   return { v: 1, gv: DUEL_GV, ts: Math.round(duNow() * 1000) / 1000, role: DU.role, name: duName(), pid: duPid(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, w: Math.round(p.w), f: p.face < 0 ? -1 : 1,
@@ -14711,7 +14792,10 @@ function frDecode(txt) { const s = frClean(txt); if (s.length !== 8) return null
   const mods = []; for (const k of [m1, m2, m3]) { if (k === 127) continue; if (k >= FR_IDS.length || !RULE[FR_IDS[k]]) return null; if (!mods.includes(FR_IDS[k])) mods.push(FR_IDS[k]); }
   const d = { diff, mods, seed }; d.code = frEncode(d); return d; }
 // modifiers you can pick: the ones Escape uses that you've already met
-function frPool(diff) { return [...new Set(ESC_MOD_POOL.concat(ESC_START_POOL))].filter(id => RULE[id] && escModOk(id) && !(diff === 0 && id === "mirror")); }
+// one shared padlock image (47 small canvases made the page slow to open, rule 4)
+function frLockURL() { if (frLockURL.u) return frLockURL.u; const c = document.createElement("canvas"); c.width = c.height = 9; const g = c.getContext("2d"), L = ESC_PI && ESC_PI.lock; g.fillStyle = "#9a94b8"; if (L) for (let y = 0; y < 9; y++) for (let x = 0; x < 9; x++) if (L[y][x] === "#") g.fillRect(x, y, 1, 1); return (frLockURL.u = c.toDataURL()); }
+// v167 (user 2026-11-08 "en create a tower deberían estar todos los modificadores aun con los bloqueados"): every climb modifier, locked ones too
+function frPool(diff) { return FR_IDS.filter(id => RULE[id] && (ESC_ROT_POOL.includes(id) || ESC_START_POOL.includes(id)) && !(diff === 0 && id === "mirror")); }
 function frBest(code) { const L = (META.friend || []); const e = L.find(x => x.c === code); return e ? e.b : 0; }
 function frSave(code, h) { if (S && S.test) return; const L = (META.friend = Array.isArray(META.friend) ? META.friend : []); let e = L.find(x => x.c === code);
   if (!e) { e = { c: code, b: 0 }; L.push(e); } e.b = Math.max(e.b, h | 0); e.at = Date.now();
@@ -14780,8 +14864,8 @@ function frCreate(st) {
     <div class="mlabel">${Lx("DIFICULTAD", "DIFFICULTY")}</div>
     ${difChips(["e", "n", "h"][st.diff], "fd")}
     <div class="mlabel">${Lx("MODIFICADORES", "MODIFIERS")} <small>${st.mods.length}/3</small></div>
-    <div class="frgrid">${pool.map(id => `<button data-m="${id}" class="${st.mods.includes(id) ? "on" : ""}"><span class="ic">${RULE[id].icon}</span><span class="nm">${T(RULE[id].name)}</span></button>`).join("")}</div>
-    <p class="rsub">${Lx("Solo salen los que ya has visto. Duran toda la subida.", "Only the ones you've already met. They last the whole climb.")}</p>
+    <div class="frgrid">${pool.map(id => `<button data-m="${id}" class="${st.mods.includes(id) ? "on" : ""}${escModOk(id) ? "" : " frlk"}"><span class="ic">${RULE[id].icon}</span><span class="nm">${T(RULE[id].name)}</span>${escModOk(id) ? "" : `<i class="frlki"><img src="${frLockURL()}" alt="" width="9" height="9"></i>`}</button>`).join("")}</div>
+    <p class="rsub">${Lx("Están todos, también los que aún no has desbloqueado (con candado). Duran toda la subida.", "All of them, including the ones you haven't unlocked yet (padlock). They last the whole climb.")}</p>
     <div class="frcode"><span class="lbl">${Lx("CÓDIGO", "CODE")}</span><b id="frCode">${code}</b><button id="frDice" aria-label="${Lx("Otra torre", "Another tower")}">${pxi("q", "#f2c14e", 2)}<span>${Lx("OTRA", "NEW")}</span></button></div>
     <textarea id="frTa" class="frta" readonly aria-hidden="true"></textarea>
     <p class="frnote" id="frNote"></p>
@@ -14883,6 +14967,8 @@ function frStart(d) {
 .frrecent{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.frrecent button{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#14102a;border:2px solid #3e3960;color:#c9c3e6}.frrecent b{font:700 12px Silkscreen,monospace;color:#f2c14e;letter-spacing:1px}.frrecent span{font-size:11px}
 .frdead{display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px auto;padding:8px 10px;background:#0b0912;box-shadow:inset 0 0 0 2px #3e3960;max-width:360px}.frdead .best{font-size:12px;color:#c9c3e6}.frdead .best b{color:#f2c14e}.frdead .go{margin-top:4px;padding:6px 14px}`;
   document.head.appendChild(st); })();
+
+(() => { const st = document.createElement("style"); st.textContent = `.frgrid button{position:relative}.frgrid button .frlki{position:absolute;top:2px;right:2px;line-height:0;font-style:normal}.frgrid button .frlki img{width:9px;height:9px;image-rendering:pixelated}`; document.head.appendChild(st); })();
 
 // ===================================================================
 // TALLER DE TORRES (tower workshop) · add-on. Spec /mnt/project-files/editor-torres/editor-torres-spec.md
@@ -16982,7 +17068,7 @@ function colBuy(s, btn) {
 .overlay .shoppg.colpg .sdet canvas.cpv{width:96px !important;height:84px !important;image-rendering:pixelated;flex:none}
 .overlay .shoppg.colpg .sdet small{font-size:9px}
 #ov > .pg .rowbig.colrowbtns #backBtn,#ov > .pg .rowbig.colrowbtns #colRest{width:auto !important;flex:1 1 0 !important;min-width:0 !important}
-.overlay .shoppg .rowbig.colrowbtns .go{flex:1 1 0;min-width:0;font-size:9px;padding-left:4px;padding-right:4px;white-space:nowrap}
+.overlay .shoppg .rowbig.colrowbtns .go{flex:1 1 0;min-width:0;font-size:9px;letter-spacing:0 !important;padding-left:4px;padding-right:4px;white-space:nowrap}
 .wardrobe .wtile.colk{box-shadow:inset 0 0 0 2px #c98a2a}
 .wardrobe .wtile.colk.sel,.wardrobe .wtile.colk.peek{box-shadow:inset 0 0 0 2px #f2c14e}
 .wardrobe .wtile .wcolb{position:absolute;top:2px;right:2px;font-style:normal;line-height:0}`; document.head.appendChild(st); })();
