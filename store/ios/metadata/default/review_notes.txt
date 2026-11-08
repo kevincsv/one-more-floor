@@ -1,5 +1,5 @@
 APP OVERVIEW
-One More Floor Escape is an 8-bit platformer (single-player, plus an optional online duel). You climb an endless tower while new rules (modifiers) switch on every 15 seconds. Audience: casual and arcade players, rated 9+ (mild cartoon fantasy violence). It works offline, except the optional DUEL mode.
+One More Floor Escape is an 8-bit platformer (single-player, plus an optional online duel). You climb an endless tower while new rules (modifiers) switch on every 20 seconds. Audience: casual and arcade players, rated 9+ (mild cartoon fantasy violence). It works offline, except the optional DUEL mode.
 
 SCREEN RECORDING
 A screen recording made on a physical iPhone is attached in App Review Information. It shows launch, the main modes, the Full Escape purchase and restore, Game Center and iCloud.
