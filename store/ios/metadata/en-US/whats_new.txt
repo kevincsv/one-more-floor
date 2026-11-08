@@ -1,4 +1,6 @@
-• Tap past days in the daily streak to see your heights, and replay old dailies.
-• Daily challenges now change every day.
-• Smoother menus, death screen and codex; shop skins listed in the codex.
-• Ice is easier to control and zones no longer force a modifier.
+• DUEL: race a friend up the same tower with a room code. Every 25 m you send them a curse. Free for everyone.
+• DESCENT: a new mode where the tower is upside down. Unlock it in the story or with Full Escape.
+• FRIEND'S TOWER: share an 8-letter code and your friends play the exact same climb.
+• Paid skin collections: four packs of 4 looks, one per hero, with animated effects. Looks only. Full Escape owners from launch get them free.
+• Game Center achievements and leaderboards are now live.
+• Controller support, new pixel icons and many fixes.

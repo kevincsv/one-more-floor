@@ -1,5 +1,5 @@
 APP OVERVIEW
-One More Floor Escape is a single-player 8-bit platformer. You climb an endless tower while new rules (modifiers) switch on every 15 seconds. Audience: casual and arcade players, rated 9+ (mild cartoon fantasy violence). It works fully offline.
+One More Floor Escape is a single-player 8-bit platformer. You climb an endless tower while new rules (modifiers) switch on every 15 seconds. Audience: casual and arcade players, rated 9+ (mild cartoon fantasy violence). It works offline, except the optional DUEL mode.
 
 SCREEN RECORDING
 A screen recording made on a physical iPhone is attached in App Review Information. It shows launch, the main modes, the Full Escape purchase and restore, Game Center and iCloud.
@@ -13,8 +13,10 @@ HOW TO REACH EACH FEATURE
 3. ESCAPE: the main endless climb, free.
 4. HISTORIA / STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
 5. HORDA / HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
-6. DUELO / DUEL: shown as COMING SOON in this version; it is not playable yet.
-7. SHOP: a cosmetic skin shop that uses in-game coins only, with no real money.
+6. DUEL (free): online race against one friend. Tap DUEL, then CREATE ROOM to get a 4-letter code; on a second device tap DUEL > JOIN and type the code. Both climb the same tower; positions are relayed through a small WebSocket relay that stores nothing (no account, no personal data).
+6b. DESCENT: the tower upside down; it unlocks by beating the first two story bosses, or with Full Escape.
+6c. FRIEND'S TOWER: an 8-letter code rebuilds the same climb on any device, offline.
+7. SHOP: tabs SKINS and HEROES use in-game coins only. The third tab COLLECTIONS sells 4 cosmetic packs (non-consumable IAPs, see below).
 8. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.
 Controls: an on-screen D-pad plus HIT and JUMP buttons. Other layouts are in Settings.
 
@@ -24,10 +26,15 @@ IN-APP PURCHASE (non-consumable, com.onemorefloor.escape.full, "Full Escape")
 - To restore: SETTINGS > RESTORE PURCHASE.
 - It can be tested with a Sandbox account.
 
+IN-APP PURCHASES: SKIN COLLECTIONS (non-consumable, cosmetic only)
+- com.onemorefloor.escape.col_cuerda, col_estrellas, col_brasa, col_cristal (4 skins each, one per hero) and col_todas (all 16).
+- To buy: SHOP > COLLECTIONS tab, pick a pack, tap BUY. RESTORE PURCHASES is on the same tab.
+- They only change how the heroes look. Players who bought Full Escape before the collections launched get them free (checked on device from the original purchase date).
+
 APPLE SERVICES
 - Game Center: optional, for achievements and leaderboards. If you are not signed in, the game still plays normally.
 - iCloud (key-value storage): progress is backed up and restored automatically. SETTINGS shows the iCloud status and offers RESTORE FROM ICLOUD when a copy exists.
-- No third-party SDKs, analytics, servers or external services.
+- No third-party SDKs or analytics. The only network use is the optional DUEL relay, which forwards positions between the two players and stores nothing.
 
 REGIONS
 The content is the same in every region. The app is in English and Spanish and follows the device language.

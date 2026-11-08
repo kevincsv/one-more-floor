@@ -381,6 +381,39 @@ def main():
     else:
         print(f"WARN no processed build with version {o.version} yet: run TestFlight (Escape) with version {o.version} first")
 
+    # Game Center: every achievement and leaderboard goes live with this version (a release waits for the approval)
+    try:
+        gcd = a.call("GET", f"/v1/apps/{aid}/gameCenterDetail", ok=(200, 404)).get("data")
+        if gcd:
+            try:
+                if not a.call("GET", f"/v1/appStoreVersions/{vid}/gameCenterAppVersion", ok=(200, 404)).get("data"):
+                    a.call("POST", "/v1/gameCenterAppVersions", {"data": {"type": "gameCenterAppVersions",
+                        "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": vid}}}}})
+                    print("Game Center enabled on version", o.version)
+            except RuntimeError as e:
+                print("WARN Game Center on version:", str(e)[:300])
+            for kind, rel, rtype, field in (("gameCenterAchievements", "achievementReleases", "gameCenterAchievementReleases", "gameCenterAchievement"),
+                                            ("gameCenterLeaderboards", "leaderboardReleases", "gameCenterLeaderboardReleases", "gameCenterLeaderboard")):
+                items = a.all(f"/v1/gameCenterDetails/{gcd['id']}/{kind}", limit=200)
+                done = {r["relationships"][field]["data"]["id"] for r in a.all(f"/v1/gameCenterDetails/{gcd['id']}/{rel}", limit=200, include=field)
+                        if r.get("relationships", {}).get(field, {}).get("data")}
+                n, bad = 0, []
+                for it in items:
+                    if it["id"] in done or it["attributes"].get("archived"):
+                        continue
+                    try:
+                        a.call("POST", f"/v1/{rtype}", {"data": {"type": rtype, "relationships": {
+                            "gameCenterDetail": {"data": {"type": "gameCenterDetails", "id": gcd["id"]}},
+                            field: {"data": {"type": kind, "id": it["id"]}}}}})
+                        n += 1
+                    except RuntimeError as e:
+                        bad.append(it["attributes"].get("vendorIdentifier", it["id"]) + ": " + str(e)[:200])
+                print(f"Game Center {kind}: {len(items)} total, {len(done)} already released, {n} added to this version")
+                for b_ in bad:
+                    print("  WARN", b_)
+    except RuntimeError as e:
+        print("WARN Game Center releases:", str(e)[:400])
+
     if o.submit:
         if not builds:
             sys.exit("Not submitting: no build attached")
