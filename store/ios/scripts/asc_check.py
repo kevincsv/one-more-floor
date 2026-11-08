@@ -98,3 +98,19 @@ def territories():
             print("TERRITORY", t, "available:", at.get("available"), "statuses:", st, "release:", at.get("releaseDate"), "preOrder:", at.get("preOrderEnabled"))
     print("TERRITORIES total:", len(rows), "listed above:", len(bad))
 safe("territories", territories)
+
+def gc_live():
+    gcd = a.call("GET", f"/v1/apps/{aid}/gameCenterDetail", ok=(200, 404)).get("data")
+    if not gcd:
+        print("GC: no detail"); return
+    achs = a.all(f"/v1/gameCenterDetails/{gcd['id']}/gameCenterAchievements", limit=200)
+    rel = a.all(f"/v1/gameCenterDetails/{gcd['id']}/achievementReleases", limit=200, include="gameCenterAchievement")
+    live = {r["relationships"]["gameCenterAchievement"]["data"]["id"] for r in rel if r["attributes"].get("live")}
+    pend = {r["relationships"]["gameCenterAchievement"]["data"]["id"] for r in rel if not r["attributes"].get("live")}
+    print("GC achievements:", len(achs), "released live:", len(live), "release pending:", len(pend))
+    print("GC not live:", ", ".join(x["attributes"]["vendorIdentifier"] for x in achs if x["id"] not in live))
+    lbs = a.all(f"/v1/gameCenterDetails/{gcd['id']}/gameCenterLeaderboards", limit=200)
+    lrel = a.all(f"/v1/gameCenterDetails/{gcd['id']}/leaderboardReleases", limit=200, include="gameCenterLeaderboard")
+    llive = {r["relationships"]["gameCenterLeaderboard"]["data"]["id"] for r in lrel if r["attributes"].get("live")}
+    print("GC leaderboards:", len(lbs), "live:", len(llive), "not live:", ", ".join(x["attributes"]["vendorIdentifier"] for x in lbs if x["id"] not in llive))
+safe("gc_live", gc_live)
