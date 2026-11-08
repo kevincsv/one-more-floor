@@ -152,6 +152,13 @@ def main():
                 print("  canceled")
             except RuntimeError as e:
                 print("  not canceled:", str(e)[:300])
+                if sub["attributes"].get("state") == "READY_FOR_REVIEW":  # a draft that was never submitted: take its items out
+                    for it in a.all(f"/v1/reviewSubmissions/{sub['id']}/items", limit=50):
+                        try:
+                            a.call("DELETE", f"/v1/reviewSubmissionItems/{it['id']}")
+                            print("  removed item", it["id"])
+                        except RuntimeError as e2:
+                            print("  item not removed:", it["id"], str(e2)[:300])
         for v in a.all(f"/v1/apps/{aid}/appStoreVersions"):
             print("Version", v["attributes"].get("versionString"), v["attributes"].get("appStoreState"))
         if not subs:
