@@ -34,7 +34,7 @@ for key, es, en, price, shot, den, des in ITEMS:
             iap = found[0]; print(pid, "exists:", iap["attributes"].get("state"))
         else:
             iap = a.call("POST", "/v2/inAppPurchases", {"data": {"type": "inAppPurchases", "attributes": {
-                "name": es, "productId": pid, "inAppPurchaseType": "NON_CONSUMABLE", "familySharable": False,
+                "name": en, "productId": pid, "inAppPurchaseType": "NON_CONSUMABLE", "familySharable": False,
                 "reviewNote": NOTE.format(n=16 if key == "col_todas" else 4)},
                 "relationships": {"app": {"data": {"type": "apps", "id": aid}}}}})["data"]
             print(pid, "created")

@@ -14,7 +14,7 @@ on:
         type: boolean
         default: true
       build:
-        description: "Número de build exacto (vacío = la más nueva válida; cancel = retirar de revisión; iaps = crear las compras de colecciones; gcimg = subir imágenes de logros)"
+        description: "Número de build exacto (vacío = la más nueva válida; cancel = retirar de revisión; iaps = crear las compras de colecciones; gcimg = subir imágenes de logros; refnames = nombres de referencia en inglés)"
         default: ""
       check:
         description: "Solo revisar (no cambia nada)"
@@ -44,6 +44,7 @@ jobs:
         run: |
           if [ "${{ format('{0}', inputs.check) }}" = "true" ]; then python store/ios/scripts/asc_check.py; exit 0; fi
           if [ "${{ inputs.build }}" = "gcimg" ]; then python -c "import sys; sys.path.insert(0, 'store/ios/scripts'); from asc_publish import p8; open('/tmp/k.p8', 'w').write(p8())"; ASC_KEY_PATH=/tmp/k.p8 IMG_DIR=store/ios/gamecenter-imagenes SUBIR=1 python store/ios/scripts/asc_gc_imagenes.py; exit $?; fi
+          if [ "${{ inputs.build }}" = "refnames" ]; then python store/ios/scripts/asc_ref_names.py; exit 0; fi
           if [ "${{ inputs.build }}" = "iaps" ]; then python store/ios/scripts/asc_iap_collections.py; exit 0; fi
           if [ "${{ inputs.build }}" = "cancel" ]; then python store/ios/scripts/asc_publish.py --cancel; exit 0; fi
           python store/ios/scripts/asc_publish.py --version "${{ inputs.version }}" --build "${{ inputs.build }}" \
