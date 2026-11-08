@@ -82,3 +82,19 @@ def gc():
         print("  leaderboard", x["attributes"].get("vendorIdentifier"), "locales:", len(locs))
 safe("game center", gc)
 print("CHECK DONE")
+
+def territories():
+    av = a.call("GET", f"/v1/apps/{aid}/appAvailabilityV2", ok=(200, 404)).get("data")
+    if not av:
+        print("AVAILABILITY: none set"); return
+    print("AVAILABILITY new territories:", av["attributes"].get("availableInNewTerritories"))
+    rows = a.all(f"/v2/appAvailabilities/{av['id']}/territoryAvailabilities", limit=200, include="territory")
+    bad = []
+    for r in rows:
+        at = r["attributes"]; t = r["relationships"]["territory"]["data"]["id"]
+        st = at.get("contentStatuses") or []
+        if t in ("NLD", "GBR", "ESP", "DEU", "FRA", "USA") or not at.get("available") or st != ["AVAILABLE"]:
+            bad.append(t)
+            print("TERRITORY", t, "available:", at.get("available"), "statuses:", st, "release:", at.get("releaseDate"), "preOrder:", at.get("preOrderEnabled"))
+    print("TERRITORIES total:", len(rows), "listed above:", len(bad))
+safe("territories", territories)
