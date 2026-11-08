@@ -160,7 +160,9 @@ def main():
 
     # app info: categories, name, subtitle, privacy URL per locale
     infos = a.all(f"/v1/apps/{aid}/appInfos")
-    info = next((i for i in infos if i["attributes"].get("appStoreState") not in ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO")), infos[0])
+    LIVE = ("READY_FOR_SALE", "REPLACED_WITH_NEW_INFO", "READY_FOR_DISTRIBUTION", "ACCEPTED")
+    print("App infos:", [(i["id"][:8], i["attributes"].get("state"), i["attributes"].get("appStoreState")) for i in infos])
+    info = next((i for i in infos if i["attributes"].get("state") not in LIVE and i["attributes"].get("appStoreState") not in LIVE), infos[0])
     def cats(*subs):
         rel = {"primaryCategory": {"data": {"type": "appCategories", "id": "GAMES"}}}
         for n, c in zip(("primarySubcategoryOne", "primarySubcategoryTwo"), subs):
