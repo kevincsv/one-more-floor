@@ -10839,7 +10839,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showBoot(showSplash); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v165";
+var OMF_VER = "Escape v166";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11252,7 +11252,7 @@ function showFull(why) {
   ov.innerHTML = `<div class="menu setpage fullpg"><h2>${pxi("star", "#f2c14e", 2)} ${Lx("ESCAPE COMPLETO", "FULL ESCAPE")}</h2>
     <p class="rsub">${Lx("Un solo pago. Sin anuncios y sin suscripciones.", "One payment. No ads, no subscriptions.")}</p>
     ${why === "horde" ? `<p class="hordelock">${pxi("lock", "#f2c14e", 2)}<span>${Lx("HORDA se desbloquea al terminar La Huida (modo historia) en Normal o Hardcore. O ahora mismo, con Escape completo.", "HORDE unlocks when you finish The Escape (story mode) on Normal or Hardcore. Or right now, with Full Escape.")}</span></p>` : ""}
-    <ul class="fulllist">${row("swords", "#e0566b", "Modo HORDA (también se gana con la historia)", "HORDE mode (also earned through the story)")}${row("up", "#f2c14e", "Kai y Nyx, con sus armas", "Kai and Nyx, with their weapons")}${row("hanger", "#5fd1c4", "Todos los aspectos del armario", "Every skin in the wardrobe")}${row("check", "#9be07a", "Todo lo que llegue en el futuro", "Everything that comes later")}</ul>
+    <ul class="fulllist">${row("swords", "#e0566b", "Modo HORDA (también se gana con la historia)", "HORDE mode (also earned through the story)")}${row("up", "#f2c14e", "Kai y Nyx, con sus armas", "Kai and Nyx, with their weapons")}${row("hanger", "#5fd1c4", "Todos los aspectos del armario", "Every skin in the wardrobe")}${row("check", "#9be07a", "Todo el contenido jugable que llegue (héroes, modos, objetos)", "All future playable content (heroes, modes, items)")}</ul>
     <p class="rsub">${Lx("Gratis para siempre: Escape, Fácil, Reto diario, Velo y los aspectos que ganas con logros.", "Free forever: Escape, Easy, Daily, Velo and the skins you earn with challenges.")}</p>
     ${got ? `<p class="fullok">${pxi("check", "#9be07a", 2)} ${Lx("¡Ya lo tienes todo!", "You have it all!")}</p>` : `<div class="rowbig"><button class="go" id="buyBtn">${Lx("COMPRAR", "BUY")}${fullPrice ? " · " + fullPrice : ""}</button></div>`}
     <p class="bkmsg" id="fullMsg"></p>
@@ -14674,7 +14674,10 @@ pxEmojiIn = function (root) {
   if (!ESCAPE || !root || root.nodeType !== 1 && root.nodeType !== 11) return;
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
   for (let n = w.nextNode(); n; n = w.nextNode()) { const pn = n.parentNode; if (pn && !/^(SCRIPT|STYLE|TEXTAREA|INPUT|OPTION|TITLE)$/.test(pn.nodeName) && !(pn.dataset && pn.dataset.pxs) && PXS_RE.test(n.nodeValue)) hits.push(n); }
-  for (const n of hits) { const pn = n.parentNode; if (!pn) continue; let col = ""; try { col = getComputedStyle(pn).color; } catch (_) {}
+  // v165b (user: "todos los menús deben ser fluidos"): read every colour first, then change the DOM, so the browser
+  // recalculates styles once instead of once per symbol (this was most of the time spent opening the Codex)
+  const cols = hits.map(n => { const pn = n.parentNode; try { return pn ? getComputedStyle(pn).color : ""; } catch (_) { return ""; } });
+  for (let hi = 0; hi < hits.length; hi++) { const n = hits[hi], pn = n.parentNode; if (!pn) continue; const col = cols[hi];
     const re = new RegExp(PXS_RE.source, "gu"), s = n.nodeValue, frag = document.createDocumentFragment(); let last = 0, m;
     while ((m = re.exec(s))) { if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
       const u = pxSymURL(m[0], col); if (u) { const im = document.createElement("img"); im.className = "pxe"; im.src = u; im.alt = MOD_PUA[m[0]] ? T(MOD_PUA[m[0]].name) : m[0]; frag.appendChild(im); } else { const sp = document.createElement("span"); sp.dataset.pxs = "1"; sp.textContent = m[0]; frag.appendChild(sp); } last = re.lastIndex; }
@@ -14745,6 +14748,13 @@ function frMenu() {
   ov.querySelectorAll(".frrecent button").forEach(b => b.onclick = () => frEnter(b.dataset.c));
   ov.querySelector("#backBtn").onclick = () => { try { omfSfx("click"); } catch (_) {} showTitle(); };
 }
+// v165b (user: "va muy lageado" / "todos los menús deben ser fluidos"): picking a modifier no longer rebuilds the whole page,
+// it only updates that button, the 0/3 counter and the code
+function frSyncMods(st, id) {
+  const b = ov.querySelector(`[data-m="${id}"]`); if (b) { b.classList.toggle("on", st.mods.includes(id)); try { b.focus({ preventScroll: true }); } catch (_) {} }
+  const n = ov.querySelector(".frpage .mlabel small"); if (n) n.textContent = st.mods.length + "/3";
+  const c = ov.querySelector("#frCode"); if (c) c.textContent = frEncode(st);
+}
 function frModPop(id, st) {
   const r = RULE[id]; if (!r) return; try { omfSfx("click"); } catch (_) {}
   const on = st.mods.includes(id), full = !on && st.mods.length >= 3;
@@ -14755,9 +14765,9 @@ function frModPop(id, st) {
   const close = () => { el.remove(); const b = ov.querySelector(`[data-m="${id}"]`); if (b) try { b.focus({ preventScroll: true }); } catch (_) {} };
   el.onclick = e => { if (e.target === el) close(); };
   el.querySelector("#frpX").onclick = () => { try { omfSfx("click"); } catch (_) {} close(); };
-  el.querySelector("#frpOk").onclick = () => { if (full) { omfSfx("hurt"); return; }
+  el.querySelector("#frpOk").onclick = () => { if (full) { omfSfx("hurt"); return; } try { omfSfx("click"); } catch (_) {}
     if (on) st.mods = st.mods.filter(x => x !== id); else st.mods.push(id);
-    el.remove(); const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; };
+    el.remove(); frSyncMods(st, id); };
   document.body.appendChild(el); try { paintPxi(el); } catch (_) {}
 }
 function frCreate(st) {
@@ -14782,8 +14792,8 @@ function frCreate(st) {
   // v164b (user 2026-11-08): tapping a modifier opens a pop-up with what it does, and SELECT / CLOSE
   ov.querySelectorAll("[data-m]").forEach(b => b.onclick = () => frModPop(b.dataset.m, st));
   ov.querySelector("#frDice").onclick = () => { st.seed = (Math.random() * 65536) | 0; const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; };
-  ov.querySelector("#frCopy").onclick = () => frCopy(code, ov.querySelector("#frTa"), ov.querySelector("#frNote"));
-  ov.querySelector("#frPlay").onclick = () => frStart(frDecode(code));
+  ov.querySelector("#frCopy").onclick = () => frCopy(frEncode(st), ov.querySelector("#frTa"), ov.querySelector("#frNote"));
+  ov.querySelector("#frPlay").onclick = () => frStart(frDecode(frEncode(st)));
   ov.querySelector("#backBtn").onclick = () => frMenu();
 }
 function frCopy(code, ta, note) { try { omfSfx("click"); } catch (_) {}
@@ -14851,7 +14861,7 @@ function frStart(d) {
 .frpage{text-align:center;max-width:440px;margin:0 auto}.frpage h2 .pxmode{margin-right:4px;vertical-align:-4px}
 .frpage .rowbig{margin:8px 0}.frpage .rowbig.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .frpage .go.alt,.frdead .go.alt{background:#1b1829;color:#f2c14e;border-color:#f2c14e}
-.frpop .ipc{width:300px;max-width:calc(100vw - 32px);height:300px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center}.frpop .ipc b .skulls{vertical-align:middle}.frpop .frpd{flex:1;overflow-y:auto;margin:0 0 4px}.frpop .frpf{min-height:16px;margin:0 0 6px;font-size:11px;color:#e0566b}.frpop .frpb{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}.frpop .frpb .go{min-width:0;width:100%;height:44px;padding:0 6px}.frpop .frpb .go{background:#f2c14e;color:#1b1829;border:2px solid #f2c14e;font-family:Silkscreen,monospace;box-shadow:inset -2px -2px 0 rgba(0,0,0,.35)}.frpop .frpb .go.alt{background:#1b1829;color:#f2c14e;border-color:#f2c14e}.frpop .frpb .go[disabled]{opacity:.45}
+.frpop{background:rgba(8,6,16,.82)}.frpop .ipc{animation:none !important;transform:translateZ(0);contain:layout paint;width:300px;max-width:calc(100vw - 32px);height:300px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center}.frpop .ipc b .skulls{vertical-align:middle}.frpop .frpd{flex:1;overflow-y:auto;margin:0 0 4px}.frpop .frpf{min-height:16px;margin:0 0 6px;font-size:11px;color:#e0566b}.frpop .frpb{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}.frpop .frpb .go{min-width:0;width:100%;height:44px;padding:0 6px}.frpop .frpb .go{background:#f2c14e;color:#1b1829;border:2px solid #f2c14e;font-family:Silkscreen,monospace;box-shadow:inset -2px -2px 0 rgba(0,0,0,.35)}.frpop .frpb .go.alt{background:#1b1829;color:#f2c14e;border-color:#f2c14e}.frpop .frpb .go[disabled]{opacity:.45}
 .frpage .frdn{font-size:11px;color:#9a94b8;margin:0 0 8px;min-height:28px}
 .frgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
 .frgrid button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;background:#14102a;border:2px solid #3e3960;color:#c9c3e6;box-shadow:inset -2px -2px 0 rgba(0,0,0,.4);min-width:0}
@@ -15828,6 +15838,13 @@ for (const k of ["kai_golem", "nyx_estelar"]) { const f = SKIN_RULES[k]; if (typ
 .etitle.a3 .a3name .eskin{width:228px;flex:0 0 228px;height:34px;box-sizing:border-box;justify-content:center;white-space:nowrap;overflow:hidden;gap:6px;padding-left:6px;padding-right:6px}
 .etitle.a3 .a3name .eskin span{overflow:visible;max-width:none;font-size:10px;letter-spacing:0}
 .etitle.a3 .edesc{height:3.9em;min-height:3.9em;max-height:3.9em;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;box-sizing:border-box}
+/* v165b (user, build 98: NORMAL/HARDCORE still had no left border on iPhone): the skull difficulty chips draw their frame as an
+   inset ring instead of a CSS border, so no "button + button" rule or WebKit clipping can remove a side; content never spills */
+.a3dif > button{border:0 !important;box-shadow:inset 0 0 0 2px #3e3960,inset 0 3px 0 rgba(255,255,255,.06),inset 0 -4px 0 rgba(0,0,0,.35) !important;overflow:hidden;justify-content:center}
+.a3dif > button.on{box-shadow:inset 0 0 0 2px #f2c14e,inset 0 -4px 0 rgba(0,0,0,.25) !important}
+.a3dif > button.hc.on{box-shadow:inset 0 0 0 2px #e0566b,inset 0 -4px 0 rgba(0,0,0,.25) !important}
+.a3dif > button.padfocus{box-shadow:inset 0 0 0 2px #f2c14e !important}
+.etitle.a3 .a3dif > button{gap:3px;padding-left:3px !important;padding-right:3px !important;font-size:9px !important;letter-spacing:0 !important}
 /* home: the hero button never clips its canvas, so winged looks (Moth) show their wings (user, v165) */
 .etitle .pedhero,.ped .pedhero{clip-path:none !important;overflow:visible !important}
 /* shop: the look you are viewing is marked like the wardrobe one (teal ring + tint) */
@@ -16720,6 +16737,255 @@ function escFixTick(dt) {
   if (has("switch")) for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.kind = "sw"; m.h = TS / 2; }
 }
 var mfx_up0 = update; update = function (dt) { const r = mfx_up0.apply(this, arguments); if (S && S.escape && !S.duel) escFixTick(dt); return r; };
+
+// ===================================================================
+// v166 (user 2026-11-08 11:11 "me gusta sube y crea la in app en apple para la siguiente version"): PAID SKIN COLLECTIONS.
+// Spec /mnt/project-files/ideas/skins-pago/HANDOFF-colecciones.md · approved look https://claude.ai/artifact/YcUHV7yyNa6eN4VWaYKYMe
+// 4 collections x 4 heroes = 16 cosmetic skins, real-money non-consumables (never coins, never feats, looks only).
+// Owned: col_todas = all 4. PC/web (PAY_ON false): everything. F-B (user 2026-11-08 11:15): whoever bought Escape completo
+// BEFORE COL_FREE_CUTOFF gets all 4 free, checked on the device from StoreKit's originalPurchaseDate (META.fullDate).
+// Native: EscapeStore owned()/restore()/buy() now also return ids[] (collections owned) and fullDate; products() returns items{}.
+// ===================================================================
+var COL_DATA = {"ROLE":{"velo":{"W":"L1","A":"L1","E":"L1","B":"L1","C":"L2","P":"L3","G":"L3","I":"L4","F":"L4","M":"A1","L":"A1","m":"A2","y":"A2","N":"A3","D":"FD","H":"L4","J":"L4","w":"E","O":"B","Q":"B","K":"B"},"kai":{"A":"L3","C":"L2","D":"L1","E":"L4","F":"L3","H":"A3","h":"A1","j":"A2","S":"F","s":"FD","N":"F","e":"E","R":"A1","r":"A2","J":"A1","L":"A3","M":"L4","Y":"L2","y":"L3","B":"L4","G":"A2","X":"A2","P":"L3","U":"L4","V":"B","K":"B","W":"B","T":"B","O":"A1","Q":"A2","I":"FD"},"nyx":{"A":"L3","B":"L1","C":"L2","V":"L3","v":"L2","u":"L1","E":"A1","I":"L4","N":"L4","F":"L4","D":"FD","H":"L4","l":"E","J":"A1","f":"A2","M":"A3","L":"A3","G":"A2","K":"B","O":"B"}},"PACKS":[{"id":"K1","key":"reloj","name":"TALLER DE CUERDA","fx":"Llave de cuerda que gira en la espalda y engranes que saltan al correr.","bg":"#1e1608","floor":["#3a2a14","#4e3a1c"]},{"id":"K2","key":"vacio","name":"POLVO DE ESTRELLAS","fx":"El cuerpo es un cielo nocturno con estrellas que se mueven y parpadean.","bg":"#080a1e","floor":["#1a1a3a","#26264e"]},{"id":"K3","key":"llama","name":"BRASA ETERNA","fx":"Una llama viva en la cabeza y brasas que suben mientras corres.","bg":"#1e0a08","floor":["#3a1a14","#4e261c"]},{"id":"K4","key":"cristal","name":"CRISTAL VIVO","fx":"Cuerpo de gema con un destello que la recorre y una esquirla en el hombro.","bg":"#081a1e","floor":["#143a3a","#1c4e4e"]}],"SK":[{"c":"S1","p":0,"h":"velo","n":"AUTÓMATA","d":"Velo de latón con bufanda verde azulado y ojos de lámpara.","r":{"L1":"#ffe7a8","L2":"#d9a02c","L3":"#a8701e","L4":"#6a4210","A1":"#3aa8a0","A2":"#8ae8d8","A3":"#1e6a6a","F":"#f2d3ab","FD":"#2a1a10","E":"#8ae8ff","B":"#4a2c10"}},{"c":"S2","p":0,"h":"kai","n":"CABALLERO DE CUERDA","d":"Armadura de acero con remaches y bufanda de cobre.","r":{"L1":"#e8eef6","L2":"#a8b4c8","L3":"#6a7890","L4":"#3a4458","A1":"#c8642a","A2":"#f0a050","A3":"#7a3a14","F":"#f2d3ab","FD":"#c9a07a","E":"#36365f","B":"#3a2a1a"}},{"c":"S3","p":0,"h":"nyx","n":"ORÁCULO DE LATÓN","d":"Túnica de bronce, cara en sombra y ojos turquesa.","r":{"L1":"#f0c870","L2":"#b8862a","L3":"#7a5418","L4":"#3e2a0c","A1":"#2ac8b8","A2":"#a8fff0","A3":"#146a64","F":"#1a2a2a","FD":"#0e1616","E":"#5affe8","B":"#3e2a0c"}},{"c":"S4","p":0,"h":"brisa","n":"RELOJERA","d":"Impermeable plateado y paraguas de latón.","r":{"L1":"#ffffff","L2":"#c8ccd8","L3":"#8a90a4","L4":"#4a5064","A1":"#d9a02c","A2":"#ffe58a","A3":"#8a5a1e","F":"#f2d3ab","FD":"#d9a88a","E":"#2a2245","B":"#2a2a3a"},"umb":{"R":"#8a5a1e","r":"#d9a02c","t":"#ffe58a"}},{"c":"S5","p":1,"h":"velo","n":"COMETA","d":"Capucha de cielo azul con estela cian.","r":{"L1":"#3a5aa8","L2":"#1a2a6a","L3":"#121c4a","L4":"#0a1030","A1":"#5ae8ff","A2":"#c8ffff","A3":"#1a8aa8","F":"#06081a","FD":"#06081a","E":"#c8ffff","B":"#0a1030"},"star":["#ffffff","#9ef0ff"]},{"c":"S6","p":1,"h":"kai","n":"CONSTELACIÓN","d":"Armadura índigo con estrellas doradas.","r":{"L1":"#4a3a9a","L2":"#2a1e6a","L3":"#1c144a","L4":"#0e0a2a","A1":"#e8b33a","A2":"#ffe58a","A3":"#8a5a10","F":"#3a2e8a","FD":"#241a5a","E":"#ffe58a","B":"#0e0a2a"},"star":["#ffe58a","#ffffff"]},{"c":"S7","p":1,"h":"nyx","n":"NEBULOSA","d":"Túnica violeta y rosa, como una nube de gas.","r":{"L1":"#c85ab8","L2":"#6a2a8a","L3":"#3e1a5e","L4":"#1e0e30","A1":"#ff8ad8","A2":"#ffd0f0","A3":"#8a2a7a","F":"#0e0618","FD":"#06030c","E":"#ff8ad8","B":"#1e0e30"},"star":["#ffd0f0","#ffffff"]},{"c":"S8","p":1,"h":"brisa","n":"AURORA","d":"Impermeable verde mar con luces del norte.","r":{"L1":"#3ac8a8","L2":"#145a6a","L3":"#0e3a4a","L4":"#06202a","A1":"#7affb0","A2":"#d0ffe8","A3":"#1e8a6a","F":"#f2d3ab","FD":"#d9a88a","E":"#2a2245","B":"#06202a"},"star":["#d0ffe8","#7affb0"],"umb":{"R":"#145a6a","r":"#3ac8a8","t":"#7affb0"}},{"c":"S9","p":2,"h":"velo","n":"VELA","d":"Velo de cera con la mecha encendida en la punta de la capucha.","r":{"L1":"#fff6e0","L2":"#f0e2c0","L3":"#c8b490","L4":"#8a7458","A1":"#e8501e","A2":"#ffb03a","A3":"#a8261e","F":"#2a1408","FD":"#2a1408","E":"#ffd23a","B":"#5a3a1a"},"fl":["#a8261e","#e8501e","#ffb03a","#ffe27a"]},{"c":"S10","p":2,"h":"kai","n":"VOLCÁN","d":"Roca oscura con grietas de lava y el pelo en llamas.","r":{"L1":"#6a5a5a","L2":"#3a2e30","L3":"#2a2024","L4":"#160e12","A1":"#ff6a1e","A2":"#ffd23a","A3":"#a8261e","F":"#4a3a3a","FD":"#2a2024","E":"#ffd23a","B":"#160e12"},"fl":["#a8261e","#ff6a1e","#ffb03a","#ffe27a"]},{"c":"S11","p":2,"h":"nyx","n":"FÉNIX","d":"Túnica de fuego rojo y oro.","r":{"L1":"#ffd23a","L2":"#e8501e","L3":"#a8261e","L4":"#5a1010","A1":"#ffe27a","A2":"#ffffff","A3":"#c86a10","F":"#2a0a08","FD":"#2a0a08","E":"#ffe27a","B":"#5a1010"},"fl":["#a8261e","#e8501e","#ffd23a","#ffffff"]},{"c":"S12","p":2,"h":"brisa","n":"CHISPA","d":"Fuego azul: impermeable eléctrico y llama fría.","r":{"L1":"#c8f0ff","L2":"#5aa0e8","L3":"#2a5aa8","L4":"#142a5a","A1":"#5ae8ff","A2":"#ffffff","A3":"#1a6ab8","F":"#f2d3ab","FD":"#d9a88a","E":"#142a5a","B":"#142a5a"},"fl":["#1a3a8a","#2a7ae8","#5ae8ff","#ffffff"],"umb":{"R":"#142a5a","r":"#5aa0e8","t":"#5ae8ff"}},{"c":"S13","p":3,"h":"velo","n":"CUARZO ROSA","d":"Gema rosa casi blanca, brilla al moverse.","r":{"L1":"#ffffff","L2":"#ffd0e0","L3":"#e89ab8","L4":"#a85a80","A1":"#c8f0ff","A2":"#ffffff","A3":"#8ab8d8","F":"#5a2a48","FD":"#5a2a48","E":"#ffffff","B":"#a85a80"}},{"c":"S14","p":3,"h":"kai","n":"AMATISTA","d":"Armadura de amatista tallada.","r":{"L1":"#e8d0ff","L2":"#b88ae8","L3":"#7a4ab8","L4":"#3e2470","A1":"#f0e8ff","A2":"#ffffff","A3":"#9a7ad8","F":"#e8d0ff","FD":"#b88ae8","E":"#3e2470","B":"#3e2470"}},{"c":"S15","p":3,"h":"nyx","n":"ZAFIRO","d":"Túnica de zafiro con reflejos de hielo.","r":{"L1":"#c8f0ff","L2":"#5aa0e8","L3":"#2a5aa8","L4":"#142a5a","A1":"#e8fbff","A2":"#ffffff","A3":"#8ad0f0","F":"#0e1a3a","FD":"#0e1a3a","E":"#c8f0ff","B":"#142a5a"}},{"c":"S16","p":3,"h":"brisa","n":"ESMERALDA","d":"Impermeable de esmeralda y paraguas de vidrio verde.","r":{"L1":"#c8ffe0","L2":"#3ac88a","L3":"#1e8a5a","L4":"#0e4a30","A1":"#e8fff0","A2":"#ffffff","A3":"#8ae8b8","F":"#f2d3ab","FD":"#d9a88a","E":"#0e4a30","B":"#0e4a30"},"umb":{"R":"#1e8a5a","r":"#8ae8b8","t":"#ffffff"}}],"PARTS":{"badge_reloj":{"pal":{"a":"#1b1430","b":"#d9a02c","c":"#ffe58a","d":"#8a5a1e"},"rows":[".......aa.........","....a.abba.a......","...abaabbaaba.....","..abbbbcbbbbba....","...abbddddbba.....",".aabbdaaaadbbaa...","abbbdaaccaadbbba..","abbcdacbbcadcbba..",".aabdaaccaadbaa...","..abbdaaaadbba....","...abbddddbba.....","..abbbbbbbbbba....","...abaabbaaba.....","....a.abba.a......",".......aa.........","..................","..................",".................."]},"badge_vacio":{"pal":{"a":"#1b1430","b":"#3a2a7a","c":"#1a1240","d":"#fff3a0","e":"#ffffff"},"rows":[".....aaaaa........","...aabbbbbaa......","..abbcccccbba.....",".abcccdcccccba....",".abccccccccecba...","abcdcccccccccca...","abcccccecccccba...","abccccdedcccdba...","abcccccecccccba...",".abcccccccccca....",".abcdcccccdcba....","..abbcccccbba.....","...aabbbbbaa......",".....aaaaa........","..................","..................","..................",".................."]},"badge_llama":{"pal":{"a":"#1b1430","b":"#ffe27a","c":"#ffb03a","d":"#e8501e","e":"#ffffff","f":"#a8261e"},"rows":[".......a..........","......aba.........",".....acba.a.......","....accbaaba......","...acdcbacba......","...adccbccda......","..addcbbbcdda.....","..adcbbebbcda.....",".afdcbeeebcdfa....",".afdcbbebbcdfa....",".afddcbbbcddfa....","..afddccccddfa....","...affddddffa.....","....aaaaaaaa......","..................","..................","..................",".................."]},"badge_cristal":{"pal":{"a":"#1b1430","b":"#c8f0ff","c":"#5aa0e8","d":"#2a4a8a"},"rows":[".....aaaaaa.......","....abbbbbba......","...abbcccccda.....","..abbcbccccdda....",".abccbccccccdda...","abbbbbbbbbbdddda..",".abccccccccddda...","..abcccccccdda....","...abcccccdda.....","....abcccdda......",".....abcdda.......","......abda........",".......aa.........","..................","..................","..................","..................",".................."]},"shard":{"pal":{"a":"#1b1430","b":"#c8f0ff","c":"#5aa0e8","d":"#2a4a8a"},"rows":["...a..","..aba.",".abca.",".abca.","abccda","abcdda",".adda.","..aa.."]},"ember":{"pal":{"a":"#ffe27a","b":"#ffb03a","c":"#e8501e"},"rows":["ab","bc"]},"key":{"pal":{"a":"#1b1430","b":"#d9a02c","c":"#ffe58a"},"rows":[".aaa......","abcbaaaaaa","ababaabcba",".aba.aaaaa","..a....a..",".aba..aba.",".aba..aba."],"fw":5,"n":2},"gear":{"pal":{"a":"#1b1430","b":"#d9a02c"},"rows":[".a.a.a.a.a","abbba.bbb.",".bab.ababa","abbba.bbb.",".a.a.a.a.a"],"fw":5,"n":2},"flame":{"pal":{"a":"#ffe27a","b":"#ffb03a","c":"#e8501e","d":"#a8261e"},"rows":["...a........a.....a..........a..","..ba..a..a.ba.....ab..a...a.ba..",".bcb.ba..abcb.b..bcb.ba..bcbab..",".cbabcb..bcbabc..cbabcb..cbabcb.","dccbccd..dccbccddccbccd..dccbccd",".dcccd....dcccd..dcccd....dcccd."],"fw":8,"n":4},"twinkle":{"pal":{"a":"#fff3a0","b":"#ffffff"},"rows":[".a....","aba.b.",".a...."],"fw":3,"n":2}}};
+var COL_PRODUCT = { K1: "com.onemorefloor.escape.col_cuerda", K2: "com.onemorefloor.escape.col_estrellas", K3: "com.onemorefloor.escape.col_brasa", K4: "com.onemorefloor.escape.col_cristal", ALL: "com.onemorefloor.escape.col_todas" };
+// F-B cutoff: the day the version with the collections goes on sale. Set it to the real release day when submitting.
+var COL_FREE_CUTOFF = Date.UTC(2026, 10, 10);
+var COL_EN = {
+  names: { S1: "Automaton", S2: "Clockwork knight", S3: "Brass oracle", S4: "Clockmaker", S5: "Comet", S6: "Constellation", S7: "Nebula", S8: "Aurora", S9: "Candle", S10: "Volcano", S11: "Phoenix", S12: "Spark", S13: "Rose quartz", S14: "Amethyst", S15: "Sapphire", S16: "Emerald" },
+  short: { S2: ["CABALLERO", "KNIGHT"], S3: ["ORÁCULO", "ORACLE"], S6: ["ASTROS", "STARS"], S13: ["CUARZO", "QUARTZ"] },
+  packs: { K1: "CLOCKWORK WORKSHOP", K2: "STARDUST", K3: "ETERNAL EMBER", K4: "LIVING CRYSTAL" },
+  fx: { K1: "A wind-up key turning on the back and gears popping off when running.", K2: "The body is a night sky with stars that move and twinkle.", K3: "A live flame on the head and embers rising while you run.", K4: "A gem body with a glint sweeping across it and a shard on the shoulder." }
+};
+var COL_PRICE = {};
+var COL_IDS = ["K1", "K2", "K3", "K4"];
+function colPack(pk) { return COL_DATA.PACKS.find(p => p.id === pk); }
+function colPackName(pk) { return pk === "ALL" ? Lx("LAS 4 COLECCIONES", "ALL 4 COLLECTIONS") : Lx(colPack(pk).name, COL_EN.packs[pk]); }
+function colGift() { if (typeof PAY_ON === "undefined" || !PAY_ON) return true; if (!fullOwned()) return false; if (PAY_TEST) return true; const d = +(META && META.fullDate) || 0; return d > 0 && d < COL_FREE_CUTOFF; }
+function colOwned(pk) {
+  if (typeof PAY_ON === "undefined" || !PAY_ON || colGift()) return true;
+  const o = (PAY_TEST ? META.colTest : META.cols) || {};
+  return pk === "ALL" ? !!o.ALL || COL_IDS.every(k => o[k]) : !!(o[pk] || o.ALL);
+}
+function colPrice(pk) { const p = COL_PRICE[COL_PRODUCT[pk]]; if (p) return p; return PAY_TEST ? (pk === "ALL" ? "4,99 US$" : "1,99 US$") : ""; } // v111: only StoreKit's own price on a phone
+function colApply(r) {
+  if (!r || PAY_TEST) return; let ch = false;
+  if (r.fullDate && +r.fullDate !== META.fullDate) { META.fullDate = +r.fullDate; ch = true; }
+  if (Array.isArray(r.ids)) { const o = {}; for (const pk in COL_PRODUCT) if (r.ids.includes(COL_PRODUCT[pk])) o[pk] = 1;
+    if (r.bought) for (const pk in COL_PRODUCT) if (COL_PRODUCT[pk] === r.bought) o[pk] = 1; // the purchase that just finished, even if entitlements lag
+    if (JSON.stringify(o) !== JSON.stringify(META.cols || {})) { META.cols = o; ch = true; } }
+  if (ch) { saveMeta(); colRefresh(); }
+}
+function colRefresh() { try { if (ov && !ov.hidden && ov.querySelector(".shoppg") && CSHOP.tab === "cols") showCoinShop(); } catch (_) {} }
+function colLoadPrices() { if (!(PAY_ON && !PAY_TEST && STOREP)) return; storeCall("products").then(r => { const it = r && r.items; if (!it) return; let ch = false; for (const id in it) { const p = it[id] && it[id].price; if (p && COL_PRICE[id] !== String(p)) { COL_PRICE[id] = String(p); ch = true; } } if (ch) colRefresh(); }).catch(() => {}); }
+// every store answer carries the collections too (owned, restore, buy), including the old RESTAURAR COMPRA button
+{ const sc0 = storeCall; storeCall = function (m) { const pr = sc0.apply(this, arguments); return pr.then(r => { if (m !== "products") try { colApply(r); } catch (_) {} return r; }); }; }
+if (PAY_ON && !PAY_TEST && STOREP) {
+  storeCall("owned").catch(() => {}); colLoadPrices();
+  try { STOREP.addListener("ownedChanged", r => { try { colApply(r); } catch (_) {} }); } catch (_) {}
+}
+
+// ---------- the 16 skins ----------
+var COL_ROLE_OF = { velo: "velo", kai: "kai", nyx: "nyx", brisa: "kai" };
+function colTitle(s) { const w = s.toLowerCase(); return w.charAt(0).toUpperCase() + w.slice(1); }
+for (const sk of COL_DATA.SK) {
+  const base = HERO_SKINS[sk.h], pk = COL_DATA.PACKS[sk.p]; if (!base || !pk) continue;
+  const role = COL_DATA.ROLE[COL_ROLE_OF[sk.h]], pal = Object.assign({}, base.pal);
+  for (const c in role) if (sk.r[role[c]]) pal[c] = sk.r[role[c]];
+  const id = "col_" + sk.c.toLowerCase(), name = colTitle(sk.n), en = COL_EN.names[sk.c];
+  HERO_SKINS[id] = { ch: sk.h, name, en, weapon: base.weapon, unlock: null, col: pk.id, ckey: pk.key, sk, tier: "coleccion", pal, f: base.f, umb: sk.umb || base.umb };
+  EN_TEXT[name] = en; EN_TEXT[sk.d] = sk.d;
+}
+function colSkins(pk) { return Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].col && (pk === "ALL" || HERO_SKINS[id].col === pk)); }
+{ const s0 = skinOwned; skinOwned = function (id) { const k = HERO_SKINS[id]; if (k && k.col) return colOwned(k.col); return s0.apply(this, arguments); }; }
+{ const h0 = heroSkinOf; heroSkinOf = function (cid) { const want = typeof META !== "undefined" && META.skin && META.skin[cid], k = want && HERO_SKINS[want];
+    if (k && k.col && k.ch === cid) return colOwned(k.col) ? want : HERO_SKINS[cid] ? cid : "kai"; return h0.apply(this, arguments); }; }
+{ const l0 = lockInfo; lockInfo = function (kind, id) { const k = kind === "skin" && HERO_SKINS[id]; if (k && k.col) { const pr = colPrice(k.col); return { t: Lx("Colección", "Collection") + " " + colPackName(k.col) + (pr ? " · " + pr : "") }; } return l0.apply(this, arguments); }; }
+
+// ---------- FX (same drawing as the approved preview, on the game's own frames) ----------
+var COL_PX = {};
+function colPart(name, fi) { const key = name + "|" + fi; let r = COL_PX[key]; if (r) return r; const P = COL_DATA.PARTS[name], fw = P.fw || P.rows[0].length, o = [];
+  P.rows.forEach((row, y) => { for (let x = 0; x < fw; x++) { const c = row[fi * fw + x]; if (c && c !== ".") o.push([x, y, P.pal[c]]); } }); return (COL_PX[key] = o); }
+function colHash(a, b) { let h = (a * 374761393 + b * 668265263) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return (h ^ (h >>> 16)) >>> 0; }
+var COL_ANCH = new Map();
+function colAnchors(fr) { let a = COL_ANCH.get(fr); if (a) return a; a = { top: -1, topX: 0, backX: 16, shX: 16 };
+  for (let y = 0; y < 26 && a.top < 0; y++) for (let x = 0; x < 16; x++) if (fr[y * 16 + x] !== ".") { a.top = y; a.topX = x; break; }
+  for (let x = 0; x < 16; x++) if (fr[14 * 16 + x] !== ".") { a.backX = x; break; }
+  for (let x = 0; x < 16; x++) if (fr[12 * 16 + x] !== ".") { a.shX = x; break; }
+  COL_ANCH.set(fr, a); return a; }
+// P(x, y, colour) paints one art pixel of the 16 x 26 hero; layer = back | body | front
+function colFx(P, k, fr, anim, t, layer) {
+  const sk = k.sk, pk = k.ckey, A = colAnchors(fr);
+  if (layer === "back") {
+    if (pk === "reloj") colPart("key", Math.floor(t * 4) % 2).forEach(([x, y, c]) => P(A.backX - 4 + x, 10 + y, c));
+    if (pk === "cristal") { const R = sk.r, map = { "#c8f0ff": R.L1, "#5aa0e8": R.L2, "#2a4a8a": R.L3 }; colPart("shard", 0).forEach(([x, y, c]) => P(A.shX - 4 + x, 7 + y, map[c] || c)); }
+    return;
+  }
+  if (layer === "body") {
+    if (pk !== "vacio" && pk !== "cristal") return;
+    const role = COL_DATA.ROLE[COL_ROLE_OF[k.ch]];
+    for (let y = 0; y < 26; y++) for (let x = 0; x < 16; x++) { const c = fr[y * 16 + x]; if (c === "." || c === "o") continue; const rl = role[c]; if (!rl) continue; let col = null;
+      if (pk === "vacio" && (rl === "L2" || rl === "L3" || rl === "L4" || (rl === "FD" && k.ch !== "brisa"))) { const hv = colHash(x + Math.floor(t * 3) + 500, y);
+        if (hv % 17 === 0) col = (Math.floor(t * 4 + hv) % 3 === 0) ? sk.star[1] : sk.star[0]; else if (hv % 31 === 1 && Math.floor(t * 2 + x) % 2) col = sk.r.L1; }
+      if (pk === "cristal" && rl[0] === "L") { const d = ((x + y - Math.floor(t * 22)) % 40 + 40) % 40; if (d === 0) col = "#ffffff"; else if (d === 1) col = sk.r.L1; }
+      if (col) P(x, y, col); }
+    return;
+  }
+  const run = anim === "run";
+  if (pk === "llama") { const map = { "#a8261e": sk.fl[0], "#e8501e": sk.fl[1], "#ffb03a": sk.fl[2], "#ffe27a": sk.fl[3] };
+    colPart("flame", Math.floor(t * 8) % 4).forEach(([x, y, c]) => P(A.topX - 3 + x, A.top - 4 + y, map[c] || c));
+    for (let i = 0; i < 4; i++) { const ph = (t * 0.9 + i * 0.27) % 1, ex = 2 + (colHash(i, Math.floor(t * 0.9 + i * 0.27)) % 12), ey = 22 - ph * 26; P(ex, Math.round(ey), ph < 0.5 ? sk.fl[3] : sk.fl[1]); } }
+  if (pk === "reloj" && run) { const ph = (t * 0.8) % 1, gx = Math.round(A.backX - 4 - ph * 10), gy = Math.round(14 - Math.sin(ph * Math.PI) * 12); colPart("gear", Math.floor(t * 6) % 2).forEach(([x, y, c]) => P(gx + x, gy + y, c)); }
+  if (pk === "cristal") { const ph = (t * 0.6) % 1; if (ph < 0.5) colPart("twinkle", ph < 0.25 ? 0 : 1).forEach(([x, y, c]) => P(14 + x, 2 + y, c)); }
+  if (pk === "vacio" && run) for (let i = 0; i < 5; i++) { const ph = (t * 1.5 + i / 5) % 1; P(Math.round(A.backX - 1 - ph * 9), 16 + ((i * 3) % 7), ph < 0.4 ? sk.star[0] : sk.r.A3); }
+}
+function colFrame(k, anim, i) { const L = k.f && k.f[anim]; if (!L || !L.length) return null; const fr = L[((i | 0) % L.length + L.length) % L.length]; return fr && fr.length === 416 ? fr : null; }
+// a whole hero on a menu canvas: back FX, the cached frame, umbrella, body FX, front FX (ox, oy = top-left of the 16 x 26 art)
+function colDrawHero(g, id, anim, t, ox, oy, s) {
+  const k = HERO_SKINS[id]; if (!k) return; const n = anim === "run" ? Math.floor(t * 10) : Math.floor(t * 4), cv = heroFrame(id, anim, n), fr = k.col && colFrame(k, anim, n);
+  const P = (x, y, c) => { g.fillStyle = c; g.fillRect(ox + x * s, oy + y * s, s, s); };
+  if (fr) colFx(P, k, fr, anim, t, "back");
+  if (cv) g.drawImage(cv, 0, 6, 16, 26, ox, oy, 16 * s, 26 * s);
+  if (k.ch === "brisa" && anim !== "attack") umbDraw(g, false, ox + 13 * s, oy + 12 * s, s, k.umb, false);
+  if (fr) { colFx(P, k, fr, anim, t, "body"); colFx(P, k, fr, anim, t, "front"); }
+}
+// in the world: around the game's own hero drawing (wings and umbrella wrappers stay inside)
+{ const d0 = sprDrawHero; sprDrawHero = function (p, flipped) {
+    const cid = S.char && S.char.id, id = heroSkinOf(cid === "rolo" ? "kai" : cid), k = HERO_SKINS[id];
+    if (!k || !k.col) return d0.apply(this, arguments);
+    if (S.mode === "dead") { if (!p._colBurst) { p._colBurst = 1; colBurst(p, k); } return d0.apply(this, arguments); }
+    p._colBurst = 0;
+    const t = S.t || 0, sc = p.w / 16, cx = Math.round(p.x + p.w / 2), by = Math.round(flipped ? p.y : p.y + p.h), fh = p.face < 0;
+    const W = (sq, fn) => { ctx.save(); ctx.translate(cx, by); ctx.scale((fh ? -1 : 1) * sq[0], (flipped ? -1 : 1) * sq[1]); fn((x, y, c) => { ctx.fillStyle = c; ctx.fillRect(-8 * sc + x * sc, (-26 + y) * sc, sc, sc); }); ctx.restore(); };
+    const prev = p._colFr; if (prev) W([1, 1], P => colFx(P, k, prev.fr, prev.anim, t, "back"));
+    let got = null; const hf = heroFrame, sb = sprBlit;
+    heroFrame = function (hid, anim, i) { const cv = hf.apply(this, arguments); if (hid === id && cv && !got) got = { anim, i, cv }; return cv; };
+    sprBlit = function (cv) { if (got && cv === got.cv && !got.sq) got.sq = [SQX, SQY]; return sb.apply(this, arguments); };
+    let r; try { r = d0.apply(this, arguments); } finally { heroFrame = hf; sprBlit = sb; }
+    const fr = got && got.sq && colFrame(k, got.anim, got.i);
+    if (fr) { p._colFr = { fr, anim: got.anim }; W(got.sq, P => { colFx(P, k, fr, got.anim, t, "body"); colFx(P, k, fr, got.anim, t, "front"); }); } else p._colFr = null;
+    return r; }; }
+function colBurst(p, k) { try { const R = k.sk.r, cs = k.sk.fl || k.sk.star ? [R.L1, R.A1, R.A2].concat(k.sk.fl || k.sk.star) : [R.L1, R.L2, R.A1, R.A2];
+  for (let i = 0; i < 28; i++) { const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 160; S.parts.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60 * (S.gdir || 1), life: 0.5 + Math.random() * 0.6, c: cs[i % cs.length], s: 3 }); } } catch (_) {} }
+// portraits (home, wardrobe): collection skins repaint every frame so their FX move
+{ const pv0 = pvTick; pvTick = function () {
+    const cvs = [...document.querySelectorAll("canvas.pv")].filter(c => { const k = HERO_SKINS[c.dataset.skin || ""]; return k && k.col && c.dataset.lock !== "1"; });
+    cvs.forEach(c => { c._pvf = null; });
+    const r = pv0.apply(this, arguments);
+    if (!heroesOn() || S.mode !== "title") return r;
+    for (const c of cvs) { const x = c.getContext("2d"), id = c.dataset.skin, k = HERO_SKINS[id], t = performance.now() / 1000 + (c.dataset.off || 0) * 1, running = t % 5 > 3.6, anim = running ? "run" : "idle";
+      const fr = colFrame(k, anim, running ? Math.floor(t * 12) : Math.floor(t * 4)); if (!fr) continue;
+      const s = Math.min(Math.floor(c.width / 16), Math.floor(c.height / 26)), ox = Math.round((c.width - 16 * s) / 2), oy = c.height - 26 * s, P = (px, py, col) => { x.fillStyle = col; x.fillRect(ox + px * s, oy + py * s, s, s); };
+      colFx(P, k, fr, anim, t, "body"); colFx(P, k, fr, anim, t, "front");
+      x.save(); x.globalCompositeOperation = "destination-over"; colFx(P, k, fr, anim, t, "back"); x.restore(); }
+    return r; }; }
+
+// ---------- wardrobe: collection looks in colour with a gold frame; locked ones point to the shop row ----------
+{ const w0 = escWardrobe; escWardrobe = function (ch) {
+    const r = w0.apply(this, arguments), el = document.getElementById("wardrobe"); if (!el) return r;
+    el.querySelectorAll(".wtile[data-w]").forEach(b => { const id = b.dataset.w, k = HERO_SKINS[id]; if (!k || !k.col) return;
+      b.classList.add("colk"); const cv = b.querySelector("canvas.pv"); if (cv) cv.dataset.lock = "0";
+      if (skinOwned(id)) return;
+      b.classList.remove("lockd"); b.querySelectorAll(".wstore,canvas.pxi").forEach(n => n.remove()); b.insertAdjacentHTML("beforeend", `<i class="wcolb">${pxi("bag", "#f2c14e", 1)}</i>`); paintPxi(b);
+      { const sp = b.querySelector("span"); if (sp) sp.textContent = T(k.name).toUpperCase(); }
+      b.onclick = () => { omfSfx("click"); el.querySelectorAll(".wtile.peek").forEach(t => t.classList.remove("peek")); b.classList.add("peek");
+        const info = el.querySelector("#wInfo"), pr = colPrice(k.col), fb = el.querySelector("#wFull"), ws = el.querySelector("#wShop"); if (fb) fb.hidden = true;
+        info.innerHTML = `<b>${T(k.name).toUpperCase()}</b> · ${colPackName(k.col)}${pr ? " · " + pr : ""}<br>${Lx("Colección de pago: pulsa TIENDA para verla.", "Paid collection: tap SHOP to see it.")}`;
+        if (ws) { ws.hidden = false; ws.onclick = () => { el.remove(); omfSfx("click"); colOpenShop(k.col); }; } }; });
+    return r; }; }
+function colOpenShop(pk) { showCoinShop("title"); CSHOP.tab = "cols"; const i = COL_TAB.items.indexOf(pk); CSHOP.page = i < 0 ? 0 : Math.floor(i / COL_TAB.per); COL_TAB.sel = pk || "K1"; showCoinShop(); }
+
+// ---------- shop: third tab COLECCIONES (one row per collection, 3 per page) ----------
+var COL_TAB = { sel: "K1", raf: 0, items: COL_IDS.concat("ALL"), per: 3, busy: false };
+{ const sc0 = showCoinShop; showCoinShop = function (from) {
+    const isCol = CSHOP.tab === "cols" && !from, PAGES = Math.ceil(COL_TAB.items.length / COL_TAB.per);
+    if (isCol) CSHOP.tab = "skins";
+    const keepPage = CSHOP.page; cancelAnimationFrame(COL_TAB.raf);
+    const r = sc0.apply(this, isCol ? [] : arguments);
+    if (isCol) { CSHOP.tab = "cols"; CSHOP.page = Math.max(0, Math.min(keepPage, PAGES - 1)); }
+    const pg = ov.querySelector(".shoppg"); if (!pg) return r;
+    const tabs = pg.querySelector(".stabs");
+    tabs.insertAdjacentHTML("beforeend", `<button data-tab="cols" aria-selected="${isCol}">${Lx("COLECCIONES", "COLLECTIONS")}</button>`); pg.classList.add("s3tabs");
+    tabs.querySelectorAll("button").forEach(b => { if (isCol && b.dataset.tab !== "cols") b.setAttribute("aria-selected", "false"); });
+    tabs.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { omfSfx("click"); cancelAnimationFrame(CSHOP.raf); CSHOP.tab = b.dataset.tab; CSHOP.page = 0; CSHOP.sel = null; showCoinShop(); if (b.dataset.tab === "cols") colLoadPrices(); });
+    if (!isCol) return r;
+    cancelAnimationFrame(CSHOP.raf); pg.classList.add("colpg");
+    const page = CSHOP.page, onPage = COL_TAB.items.slice(page * COL_TAB.per, page * COL_TAB.per + COL_TAB.per);
+    if (!onPage.includes(COL_TAB.sel)) COL_TAB.sel = onPage[0];
+    const offHTML = `<p class="soffer">${Lx("PAGO ÚNICO · SIN MONEDAS", "ONE PAYMENT · NO COINS")}</p>`, off = pg.querySelector(".soffer");
+    if (off) off.outerHTML = offHTML; else tabs.insertAdjacentHTML("beforebegin", offHTML);
+    const nm = c => c === "ALL" ? Lx("LAS 4 COLECCIONES · 16 ASPECTOS", "ALL 4 COLLECTIONS · 16 SKINS") : colPackName(c);
+    const priceTag = c => colOwned(c) ? `<i class="own">${Lx("TUYA", "OWNED")}</i>` : (colPrice(c) || Lx("COMPRAR", "BUY"));
+    const cell = c => `<button class="sitem colrow${c === COL_TAB.sel ? " on" : ""}" data-ci="${c}"><canvas class="cpv" width="216" height="60" data-c="${c}"></canvas><span class="snm">${nm(c)}</span><span class="spr">${priceTag(c)}</span>${c === "ALL" && !colOwned(c) ? `<i class="sale">-37%</i>` : ""}</button>`;
+    pg.querySelector(".sgrid").innerHTML = onPage.map(cell).join("");
+    const sp = pg.querySelector(".spager"), prev = sp.querySelector("#shopPrev"), next = sp.querySelector("#shopNext");
+    prev.disabled = page === 0; next.disabled = page >= PAGES - 1;
+    prev.onclick = () => { omfSfx("click"); CSHOP.page = page - 1; showCoinShop(); };
+    next.onclick = () => { omfSfx("click"); CSHOP.page = page + 1; showCoinShop(); };
+    sp.querySelector(".sdots").innerHTML = Array.from({ length: PAGES }, (_, i) => `<i class="${i === page ? "on" : ""}"></i>`).join("");
+    sp.querySelector("small").textContent = Lx("PÁG", "PG") + " " + (page + 1) + "/" + PAGES;
+    const det = () => { const s = COL_TAB.sel, mine = colOwned(s), pr = colPrice(s);
+      const desc = s === "ALL" ? Lx("Los 16 aspectos de esta pestaña de una vez.", "All 16 skins on this tab at once.")
+        : colSkins(s).map(id => { const k = HERO_SKINS[id], sh = COL_EN.short[k.sk.c]; return `${SHOP_HERO[k.ch]}: ${sh ? Lx(sh[0], sh[1]) : (LANG === "en" ? k.en : k.name).toUpperCase()}`; }).join(" · ") + ". " + Lx(colPack(s).fx, COL_EN.fx[s]);
+      const act = mine ? `<button class="go" disabled>${Lx("TUYA", "OWNED")}</button>` : `<button class="go" id="colBuy">${s === "ALL" ? Lx("COMPRAR TODAS", "BUY ALL") : Lx("COMPRAR", "BUY")}${pr ? " · " + pr : ""}</button>`;
+      pg.querySelector(".sdet").innerHTML = `<canvas class="cpv big" width="96" height="84" data-c="${s}"></canvas><div><b>${colPackName(s)}</b><small>${desc}</small>${act}</div>`;
+      const bb = document.getElementById("colBuy"); if (bb) bb.onclick = () => colBuy(s, bb); };
+    det();
+    const msg = pg.querySelector("#shopMsg"); msg.textContent = colGift() && PAY_ON ? Lx("Las 4 colecciones son tuyas: compraste Escape completo antes de que llegaran.", "All 4 collections are yours: you bought Full Escape before they arrived.") : Lx("Cada colección trae 4 aspectos, uno por héroe. Se paga una vez y se recupera con RESTAURAR COMPRAS. Solo cambian el aspecto.", "Each collection has 4 skins, one per hero. Paid once; get it back with RESTORE PURCHASES. Looks only.");
+    // RESTAURAR COMPRAS next to VOLVER, same row height
+    const row = pg.querySelector(".rowbig"); if (row && PAY_ON && !row.querySelector("#colRest")) { row.classList.add("colrowbtns"); row.insertAdjacentHTML("afterbegin", `<button class="go" id="colRest">${Lx("RESTAURAR COMPRAS", "RESTORE PURCHASES")}</button>`);
+      row.querySelector("#colRest").onclick = () => { omfSfx("click"); msg.textContent = Lx("Buscando tus compras…", "Looking for your purchases…");
+        if (PAY_TEST) { msg.textContent = COL_IDS.some(colOwned) ? Lx("Compras restauradas.", "Purchases restored.") : Lx("No hay compras en esta cuenta.", "No purchases on this account."); return; }
+        storeCall("restore").then(rr => { if (rr && rr.error) { msg.textContent = Lx("No se pudo restaurar. Prueba otra vez.", "Couldn't restore. Try again."); return; } if (rr && rr.owned) { try { setFull(true); } catch (_) {} }
+          showCoinShop(); const m2 = document.getElementById("shopMsg"); if (m2) m2.textContent = COL_IDS.some(colOwned) ? Lx("Compras restauradas.", "Purchases restored.") : Lx("No hay compras en esta cuenta.", "No purchases on this account."); })
+          .catch(() => { msg.textContent = Lx("No se pudo conectar con la tienda. Prueba otra vez.", "Couldn't reach the store. Try again."); }); }; }
+    // picking a row only updates the rows and the detail (no page rebuild, rule 4)
+    pg.querySelectorAll("[data-ci]").forEach(b => b.onclick = () => { omfSfx("click"); COL_TAB.sel = b.dataset.ci; pg.querySelectorAll("[data-ci]").forEach(x => x.classList.toggle("on", x === b)); det(); try { b.focus({ preventScroll: true }); } catch (_) {} });
+    paintPxi(pg);
+    const t0 = performance.now(), badge = (g, key, bx, by, z) => colPart("badge_" + key, 0).forEach(([x, y, col]) => { g.fillStyle = col; g.fillRect(bx + x * z, by + y * z, z, z); });
+    const tick = () => { if (!ov.querySelector(".shoppg.colpg") || CSHOP.tab !== "cols") return; const t = (performance.now() - t0) / 1000;
+      ov.querySelectorAll("canvas.cpv").forEach(c => { const g = c.getContext("2d"), id = c.dataset.c, big = c.classList.contains("big");
+        g.clearRect(0, 0, c.width, c.height); g.imageSmoothingEnabled = false;
+        if (big) { const L = colSkins(id), sid = L[Math.floor(t / 1.6) % L.length], k = HERO_SKINS[sid]; colDrawHero(g, sid, "run", t, Math.round((c.width - 48) / 2) - (k.ch === "brisa" ? 6 : 0), c.height - 78, 3); return; }
+        if (id === "ALL") { COL_DATA.PACKS.forEach((p, i) => badge(g, p.key, 14 + i * 52, 12, 2)); return; }
+        badge(g, colPack(id).key, 2, 12, 2);
+        colSkins(id).forEach((sid, i) => colDrawHero(g, sid, "idle", t + i * 0.37, 44 + i * 42 - (HERO_SKINS[sid].ch === "brisa" ? 4 : 0), 8, 2));
+        if (!colOwned(id)) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(20,16,36,.2)"; g.fillRect(0, 0, c.width, c.height); g.globalCompositeOperation = "source-over"; } });
+      COL_TAB.raf = requestAnimationFrame(tick); };
+    COL_TAB.raf = requestAnimationFrame(tick);
+    return r; }; }
+function colBuy(s, btn) {
+  const msg = document.getElementById("shopMsg"), name = s === "ALL" ? Lx("LAS 4 COLECCIONES", "ALL 4 COLLECTIONS") : colPackName(s);
+  const done = () => { omfSfx("levelup"); toast(Lx("Colección desbloqueada: ", "Collection unlocked: ") + name); showCoinShop(); const m = document.getElementById("shopMsg"); if (m) m.textContent = Lx("Elige tus aspectos nuevos en el vestuario de cada héroe.", "Pick your new skins in each hero's wardrobe."); };
+  omfSfx("click");
+  if (PAY_TEST) { META.colTest = Object.assign({}, META.colTest, { [s]: 1 }); saveMeta(); done(); return; }
+  if (!STOREP) return;
+  btn.disabled = true; msg.textContent = Lx("Abriendo la tienda…", "Opening the store…");
+  storeCall("buy", { id: COL_PRODUCT[s] }).then(r => { btn.disabled = false;
+    if (r && r.bought === COL_PRODUCT[s]) { done(); return; }
+    if (r && r.pending) msg.textContent = Lx("Compra pendiente de aprobación. Se desbloqueará sola cuando se apruebe.", "Purchase waiting for approval. It unlocks by itself once approved.");
+    else if (r && r.cancelled) msg.textContent = "";
+    else { omfSfx("hurt"); msg.textContent = Lx("La tienda no está disponible ahora. Prueba más tarde.", "The store isn't available right now. Try later."); if (r && r.error) errLog(String(r.error).slice(0, 200), "store:colbuy"); } })
+    .catch(e => { btn.disabled = false; omfSfx("hurt"); msg.textContent = Lx("No se pudo conectar con la tienda. Prueba otra vez.", "Couldn't reach the store. Try again."); errLog(String(e && e.message || e).slice(0, 200), "store:colbuy"); });
+}
+// the Escape completo screen: collections are not included (F-B: earlier buyers get them, and see it here)
+{ const sf0 = showFull; showFull = function () { const r = sf0.apply(this, arguments);
+    try { const ul = ov.querySelector(".fulllist"); if (ul && !ul.querySelector(".fullcol")) { const gift = colGift() && fullOwned();
+        ul.insertAdjacentHTML("beforeend", gift ? `<li class="fullcol">${pxi("check", "#9be07a", 2)}<span>${Lx("Las 4 colecciones de pago, gratis: compraste Escape completo antes de que llegaran", "The 4 paid collections, free: you bought Full Escape before they arrived")}</span></li>`
+          : `<li class="fullno fullcol">${pxi("bag", "#9a94b8", 2)}<span>${Lx("No incluye las colecciones de pago: se compran aparte en la TIENDA", "Does not include the paid collections: they are sold separately in the SHOP")}</span></li>`); paintPxi(ul); } } catch (_) {}
+    return r; }; }
+// PRUEBAS: "Quitar compra simulada" also drops the simulated collections
+{ const tw0 = escTitleWire; escTitleWire = function () { const r = tw0.apply(this, arguments); const b = document.getElementById("payReset"); if (b) { const o = b.onclick; b.onclick = function () { META.colTest = {}; return o && o.apply(this, arguments); }; } return r; }; }
+(() => { const st = document.createElement("style"); st.textContent = `
+.shoppg.s3tabs .stabs button{font-size:9px !important;letter-spacing:0 !important;padding-left:2px !important;padding-right:2px !important;min-width:0}
+.overlay .shoppg.colpg .sitem.colrow{grid-column:1/-1;justify-self:center;width:228px;max-width:100%;box-sizing:border-box}
+.overlay .shoppg.colpg .sitem.colrow canvas.cpv{width:216px !important;height:60px !important;max-width:none;image-rendering:pixelated;flex:none}
+.overlay .shoppg.colpg .sdet canvas.cpv{width:96px !important;height:84px !important;image-rendering:pixelated;flex:none}
+.overlay .shoppg.colpg .sdet small{font-size:9px}
+#ov > .pg .rowbig.colrowbtns #backBtn,#ov > .pg .rowbig.colrowbtns #colRest{width:auto !important;flex:1 1 0 !important;min-width:0 !important}
+.overlay .shoppg .rowbig.colrowbtns .go{flex:1 1 0;min-width:0;font-size:9px;padding-left:4px;padding-right:4px;white-space:nowrap}
+.wardrobe .wtile.colk{box-shadow:inset 0 0 0 2px #c98a2a}
+.wardrobe .wtile.colk.sel,.wardrobe .wtile.colk.peek{box-shadow:inset 0 0 0 2px #f2c14e}
+.wardrobe .wtile .wcolb{position:absolute;top:2px;right:2px;font-style:normal;line-height:0}`; document.head.appendChild(st); })();
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
