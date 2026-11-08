@@ -786,11 +786,11 @@ const RULES = [
   { id: "swap", cat: "ent", name: "Intercambio", icon: "\u21CB", cost: 3, desc: "Cada 7 s cambias de sitio con un enemigo al azar. Avisa 1 s antes." },
   { id: "wind", cat: "ent", name: "Viento", icon: "\u224B", cost: 2, desc: "Una ráfaga te empuja hacia un lado y cambia de dirección cada 6 s." },
   { id: "moon", cat: "mov", name: "Luna", icon: "\u263E", cost: 1, desc: "Gravedad baja: saltos largos y flotantes." },
-  { id: "sticky", cat: "mov", name: "Paredes pegajosas", icon: "\u2317", cost: 1, desc: "Te pegas a paredes y techos al tocarlos. Salta para soltarte." },
+  { id: "sticky", cat: "mov", name: "Paredes pegajosas", icon: "\u2317", cost: 1, desc: "Te pegas a las paredes y resbalas poco a poco. Salta para impulsarte." },
   { id: "charge", cat: "mov", name: "Salto cargado", icon: "\u2191", cost: 2, desc: "Mantén el salto para cargarlo y suéltalo para saltar. Poca carga, salto corto." },
   { id: "blink", cat: "mov", name: "Parpadeo", icon: "\u2726", cost: 2, desc: "En vez de saltar te teletransportas 3 casillas hacia donde apuntas. Silueta verde: puedes; roja: no." },
   { id: "noback", cat: "mov", name: "No mires atrás", icon: "\u21A9", cost: 2, desc: "Si miras hacia atrás más de un instante, pierdes vida." },
-  { id: "wax", cat: "mov", name: "Alas de cera", icon: "\u2600", cost: 2, desc: "Mantén el salto para volar. Cerca del techo te quemas." },
+  { id: "wax", cat: "mov", name: "Alas de cera", icon: "\u2600", cost: 2, desc: "Mantén el salto para volar. Si vuelas mucho rato o cerca del techo, te quemas." },
   { id: "decoy", cat: "per", name: "Señuelos", icon: "\u2687", cost: 1, desc: "La mitad de los enemigos son ilusiones inofensivas. No sabes cuáles." },
   { id: "broken", cat: "per", name: "Pantalla rota", icon: "\u2592", cost: 1, desc: "No ves tu vida, tu oro ni el tiempo." },
   { id: "blackout", cat: "per", name: "Apagón", icon: "\u25A0", cost: 2, desc: "La pantalla se pone negra 1 s cada 5 s. El juego sigue." },
@@ -1719,6 +1719,9 @@ const ESC_ROT_POOL = ESC_MOD_POOL.concat(ESC_EXTRA_POOL.filter(id => !ESC_MOD_PO
 const ESC_START_POOL = ["ice", "dark", "wind", "noise", "hot", "shields", "recoil", "decoy", "midnight", "shrink"]; // v59: no Espejo or 3-skull rules on the first card // the first card of a climb
 ESC_START_POOL.push(...ESC_EXTRA_POOL.filter(id => !ESC_START_POOL.includes(id) && RULE[id] && RULE[id].cost < 3)); // no 3-skull rule on the first card
 // only one rule that replaces the jump at a time (Charged jump, Wings of wax, Blink)
+const WAX_HEAT = 2.2; // s of continuous flight before Wings of wax melt (near the ceiling heat builds 2.8x as fast)
+const STICKY_KICK = 0.72; // jump height off a sticky wall vs a normal wall jump
+const STICKY_SLIDE = 45; // px/s down the wall with Sticky walls
 const ESC_JUMPX = ["charge", "wax", "blink"]; const escClash = id => ESC_JUMPX.includes(id) && ESC_JUMPX.some(j => j !== id && has(j));
 // v59 warm-up (the user found flyers too hard early): 0 at the start of a climb, 1 after 2 minutes
 const escWarm = () => clamp(((S.t - (S.escT0 || 0)) || 0) / 120, 0, 1);
@@ -3231,12 +3234,12 @@ function update(dt) {
     // Escape has no wall grab at all: no slide, no wall jump, so walls can't be climbed
     if (!p.ground && (wallR || wallL)) { p.wallDir = wallR ? 1 : -1; p.wallT = 0.12; } else p.wallT = (p.wallT || 0) - dt;
     const pushing = (p.wallDir === 1 && input.right) || (p.wallDir === -1 && input.left);
-    // sticky walls and ceilings: hold on until you jump (or press down)
+    // v168 (user 2026-11-08): sticky walls only grab walls (no ceilings). Touching a wall while not rising you cling and
+    // slide down slowly; jump kicks you off (normal wall jump) and the wall can't grab you again for a moment; down lets go.
     p.stuck = false;
-    if (has("sticky") && !p.ground && !input.down && (p.relT || 0) <= 0) {
-      const ceil = S.gdir > 0 ? solid(p.x + 2, p.y - 2) || solid(p.x + p.w - 2, p.y - 2) : solid(p.x + 2, p.y + p.h + 2) || solid(p.x + p.w - 2, p.y + p.h + 2);
-      if (wallR || wallL) { p.vy = 0; p.stuck = true; }
-      else if (ceil) { p.vy = -30 * S.gdir; p.stuck = true; if (p.buf > 0) { p.relT = 0.3; p.vy = 60 * S.gdir; p.buf = 0; } }
+    if (has("sticky") && !p.ground && !input.down && (p.relT || 0) <= 0 && (wallR || wallL) && p.vy * S.gdir >= -20) {
+      p.vy = STICKY_SLIDE * S.gdir; p.stuck = true;
+      if (Math.random() < dt * 8) puff(wallR ? p.x + p.w : p.x, p.y + p.h / 2, 1);
     }
     p.relT = (p.relT || 0) - dt;
     if (has("charge") && !frz()) {
@@ -3246,14 +3249,18 @@ function update(dt) {
         p.charge = 0;
       } else if (!p.ground && p.coyote <= 0) p.charge = 0;
     }
-    if (has("wax") && input.jump && !p.ground && !frz()) {
+    if (has("wax") && input.jump && !p.ground && !frz() && (p.waxRest || 0) <= 0) {
       p.vy = Math.max(-260, p.vy * S.gdir - 2600 * dt) * S.gdir;
       if (Math.random() < dt * 20) S.parts.push({ x: p.x + p.w / 2, y: p.y + p.h, vx: rnd(-20, 20), vy: 60 * S.gdir, life: 0.4, c: "#f2c14e", s: 2 });
     }
     if (has("wax")) {
       const near = S.gdir > 0 ? [1, 2, 3].some(k => solid(p.x + p.w / 2, p.y - k * TS + 4)) || (S.vertical && p.y < (S.camY || 0) + 40) : [1, 2, 3].some(k => solid(p.x + p.w / 2, p.y + p.h + k * TS - 4));
-      p.burn = near && !p.ground ? (p.burn || 0) + dt : Math.max(0, (p.burn || 0) - dt);
-      if (p.burn > 0.9) { p.burn = 0; hurt(0); burst(p.x + p.w / 2, p.y, "#ff7a3a", 12); toast("¡Las alas se derriten!"); }
+      // v168 (user 2026-11-08): flying too long also melts the wings. Heat builds while you hold jump in the air
+      // (faster near the ceiling) and cools when you stop; full heat costs a life and the wings rest for a moment.
+      const flying = input.jump && !p.ground && !frz() && (p.waxRest || 0) <= 0;
+      p.burn = flying || (near && !p.ground) ? (p.burn || 0) + dt * ((flying ? 1 : 0) + (near ? 1.8 : 0)) : Math.max(0, (p.burn || 0) - dt * 0.8);
+      p.waxRest = (p.waxRest || 0) - dt;
+      if (p.burn > WAX_HEAT) { p.burn = 0; p.waxRest = 0.6; hurt(0); burst(p.x + p.w / 2, p.y, "#ff7a3a", 12); toast("¡Las alas se derriten!"); }
     }
     if (!p.ground && (wallR || wallL) && pushing && p.vy * S.gdir > 110 && !S.escape) { p.vy = 110 * S.gdir; if (Math.random() < dt * 20) puff(p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 1); }
     p.knockT = (p.knockT || 0) - dt;
@@ -3269,8 +3276,8 @@ function update(dt) {
       puff(p.x + p.w / 2, S.gdir > 0 ? p.y + p.h : p.y, 4); noise(p.x, p.y);
     } else if (p.buf > 0 && (canJump || (has("sticky") && p.stuck && beatOK)) && p.wallT > 0 && !p.ground && (S.escape ? ((p.wjN || 0) < 2 || (p.wjCd || 0) <= 0) : ((p.wjCd || 0) <= 0 || p.stuck))) {
       p.wjSide = p.wallDir; p.wjUsed = true; if (S.escape) { if ((p.wjCd || 0) <= 0 && (p.wjN || 0) >= 2) p.wjN = 0; p.wjN = (p.wjN || 0) + 1; } // v117 (user): Escape gives two instant wall kicks in a row, then the old 0.7 s wait before the next pair; landing resets it
-      p.vy = -JUMP_V * 0.97 * (has("shrink") ? 0.9 : 1) * S.gdir; p.vx = -p.wallDir * 185; p.face = -p.wallDir;
-      p.launchT = 0; p.buf = 0; p.wallT = 0; p.wjCd = S.escape && p.wjN >= 2 ? 0.7 : 0; omfSfx("walljump"); /* v105 (user, test): instant wall jump, no control lock (was 0.1 s) and no cooldown (was 0.7 s); Escape still allows one kick per jump */
+      p.vy = -JUMP_V * 0.97 * (has("shrink") ? 0.9 : 1) * (p.stuck ? STICKY_KICK : 1) * S.gdir; p.vx = -p.wallDir * 185; p.face = -p.wallDir; // v168 (user): kicking off a Sticky wall is weaker
+      p.launchT = 0; p.buf = 0; p.wallT = 0; p.relT = 0.25; p.wjCd = S.escape && p.wjN >= 2 ? 0.7 : 0; omfSfx("walljump"); /* v105 (user, test): instant wall jump, no control lock (was 0.1 s) and no cooldown (was 0.7 s); Escape still allows one kick per jump */
       if (has("inertia")) p.lock = -p.wallDir;
       puff(p.wallDir > 0 ? p.x + p.w : p.x, p.y + p.h / 2, 5); noise(p.x, p.y);
     } else if (p.buf > 0 && canJump && perk("salto") && !p.ground && !p.climb && (p.airJ || 0) < perk("salto")) {
@@ -4903,11 +4910,11 @@ const EN_RULES = {
   swap: ["Swap", "Every 7 s you trade places with a random enemy, with a 1 s warning."],
   wind: ["Wind", "A gust pushes you sideways and changes direction every 6 s."],
   moon: ["Moon", "Low gravity: long, floaty jumps."],
-  sticky: ["Sticky walls", "You cling to any wall or ceiling you touch. Jump to let go."],
+  sticky: ["Sticky walls", "You cling to walls and slowly slide down. Jump to kick off."],
   charge: ["Charged jump", "Hold jump to charge it and release to jump. A short charge means a short jump."],
   blink: ["Blink", "Instead of jumping you teleport 3 tiles where you aim. Green silhouette: you can; red: you can't."],
   noback: ["Don't look back", "Face backwards for more than a moment and you lose health."],
-  wax: ["Wings of wax", "Hold jump to fly. Near the ceiling you burn."],
+  wax: ["Wings of wax", "Hold jump to fly. Fly too long or near the ceiling and you burn."],
   decoy: ["Decoys", "Half the enemies are harmless illusions. You don't know which."],
   broken: ["Broken screen", "You can't see your health, gold or time."],
   blackout: ["Blackout", "The screen goes black for 1 s every 5 s. The game keeps running."],
@@ -6943,7 +6950,7 @@ function draw() {
   if (S.siren > 0) { ctx.fillStyle = "#ff8ad8"; ctx.fillText(input.attack ? "OÍDOS TAPADOS" : "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS", 34, hy); hy += 16; }
   if (has("quake") && S.quakeT < 2) { ctx.fillStyle = "#c9a36a"; ctx.fillText("TERREMOTO EN " + Math.ceil(S.quakeT), 34, hy); hy += 16; }
   if (has("sweep") && !S.sweep && S.sweepT < 3) { ctx.fillStyle = "#ff5a78"; ctx.fillText(S.escape ? "BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE BAJO UNA PLATAFORMA" : "BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE TRAS UNA PARED", 34, hy); hy += 16; }
-  if (has("wax") && (p.burn || 0) > 0.05) { ctx.fillStyle = "#ff7a3a"; ctx.fillText("CERA", 34, hy); ctx.fillRect(80, hy - 9, 70 * Math.min(1, p.burn / 0.9), 8); hy += 16; }
+  if (has("wax") && (p.burn || 0) > 0.05) { ctx.fillStyle = "#ff7a3a"; ctx.fillText("CERA", 34, hy); ctx.fillRect(80, hy - 9, 70 * Math.min(1, p.burn / WAX_HEAT), 8); hy += 16; }
   if (S.shadowE && !S.shadowE.caught) { ctx.fillStyle = "#9a94b8"; ctx.fillText("ATRAPA TU SOMBRA", 34, hy); hy += 16; }
   if (has("grav") && S.mode === "play") {
     const warn = S.gt < gravWarn();
@@ -10783,25 +10790,24 @@ if (ESCAPE) { let sw = null; const tip = document.createElement("div"); tip.clas
 
 // ===== v167 (user 2026-11-08 "usa el logo y el nombre del estudio como en la web para el splash"): studio card before the
 // boot tower, same IS badge sprite and "IRON SPRITE / GAMES" lockup as ironspritegames.com, in pixel style. ~1.6 s, a tap skips it.
-var STUDIO_LOGO = ["..kkkkkkkkkkkk..", ".kqqqqqqqqqqqqk.", "kqqqqqqqqqqqqqqk", "kqllllqqqggggqqk", "kqqllkkqgggggkqk", "kqqllkqqggkkkkqk", "kqqllkqqggkqqqqk", "kqqllkqqggggqqqk",
-  "kqqsskqqqooooqqk", "kqqsskqqqqqookqk", "kqqsskqqqqqookqk", "kqqsskqqoooookqk", "kqssssqqooookkqk", "kqqkkkkqqkkkkqqk", ".kqqqqqqqqqqqqk.", "..kkkkkkkkkkkk.."];
-var STUDIO_PAL = { k: "#070a14", q: "#18213a", l: "#cdd5ea", s: "#8d97b2", g: "#f6c544", o: "#c98a1f" };
-// the wordmark: the website's blocky letters (IRON in steel, SPRITE in gold) dropping into place, GAMES under it
-var STUDIO_FONT = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"], R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"], N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"], P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
-  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"], E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"], " ": ["000", "000", "000", "000", "000", "000", "000"] };
+
 // v167 (user 2026-11-08): studio splash = the Iron Sprite kit splash (kit-iron-sprite/splash/iron-sprite-splash.js), copied verbatim, id "studio".
 /* Iron Sprite Games: splash de estudio listo para cualquier juego HTML/JS (web, Capacitor iOS/Android, Electron PC).
    Sin dependencias, sin fuentes externas, todo pixel art dibujado en canvas con escalado entero.
    Uso:
-     (script tag loading iron-sprite-splash.js)
+     cargar iron-sprite-splash.js con una etiqueta script (sin cierres de etiqueta en este comentario: se pega inline en juegos)
      IronSpriteSplash.show({ onDone: () => arrancarJuego() });
-   Opciones: duracion (ms, 2300), fondo ('#0d1322'), zIndex (9999), maxAncho (520 px CSS).
+   Opciones: duracion (ms, 2300), fondo ('#0d1322'), zIndex (9999), maxAncho (520 px CSS),
+     sonido (true): jingle 8-bit del estudio sincronizado con la animación; false = en silencio,
+     audio: el AudioContext del juego (o una función que lo devuelva), para usar uno solo en todo el juego (iOS),
+     volumen (0..1, 1).
+   Sonido: se genera en el momento (pulsos 12.5/25 %, triángulo y ruido LFSR, tono a saltos de 1/60 s), 0 archivos.
+   Si el navegador no deja sonar sin toque (web), el splash va en silencio, nunca suena tarde.
+   Al saltar el splash el sonido se apaga en 80 ms (si acaba solo, el acorde final termina de sonar). IronSpriteSplash.audio = el contexto usado (el juego puede reutilizarlo).
    Se salta con toque, clic, cualquier tecla o cualquier botón de mando. Respeta "reducir movimiento". */
 (function (root) {
-  var LOGO = ["..kkkkkkkkkkkk..", ".kqqqqqqqqqqqqk.", "kqqqqqqqqqqqqqqk", "kqllllqqqggggqqk", "kqqllkkqgggggkqk", "kqqllkqqggkkkkqk", "kqqllkqqggkqqqqk", "kqqllkqqggggqqqk", "kqqsskqqqooooqqk", "kqqsskqqqqqookqk", "kqqsskqqqqqookqk", "kqqsskqqoooookqk", "kqssssqqooookkqk", "kqqkkkkqqkkkkqqk", ".kqqqqqqqqqqqqk.", "..kkkkkkkkkkkk.."];
-  var LPAL = { k: "#070a14", q: "#18213a", l: "#cdd5ea", s: "#8d97b2", g: "#f6c544", o: "#c98a1f" };
+  var LOGO = ["......kkkk......", "......kllk......", "..kk.kkllkk.kk..", ".kllkkllllkkllk.", ".klllllllllllsk.", "..kllllkkllllk..", "kkkllkkhgkksskkk", "kllllkhggokssssk", "kllllkggookssssk", "kkksskkookksskkk", "..ksssskksssdk..", ".kssssssssssddk.", ".ksskkssddkkddk.", "..kk.kkssdk.kk..", "......kssk......", "......kkkk......"];
+  var LPAL = { k: "#070a14", l: "#cdd5ea", s: "#8d97b2", d: "#2f3c63", g: "#f6c544", h: "#fff2a8", o: "#c98a1f" };
   var F = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"], R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
     O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"], N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
     S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"], P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
@@ -10809,6 +10815,99 @@ var STUDIO_FONT = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "1
     G: ["01111", "10000", "10000", "10011", "10001", "10001", "01111"], A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
     M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"], " ": ["000", "000", "000", "000", "000", "000", "000"] };
   var TONE = { steel: ["#8d97b2", "#cdd5ea", "#2f3c63"], gold: ["#f6c544", "#fff2a8", "#b8691f"] };
+
+
+  // ---- sonido: jingle del estudio, una nota por letra. Los tiempos salen de la misma animación de abajo:
+  // escudo 0/60/120 ms (3 pasos) · cada letra de IRON SPRITE suena cuando su columna izquierda toca el suelo
+  // (x * 18 ms + 260 ms) · cada letra de GAMES suena cuando empieza a pintarse (GSTART + 110 ms por letra)
+  // · la S final de GAMES resuelve en acorde de Do mayor.
+  var DROP_MS = 260, COL_MS = 18, GSTART = 1400, GSTEP = 110;
+  var JINGLE = (function () {
+    var J = [{ w: "p25", seq: ["C5", "G5", "C6"], st: 0.06, d: 0.2, v: 0.3, h: 0.6 },
+      { w: "tri", seq: ["C4", "G4", "C5"], st: 0.06, d: 0.2, v: 0.45, h: 0.6 }];
+    // IRON (acero): golpes graves que suben; SPRITE (oro): campanitas que suben con eco
+    var steel = ["C4", "E4", "G4", "C5"], gold = ["E5", "G5", "C6", "E6", "G6", "C7"], x = 0, li = 0;
+    "IRON SPRITE".split("").forEach(function (ch) {
+      var t = (x * COL_MS + DROP_MS) / 1000;
+      if (ch !== " ") {
+        if (li < 4) { J.push({ w: "p25", f: steel[li], t: t, d: 0.09, v: 0.26, h: 0.3 }, { w: "nzm", f: 9000, t: t, d: 0.03, v: 0.1 }, { w: "tri", f: ["C3", "C2"], t: t, d: 0.08, v: li ? 0.35 : 0.6 });
+          if (!li) J.push({ w: "nz", f: [9000, 1500], t: t, d: 0.08, v: 0.25 }, { w: "p12", f: 1480, t: t, d: 0.25, v: 0.06 }); }
+        else J.push({ w: "p12", f: gold[li - 4], t: t, d: 0.1, v: 0.24, h: 0.3, echo: [0.06, 0.3, 1] });
+        li++;
+      }
+      x += F[ch][0].length + 1;
+    });
+    // GAMES: G, A, M, E en dominante, S resuelve
+    ["G4", "B4", "D5", "F5"].forEach(function (n, i) { J.push({ w: "p25", f: n, t: (GSTART + i * GSTEP) / 1000, d: 0.1, v: 0.28, h: 0.4 }); });
+    var tg = GSTART / 1000, ts = (GSTART + 4 * GSTEP) / 1000;
+    J.push({ w: "tri", f: "G2", t: tg, d: ts - tg, v: 0.4, h: 0.8 },
+      { w: "p25", f: "C6", t: ts, d: 0.5, v: 0.3, h: 0.35, vib: [6, 0.2], vd: 0.16, echo: [0.12, 0.3, 1] },
+      { w: "p12", f: "G5", t: ts, d: 0.48, v: 0.13, h: 0.35 }, { w: "p12", f: "E5", t: ts, d: 0.48, v: 0.1, h: 0.35 },
+      { w: "tri", f: "C3", t: ts, d: 0.52, v: 0.55, h: 0.4 }, { w: "nzm", f: 14000, t: ts, d: 0.06, v: 0.1 });
+    return J;
+  })();
+  function note(n) { if (typeof n === "number") return n; var m = /^([A-G])(#?)(-?\d)$/.exec(n), s = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] ? 1 : 0); return 440 * Math.pow(2, (s - 9) / 12 + (+m[3] - 4)); }
+  var waves = typeof WeakMap !== "undefined" ? new WeakMap() : null, lfsr = {};
+  function wave(ctx, duty) { // pulso / triángulo de 8 bits; se rehace por contexto (sirve si el juego reconstruye el audio)
+    var c = waves && waves.get(ctx); if (!c) { c = {}; if (waves) waves.set(ctx, c); } if (c[duty]) return c[duty];
+    var H = 48, re = new Float32Array(H), im = new Float32Array(H), n;
+    if (duty === "tri") { for (n = 1; n < 24; n += 2) im[n] = 8 / (Math.PI * Math.PI * n * n) * (n % 4 === 1 ? 1 : -1); }
+    else for (n = 1; n < H; n++) { re[n] = 2 / (n * Math.PI) * Math.sin(2 * Math.PI * n * duty); im[n] = 2 / (n * Math.PI) * (1 - Math.cos(2 * Math.PI * n * duty)); }
+    return (c[duty] = ctx.createPeriodicWave(re, im));
+  }
+  function noiseBuf(ctx, short) {
+    var k = (short ? "s" : "l") + ctx.sampleRate; if (lfsr[k]) return lfsr[k];
+    var len = short ? 93 : 32767, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0), r = 1;
+    for (var i = 0; i < len; i++) { var bit = (r ^ (r >> (short ? 6 : 1))) & 1; r = (r >> 1) | (bit << 14); d[i] = (r & 1) ? 0.8 : -0.8; }
+    return (lfsr[k] = b);
+  }
+  function voice(ctx, dest, o, t0, gain) {
+    var t = t0 + (o.t || 0), d = o.d, peak = 0.12 * o.v * gain, g = ctx.createGain(), p = g.gain, nz = o.w === "nz" || o.w === "nzm", src, prm;
+    p.value = 0;
+    if (nz) { src = ctx.createBufferSource(); src.buffer = noiseBuf(ctx, o.w === "nzm"); src.loop = true; prm = src.playbackRate; }
+    else { src = ctx.createOscillator(); src.setPeriodicWave(wave(ctx, o.w === "tri" ? "tri" : o.w === "p12" ? 0.125 : 0.25)); prm = src.frequency; }
+    var k = nz ? 1 / ctx.sampleRate : 1, fa = note(o.seq ? o.seq[0] : Array.isArray(o.f) ? o.f[0] : o.f);
+    var a = nz ? 0.002 : Math.min(0.012, Math.max(0.002, 0.5 / fa)), j;
+    if (o.seq) for (j = 0; j < o.seq.length; j++) prm.setValueAtTime(note(o.seq[j]) * k, t + j * o.st);
+    else if (Array.isArray(o.f)) { var f0 = note(o.f[0]), f1 = note(o.f[1]); for (j = 0; j / 60 < d; j++) prm.setValueAtTime(f0 * Math.pow(f1 / f0, Math.min(1, j / 60 / (d * 0.85))) * k, t + j / 60); }
+    else prm.setValueAtTime(fa * k, t);
+    if (o.vib && !nz) { var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = o.vib[0]; lg.gain.setValueAtTime(0, t); lg.gain.setValueAtTime(o.vib[1] * 100, t + (o.vd || 0)); lfo.connect(lg); lg.connect(src.detune); lfo.start(t); lfo.stop(t + d + 0.03); }
+    var hold = t + a + (d - a) * (o.h || 0);
+    p.setValueAtTime(0, t); p.linearRampToValueAtTime(peak, t + a); p.setValueAtTime(peak, hold);
+    p.exponentialRampToValueAtTime(peak * 0.0005, t + d); p.linearRampToValueAtTime(0, t + d + 0.01);
+    if (nz) { var lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 0.5; var lf = function (x) { return Math.min(16000, note(x) * 1.2); };
+      if (Array.isArray(o.f)) { lp.frequency.setValueAtTime(lf(o.f[0]), t); lp.frequency.exponentialRampToValueAtTime(lf(o.f[1]), t + d * 0.85); } else lp.frequency.value = lf(o.f);
+      src.connect(lp); lp.connect(g); } else src.connect(g);
+    g.connect(dest); src.start(t); src.stop(t + d + 0.025);
+    return t + d + 0.025;
+  }
+  // toca el jingle en ctx desde t0; devuelve { out: ganancia maestra (para apagarlo), end: segundos }
+  function jingle(ctx, dest, t0, vol) {
+    var out = ctx.createGain(), hp = ctx.createBiquadFilter(), end = 0; out.gain.value = 1.3 * (vol == null ? 1 : vol); // +2.3 dB: queda en -28 LUFS, como los efectos del juego (medido con earshot)
+    hp.type = "highpass"; hp.frequency.value = 30; hp.Q.value = 0.6; out.connect(hp); hp.connect(dest || ctx.destination);
+    JINGLE.forEach(function (o) { var e = o.echo, n = e ? e[2] : 0;
+      for (var r = 0; r <= n; r++) end = Math.max(end, voice(ctx, out, o, t0 + (r ? e[0] * r : 0), r ? Math.pow(e[1], r) : 1) - t0); });
+    return { out: out, end: end };
+  }
+  function getCtx(opt) {
+    var c = typeof opt.audio === "function" ? opt.audio() : opt.audio;
+    if (!c || c.state === "closed") c = root.IronSpriteSplash.audio && root.IronSpriteSplash.audio.state !== "closed" ? root.IronSpriteSplash.audio : null;
+    if (!c) { var A = root.AudioContext || root.webkitAudioContext; if (!A) return null; c = new A(); }
+    return (root.IronSpriteSplash.audio = c);
+  }
+  // arranca el sonido solo si el audio corre en los primeros 250 ms (si no, silencio: nunca desfasado con la animación)
+  function playSound(opt) {
+    var h = { stop: function () {} }; if (opt.sonido === false) return h;
+    try {
+      var ctx = getCtx(opt); if (!ctx) return h; var T = performance.now(), live = null, off = false;
+      var go = function () { if (off || live || ctx.state !== "running") return; var late = (performance.now() - T) / 1000; if (late > 0.25) return;
+        live = jingle(ctx, ctx.destination, ctx.currentTime + 0.02 - late, opt.volumen == null ? 1 : opt.volumen); };
+      if (ctx.state === "running") go(); else { var pr = ctx.resume && ctx.resume(); if (pr && pr.then) pr.then(go, function () {}); }
+      h.stop = function () { off = true; if (!live) return; var g = live.out.gain, n = ctx.currentTime;
+        g.cancelScheduledValues(n); g.setValueAtTime(g.value, n); g.linearRampToValueAtTime(0, n + 0.08); var o = live.out; setTimeout(function () { try { o.disconnect(); } catch (e) {} }, 200); };
+    } catch (e) {}
+    return h;
+  }
 
   function show(opt) {
     opt = opt || {};
@@ -10830,6 +10929,7 @@ var STUDIO_FONT = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "1
     var k = Math.max(1, Math.min(4 * dpr, Math.floor(maxW * dpr / WW))) / dpr; // whole device pixels per art pixel, never blurry
     cv.style.cssText = "image-rendering:pixelated;image-rendering:crisp-edges;width:" + WW * k + "px;height:" + (H + DROP) * k + "px";
     el.appendChild(cv); document.body.appendChild(el);
+    var snd = playSound(opt);
     var g = cv.getContext("2d"), T0 = performance.now(), raf = 0, done = false;
     function R(c, x, y, w, h) { g.fillStyle = c; g.fillRect(x, y, w, h); }
     function draw(now) {
@@ -10838,29 +10938,31 @@ var STUDIO_FONT = { I: ["11111", "00100", "00100", "00100", "00100", "00100", "1
       var bs = t < 60 ? 1 : t < 120 ? 2 : 3, bx = (BADGE - 16 * bs) / 2 | 0, by = DROP + ((BODY - 16 * bs) / 2 | 0);
       LOGO.forEach(function (row, y) { row.split("").forEach(function (c, x) { if (LPAL[c]) R(LPAL[c], bx + x * bs, by + y * bs, bs, bs); }); });
       var top = TY;
-      cells.forEach(function (c) { var d = c.x * 18 + (6 - c.y) * 10, p = Math.min(1, Math.max(0, (t - d) / 260)); if (p < 1) all = false; if (p <= 0) return;
+      cells.forEach(function (c) { var d = c.x * COL_MS + (6 - c.y) * 10, p = Math.min(1, Math.max(0, (t - d) / DROP_MS)); if (p < 1) all = false; if (p <= 0) return;
         var x = TX + c.x * B, y = top + c.y * B + Math.round((1 - p) * (1 - p) * -DROP), T = TONE[c.t];
         R("#070a14", x + 1, y + 1, B, B + 1); R(T[0], x, y, B, B); R(T[1], x, y, B - 1, 1); R(T[2], x + B - 1, y + 1, 1, B - 1); });
-      // GAMES: letter by letter from 1.25 s, 110 ms apart; each letter wipes in top to bottom, one pixel row per step
+      // GAMES: letter by letter from GSTART (1.4 s, after the E of SPRITE lands), GSTEP 110 ms apart; each letter wipes in top to bottom, one pixel row per step
       var gy = top + TH + GAP2, L = "GAMES".split(""), lw = 10, gp = Math.max(2, (TW - 2 - lw * 5) / 4 | 0), gx = TX;
-      L.forEach(function (ch, i) { var rows = Math.min(7, Math.max(0, Math.floor((t - 1250 - i * 110) / 30) + 1)); if (rows < 7) all = false;
+      L.forEach(function (ch, i) { var rows = Math.min(7, Math.max(0, Math.floor((t - GSTART - i * GSTEP) / 30) + 1)); if (rows < 7) all = false;
         F[ch].forEach(function (row, y) { if (y >= rows) return; row.split("").forEach(function (v, x) { if (v === "1") R("#8d97b2", gx + i * (lw + gp) + x * 2, gy + y * 2, 2, 2); }); }); });
       if (!all && !done) raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    function finish() { if (done) return; done = true; cancelAnimationFrame(raf); clearTimeout(tm); clearInterval(pad);
+    function finish(e) { if (done) return; done = true; cancelAnimationFrame(raf); clearTimeout(tm); clearInterval(pad); if (snd && e !== "fin") snd.stop(); // al acabar solo, el acorde termina de sonar
       removeEventListener("keydown", finish); el.style.transition = "opacity .3s steps(3)"; el.style.opacity = "0";
       setTimeout(function () { el.remove(); }, 320); onDone(); }
-    var tm = setTimeout(finish, RM ? 1400 : DUR);
+    var tm = setTimeout(function () { finish("fin"); }, RM ? 1400 : DUR);
     el.addEventListener("pointerdown", function (e) { e.preventDefault(); finish(); });
     addEventListener("keydown", finish);
     // any pad button skips (Xbox, PlayStation, Switch, Steam Deck)
     var pad = setInterval(function () { var ps = navigator.getGamepads ? navigator.getGamepads() : [];
       for (var i = 0; i < ps.length; i++) { var p = ps[i]; if (p && p.buttons.some(function (b) { return b.pressed; })) { finish(); return; } } }, 60);
   }
-  root.IronSpriteSplash = { show: show };
+  root.IronSpriteSplash = { show: show, jingle: jingle, audio: null };
 })(window);
-function showStudio(next) { if (!ESCAPE || document.getElementById("studio")) { next(); return; } IronSpriteSplash.show({ onDone: next, zIndex: 140 });
+function showStudio(next) { if (!ESCAPE || document.getElementById("studio")) { next(); return; } IronSpriteSplash.show({ onDone: next, zIndex: 140, // v168: studio jingle on the game's single AudioContext, so the v103 dead-context rebuild still applies
+    audio: () => { if (!omfAC) omfAC = (typeof bpAC !== "undefined" && bpAC) || new (window.AudioContext || window.webkitAudioContext)(); return omfAC; },
+    sonido: !(window.OMF_SOUND === false || (typeof META !== "undefined" && META.sound === false)), volumen: typeof sfxLvl === "function" ? sfxLvl() / 8 : 1 });
   const st = document.createElement("style"); st.textContent = "#studio canvas{background:none !important;border:0 !important;box-shadow:none !important;max-width:none !important}"; document.getElementById("studio").appendChild(st); } // game-wide canvas styles must not paint the splash
 // ===== v68 (user): boot splash. A pixel tower builds itself brick by brick, a tiny climber runs up it, the logo drops in
 // and a pixel bar fills; then the TAP TO START screen. About 2.2 s, a tap skips it. Same in web, APK, IPA and PC.
@@ -10920,7 +11022,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v167";
+var OMF_VER = "Escape v168";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
