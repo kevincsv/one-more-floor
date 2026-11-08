@@ -12,11 +12,11 @@ P = "com.onemorefloor.escape."
 SHOTS = os.path.join(ROOT, "iap", "colecciones")
 DESC_EN, DESC_ES = "4 cosmetic skins, one per hero. Looks only.", "4 aspectos, uno por héroe. Solo estética."
 ITEMS = [
-    ("col_cuerda", "Taller de cuerda", "Clockwork Workshop", "1.99", "1-paquetes.png", DESC_EN, DESC_ES),
-    ("col_estrellas", "Polvo de estrellas", "Stardust", "1.99", "1-paquetes.png", DESC_EN, DESC_ES),
-    ("col_brasa", "Brasa eterna", "Eternal Ember", "1.99", "1-paquetes.png", DESC_EN, DESC_ES),
-    ("col_cristal", "Cristal vivo", "Living Crystal", "1.99", "2-pagina-2.png", DESC_EN, DESC_ES),
-    ("col_todas", "Las 4 colecciones", "All 4 Collections", "4.99", "2-pagina-2.png",
+    ("col_cuerda", "Taller de cuerda", "Clockwork Workshop", "1.99", "col_cuerda.png", DESC_EN, DESC_ES),
+    ("col_estrellas", "Polvo de estrellas", "Stardust", "1.99", "col_estrellas.png", DESC_EN, DESC_ES),
+    ("col_brasa", "Brasa eterna", "Eternal Ember", "1.99", "col_brasa.png", DESC_EN, DESC_ES),
+    ("col_cristal", "Cristal vivo", "Living Crystal", "1.99", "col_cristal.png", DESC_EN, DESC_ES),
+    ("col_todas", "Las 4 colecciones", "All 4 Collections", "4.99", "col_todas.png",
      "All 16 collection skins. Looks only.", "Los 16 aspectos de colección. Solo estética."),
 ]
 NOTE = ("Non-consumable cosmetic pack. Open SHOP > COLLECTIONS (third tab) on the title screen, pick the pack and tap BUY. "
