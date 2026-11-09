@@ -11022,7 +11022,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v169";
+var OMF_VER = "Escape v170";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -12199,6 +12199,9 @@ function vampEvery() { return S && S.easy ? 15 : S && S.hard ? 8 : 10; }
 // REGLA INTOCABLE 3: leaving the app and coming back must never leave the game without sound.
 var omfAudioDead = false;
 addEventListener("unhandledrejection", e => { const r = e && e.reason; if (/audio device/i.test(String(r && r.message || r))) omfAudioDead = true; });
+// v170: a resume() still pending when omfAudioRebuild closes that old context rejects with "Cannot resume a closed
+// AudioContext". Harmless (the new context already took over), so it is not reported as an error.
+addEventListener("unhandledrejection", e => { const r = e && e.reason; if (/closed AudioContext/i.test(String(r && r.message || r))) e.preventDefault(); });
 function omfAudioCheck() {
   for (const a of omfAudioCtxs()) { if (a.state === "closed") { omfAudioDead = true; continue; }
     try { const r = a.resume(); if (r && r.catch) r.catch(() => { omfAudioDead = true; }); } catch (e) { omfAudioDead = true; }
@@ -15772,6 +15775,21 @@ function descInfo() {
 // going down starts in the Unknown: the "reach biome N" feats and biome skins only count on the climb
 { const am = achMax; achMax = function (k) { if (S && S.descent && /^e_z\d/.test(String(k))) return; return am.apply(this, arguments); }; }
 for (const k of ["kai_golem", "nyx_estelar"]) { const f = SKIN_RULES[k]; if (typeof f === "function") SKIN_RULES[k] = function () { if (S && S.descent) return false; return f.apply(this, arguments); }; }
+// v170 (user 2026-11-09 "deja el descent como coming soon"): DESCENSO shows as COMING SOON, like the duel did in v149-v161.
+// The tile stays (same size, dimmed, PRONTO / COMING SOON), a tap only wiggles it, the mode can't start and its unlock
+// toast is quiet. Set DESC_SOON = false to bring it back; saved bests and the unlock are kept.
+var DESC_SOON = true;
+if (DESC_SOON) {
+  { const di0 = descInfo; descInfo = function () { if (DESC_SOON && !(S && S.test)) return descSoonTap(); return di0.apply(this, arguments); }; }
+  // descStart stays callable (QA suites use it); the menu is the only way in and it is closed
+  { const tw0 = escTitleWire; escTitleWire = function () { const r = tw0.apply(this, arguments);
+      try { const b = document.getElementById("descBtn"); if (b) { b.classList.remove("lk"); b.classList.add("dusoon"); const n = b.querySelector(".new"); if (n) n.remove();
+          const s = b.querySelector(".ts"); if (s) s.textContent = Lx("PRONTO", "COMING SOON"); b.onclick = () => descSoonTap(); } } catch (_) {}
+      return r; }; }
+  { const t0 = toast; toast = function (m) { if (DESC_SOON && /DESCEN/.test(String(m))) return; return t0.apply(this, arguments); }; }
+}
+function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = document.getElementById("descBtn"); if (!b) return; b.classList.remove("dublink"); void b.offsetWidth; b.classList.add("dublink"); }
+(() => { const st = document.createElement("style"); st.textContent = '#descBtn.dusoon{opacity:.6}#descBtn.dusoon .ts{color:#f2c14e;letter-spacing:1px}#descBtn.dublink{animation:dublink .45s steps(3) 1}'; document.head.appendChild(st); })();
 
 // v162 (user: "pc version y movil debe tener full compatibilidad de joystick"): game controllers on the phone too, with the
 // same mapping as the PC/Steam build (pc-layer.js): stick or d-pad move, A/Cross jump, X/Square or RB/RT hit,
