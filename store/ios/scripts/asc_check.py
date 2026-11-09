@@ -17,7 +17,9 @@ def version():
     vs = a.get(f"/v1/apps/{aid}/appStoreVersions", **{"filter[platform]": "IOS", "limit": 5})["data"]
     for v in vs:
         at = v["attributes"]; print("VERSION", at["versionString"], at.get("appStoreState") or at.get("appVersionState"), "release:", at.get("releaseType"))
-    v = next(v for v in vs if v["attributes"]["versionString"] == "1.0.0")
+    want = os.environ.get("CHECK_VERSION", "")
+    v = next((v for v in vs if v["attributes"]["versionString"] == want), None) or max(vs, key=lambda v: [int(x) for x in v["attributes"]["versionString"].split(".")])
+    print("  checking version:", v["attributes"]["versionString"])
     b = a.call("GET", f"/v1/appStoreVersions/{v['id']}/build").get("data")
     print("  attached build:", b and b["attributes"]["version"])
     rd = a.call("GET", f"/v1/appStoreVersions/{v['id']}/appStoreReviewDetail").get("data")
@@ -52,6 +54,16 @@ safe("age", age)
 
 def iap():
     ii = a.get(f"/v1/apps/{aid}/inAppPurchasesV2", **{"filter[productId]": IAP_ID})["data"]
+    for c in a.all(f"/v1/apps/{aid}/inAppPurchasesV2", limit=50):
+        ca = c["attributes"]
+        if ".col_" in (ca.get("productId") or ""): print("COLLECTION IAP", ca.get("productId"), "state:", ca.get("state"))
+    try:
+        for rs in a.get("/v1/reviewSubmissions", **{"filter[app]": aid, "limit": 5})["data"]:
+            items = a.call("GET", f"/v1/reviewSubmissions/{rs['id']}/items", params={"include": "appStoreVersion,inAppPurchaseV2,gameCenterAchievementVersion"}, ok=(200, 404)).get("data") or []
+            print("REVIEW SUBMISSION", rs["attributes"].get("state"), rs["attributes"].get("submittedDate"), "items:", len(items),
+                  sorted({k for it in items for k, r in (it.get("relationships") or {}).items() if (r.get("data") if isinstance(r, dict) else None)}))
+    except RuntimeError as e:
+        print("WARN review submissions:", str(e)[:200])
     if not ii: print("IAP missing"); return
     i = ii[0]; at = i["attributes"]; print("IAP", at.get("productId"), at.get("inAppPurchaseType"), "state:", at.get("state"), "reviewNote:", bool(at.get("reviewNote")))
     for path, label in (("inAppPurchaseLocalizations", "localizations"), ("iapPriceSchedule", "price schedule"), ("inAppPurchaseAvailability", "availability"), ("appStoreReviewScreenshot", "review screenshot")):
