@@ -14,7 +14,7 @@ HOW TO REACH EACH FEATURE
 4. HISTORIA / STORY ("La Huida"): story mode with five biomes, a boss at the end of each, collectible notes, checkpoints and two endings, free.
 5. HORDA / HORDE: locked by default. It unlocks for free by finishing story mode on Normal or Hardcore, or right away with the Full Escape purchase. Tapping it while locked explains this.
 6. DUEL (free): online race against one friend. Tap DUEL and create a room to get a 4-letter code; on a second device open DUEL and join with that code. Both climb the same tower; positions are relayed through a small WebSocket relay that stores nothing (no account, no personal data).
-6b. DESCENT: the tower upside down; it unlocks by beating the first two story bosses, or with Full Escape.
+6b. DESCENT: shown as COMING SOON in this version; it is not playable yet.
 6c. FRIEND'S TOWER: an 8-letter code rebuilds the same climb on any device, offline.
 7. SHOP: tabs SKINS and HEROES use in-game coins only. The third tab COLLECTIONS sells 4 cosmetic packs (non-consumable IAPs, see below).
 8. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.

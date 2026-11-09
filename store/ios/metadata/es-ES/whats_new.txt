@@ -1,5 +1,4 @@
 • DUELO: compite con un amigo en la misma torre con un código de sala. Cada 25 m le mandas una maldición. Gratis para todos.
-• DESCENSO: un modo nuevo con la torre del revés. Se desbloquea en la historia o con Escape completo.
 • TORRE DE UN AMIGO: comparte un código de 8 letras y tus amigos juegan exactamente la misma subida.
 • Colecciones de aspectos de pago: cuatro packs de 4 aspectos, uno por héroe, con efectos animados. Solo estética. Quien compró Escape completo desde el lanzamiento las tiene gratis.
 • Ya funcionan los logros y las clasificaciones de Game Center.
