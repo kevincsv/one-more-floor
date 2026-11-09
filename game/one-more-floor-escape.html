@@ -11022,7 +11022,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v168";
+var OMF_VER = "Escape v169";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11909,6 +11909,12 @@ var huRec0 = recordRun; recordRun = function (won) { if (huOn()) return; return 
 // death: the tower's line (v125, was the Notary's record)
 function huActa() { const last = S.rules.filter(id => RULE[id]).slice(-1)[0], z = Math.min(4, S.camZone || 0), q = s => LANG === "en" ? "\u201c" + s + "\u201d" : "\u00ab" + s + "\u00bb";
   const w = q(T("La torre te ha tirado.") + " " + T(HU_BIOME[z]) + ", " + (S.escBest || 0) + " m.");
+  // v169 (user 2026-11-09): blame what really killed you. A modifier only gets the credit when nothing else touched you
+  // (cause "hit"); spikes, enemies, bosses, water and falling behind get their own line, whatever modifiers were on.
+  const C = { spike: ["Una trampa escondida hizo el trabajo.", "A hidden trap did the job."], mob: ["Uno de sus guardianes te alcanzó.", "One of its guards got you."],
+    boss: ["Su guardián mayor no te dejó pasar.", "Its great guardian didn't let you through."], drown: ["El agua hizo el trabajo.", "The water did the job."],
+    fell: ["Te quedaste atrás.", "You fell behind."] }[S.deathCause];
+  if (C) return q(Lx(C[0], C[1])) + " " + w;
   if (!last) return q(T("La torre no necesitó trucos esta vez.")) + " " + w;
   return q(T("La torre usó") + " " + T(RULE[last].name) + ". " + T("Funcionó.")) + " " + w; }
 var huDead0 = showDead; showDead = function () { const r = huDead0.apply(this, arguments); if (!huOn()) return r;
@@ -16479,7 +16485,7 @@ function nb3BandLive(a, th, X, Y, A, W, hs) {
 // gets the same detail; index 0 of the zone tables is swapped and the zone caches are cleared.
 var NB_ALT = 0, NB_FORCE_NEXT = null;
 // looks that can come up in a run, equal share (user 2026-11-08: Castle + N1 + N2 only)
-var NB_POOL = [0, 1, 2];
+var NB_POOL = [0, 2]; // v169 (user 2026-11-09 "quita el bioma de arena"): Sandglass Spire (1) no longer comes up; Castle + Storm, half each
 const NB_V = [null,
   { id: "n1", es: "Aguja de arena", en: "Sandglass Spire" }, { id: "n2", es: "Aguja de la tormenta", en: "Storm Spire" },
   { id: "n3", es: "Catacumbas de cera", en: "Wax Catacombs" }, { id: "n4", es: "Jardín de espinas", en: "Thorn Garden" },
