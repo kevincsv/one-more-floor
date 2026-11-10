@@ -1,6 +1,8 @@
 import Foundation
 import Capacitor
 import StoreKit
+import MediaPlayer
+import UIKit
 
 /// Compra única "Escape completo" con StoreKit 2 (sin SDK de terceros).
 /// El JS usa el id "escape_full"; aquí se mapea al product id de App Store Connect.
@@ -30,6 +32,12 @@ public class EscapeStorePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     override public func load() {
+        // Now Playing: al ir a segundo plano quitar la ficha (si no, iOS muestra "localhost").
+        // Va aquí porque el proyecto iOS se genera en CI con `cap add ios` y no tiene un view controller propio.
+        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            UIApplication.shared.endReceivingRemoteControlEvents()
+        }
         // Compras hechas fuera de la app (Ask to Buy, otro dispositivo, reembolsos).
         updates = Task.detached { [weak self] in
             for await result in Transaction.updates {
