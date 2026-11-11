@@ -67,6 +67,15 @@ if (process.env.OMF_STORE === "1" && !/window\.OMF_STORE\s*=\s*true/.test(html))
   console.log("Build de tienda: window.OMF_STORE = true");
 }
 
+// Secreto de los códigos de canje: el repo es público, así que el juego lleva un hueco
+// (__OMF_REDEEM_SECRET__) y aquí se rellena con el secreto de GitHub Actions OMF_REDEEM_SECRET.
+if (html.includes("__OMF_REDEEM_SECRET__")) {
+  const sec = process.env.OMF_REDEEM_SECRET || "";
+  if (!sec) { console.error("Falta el secreto OMF_REDEEM_SECRET (Settings > Secrets > Actions)"); process.exit(1); }
+  html = html.split("__OMF_REDEEM_SECRET__").join(sec);
+  console.log("Secreto de canje insertado");
+}
+
 await mkdir(path.join(root, "www"), { recursive: true });
 await writeFile(path.join(root, "www", "index.html"), html);
 console.log(`Juego copiado desde ${src} -> www/index.html`);

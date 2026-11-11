@@ -45,6 +45,8 @@ jobs:
         with: { node-version: 22 }
       - run: npm ci
       - name: Preparar Escape
+        env:
+          OMF_REDEEM_SECRET: ${{ secrets.OMF_REDEEM_SECRET }}
         run: |
           node -e "const f='capacitor.config.json',c=require('./'+f);c.appId=process.env.BUNDLE_ID;c.appName=process.env.APP_NAME;require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
           OMF_STORE=${{ inputs.store && '1' || '0' }} node scripts/sync-game.mjs game/one-more-floor-escape.html
