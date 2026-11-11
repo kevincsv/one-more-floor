@@ -16,6 +16,7 @@ HOW TO REACH EACH FEATURE
 6. DUEL (free): online race against one friend. Tap DUEL and create a room to get a 4-letter code; on a second device open DUEL and join with that code. Both climb the same tower; positions are relayed through a small WebSocket relay that stores nothing (no account, no personal data).
 6b. DESCENT: shown as COMING SOON in this version; it is not playable yet.
 6c. FRIEND'S TOWER: an 8-letter code rebuilds the same climb on any device, offline.
+6d. SETTINGS > REDEEM CODE: single-use codes we hand out ourselves (testers, community events). Checking a code needs internet; the server only marks the code as used and stores no personal data.
 7. SHOP: tabs SKINS and HEROES use in-game coins only. The third tab COLLECTIONS sells 4 cosmetic packs (non-consumable IAPs, see below).
 8. Bottom tabs: FEATS (achievements), RECORDS/RANKS (Game Center leaderboards) and SETTINGS.
 Controls: an on-screen D-pad plus HIT and JUMP buttons. Other layouts are in Settings.
@@ -34,7 +35,7 @@ IN-APP PURCHASES: SKIN COLLECTIONS (non-consumable, cosmetic only)
 APPLE SERVICES
 - Game Center: optional, for achievements and leaderboards. If you are not signed in, the game still plays normally.
 - iCloud (key-value storage): progress is backed up and restored automatically. SETTINGS shows the iCloud status and offers RESTORE FROM ICLOUD when a copy exists.
-- No third-party SDKs or analytics. The only network use is the optional DUEL relay, which forwards positions between the two players and stores nothing.
+- No third-party SDKs or analytics. The only network use is the optional DUEL relay, which forwards positions between the two players and stores nothing, and the REDEEM CODE check.
 
 REGIONS
 The content is the same in every region. The app is in English and Spanish and follows the device language.

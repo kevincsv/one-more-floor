@@ -1,5 +1,8 @@
-• DUEL: race a friend up the same tower with a room code. Every 25 m you send them a curse. Free for everyone.
-• FRIEND'S TOWER: share an 8-letter code and your friends play the exact same climb.
-• Paid skin collections: four packs of 4 looks, one per hero, with animated effects. Looks only. Full Escape owners from launch get them free.
-• Game Center achievements and leaderboards are now live.
-• Controller support, new pixel icons and many fixes.
+• Redeem codes: a new page in Settings. Each code works once and needs internet to redeem.
+• Studio news button, with a badge for news you haven't seen.
+• Friend's tower: delete old codes, fixed modifiers, and invite that friend to a duel.
+• The duel reconnects on its own if the connection drops.
+• The death message now names what really killed you.
+• Sand biome removed. Rhythm, Beanstalk and Blink modifiers removed.
+• Fixes: Split no longer leaves the screen white, Tail follows behind you, Mimic waits a moment before biting, Swap dashes where you can see it, the loose shadow wears your skin, a back button after CLIMB.
+• The lock screen shows the game's name and icon while music plays.

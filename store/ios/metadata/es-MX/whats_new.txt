@@ -1,5 +1,8 @@
-• DUELO: compite con un amigo en la misma torre con un código de sala. Cada 25 m le mandas una maldición. Gratis para todos.
-• TORRE DE UN AMIGO: comparte un código de 8 letras y tus amigos juegan exactamente la misma subida.
-• Colecciones de aspectos de pago: cuatro packs de 4 aspectos, uno por héroe, con efectos animados. Solo estética. Quien compró Escape completo desde el lanzamiento las tiene gratis.
-• Ya funcionan los logros y las clasificaciones de Game Center.
-• Soporte de mando, iconos pixel nuevos y muchos arreglos.
+• Canjear códigos: página nueva en Ajustes. Cada código sirve una vez y hace falta internet para canjearlo.
+• Botón de noticias del estudio, con un aviso de las que no has visto.
+• Torre de un amigo: borra códigos viejos, modificadores corregidos e invita a ese amigo a un duelo.
+• El duelo se reconecta solo si se corta la conexión.
+• El mensaje de muerte dice lo que de verdad te mató.
+• Fuera el bioma de arena. Fuera los modificadores Ritmo, Habichuela y Parpadeo.
+• Arreglos: Dividir ya no deja la pantalla en blanco, Cola te sigue por detrás, el Mimo espera un momento antes de morder, Cambio se ve al desplazarse, la sombra suelta lleva tu aspecto, botón para volver tras ESCALAR.
+• La pantalla de bloqueo muestra el nombre y el icono del juego mientras suena la música.
