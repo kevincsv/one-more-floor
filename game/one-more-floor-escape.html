@@ -1,5 +1,38 @@
 <meta charset="utf-8">
 <title>One More Floor Escape</title>
+<script id="nowPlaying">// v172 (user 2026-11-10): iOS Now Playing (lock screen, Control Center) showed "localhost". Same fix as the studio's
+// other games. Runs only inside the iOS app and MUST be the first script, before anything makes an AudioContext:
+// it tracks every context by subclassing AudioContext. It sets the Media Session title (the page <title>), studio
+// and icon, ignores the media buttons, and on background suspends running contexts and switches
+// navigator.audioSession to "ambient"; it restores both on return. Native side (iOS thread): clear
+// MPNowPlayingInfoCenter and stop remote control events on didEnterBackground.
+(function () {
+  var STUDIO = "Iron Sprite Games";
+  var ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjI0ZjFiZDczLTU2OWYtNDFiNi05ZmMwLWUwNDJjZTg1YzNjZgAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNo2QoWE6VNmiOR3Nfc0VCn9QAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6MmVkMjQwZGItZGY1Mi00NGMyLThlODctN2YzOGVhMjIwMDg5bHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaC5eLvuUX0vSw8L3fuGYgUEAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYICrocm0TRwjmvwcVMwXmS2HcL4QqjbnFVaC1bZfhvflfpGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2gvOGkM52vPwTm4T0KbWWnvAAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFgg4c5WfH4UF7eEjYL+lRTrrtA7YDQLwj4zdhVHiSsHh55kbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYToyNGYxYmQ3My01NjlmLTQxYjYtOWZjMC1lMDQyY2U4NWMzY2YvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDplMDNlZmI3Ni1jOGFhLTRiZjMtYjk5Yi0yODFmMzgxMmNiNDJyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggKuhybRNHCOa/BxUzBeZLYdwvhCqNucVVoLVtl+G9+V+iY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYIJCQT/8OzqJhqS95SBUSylOWGcvIiDauT6lZQ7t53JAHomN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYIIJmu5p5+xn1Q+cSUYT9EXwVp4sz1H/RkvMl5kIXzDR0dGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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";
+  var C = window.Capacitor, wk = window.webkit && window.webkit.messageHandlers;
+  var ios = !!((C && C.getPlatform && C.getPlatform() === "ios") || (wk && wk.bridge && /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && "ontouchend" in document));
+  if (!ios) return;
+  var ctxs = [];
+  ["AudioContext", "webkitAudioContext"].forEach(function (k) { var A = window[k]; if (!A || A.__np) return;
+    var W = function () { var c = Reflect.construct(A, arguments, new.target || W); ctxs.push(c); return c; };
+    W.prototype = A.prototype; Object.setPrototypeOf(W, A); W.__np = true; window[k] = W; });
+  var live = function () { ctxs = ctxs.filter(function (c) { return c.state !== "closed"; }); return ctxs; };
+  function meta() { try { var ms = navigator.mediaSession; if (!ms || !window.MediaMetadata) return;
+      var t = document.title || "One More Floor Escape";
+      ms.metadata = new MediaMetadata({ title: t, artist: STUDIO, album: t, artwork: [{ src: ICON, sizes: "256x256", type: "image/png" }] });
+      ["play", "pause", "stop", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"].forEach(function (a) { try { ms.setActionHandler(a, function () {}); } catch (e) {} });
+    } catch (e) {} }
+  var slept = [], sessType = null;
+  function sleep() { slept = live().filter(function (c) { return c.state === "running"; });
+    slept.forEach(function (c) { try { var p = c.suspend(); if (p && p.catch) p.catch(function () {}); } catch (e) {} });
+    try { var s = navigator.audioSession; if (s && s.type !== "ambient") { sessType = s.type; s.type = "ambient"; } } catch (e) {} }
+  function wake() { try { var s = navigator.audioSession; if (s && sessType != null) { s.type = sessType; sessType = null; } } catch (e) {}
+    slept.forEach(function (c) { if (c.state !== "closed") { try { var p = c.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {} } }); slept = []; meta(); }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) sleep(); else wake(); });
+  addEventListener("pagehide", sleep); addEventListener("pageshow", wake);
+  meta(); addEventListener("load", meta); document.addEventListener("pointerdown", meta, { once: true, capture: true });
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1713,7 +1746,7 @@ const ESC_MOD_POOL = ["ice", "dark", "wind", "invis", "shrink", "noise", "hot", 
 // v164 (user: "deberían ser siempre completamente aleatorios"): the climb used to draw only from 15 modifiers, so with half the
 // Codex unlocked the same few kept coming back. These now join the draw once unlocked.
 // The 19 floor-only rules got an Escape version (user: "dame modificaciones que sí funcionen", see mods-escape.js), so all 56 can come up.
-const ESC_EXTRA_POOL = ["noatk", "inertia", "magnet", "clone", "bouncy", "slow", "moon", "sticky", "charge", "wax", "decoy", "broken", "vamp", "rings", "glutton", "statues", "bean", "debris", "tail", "rhythm", "blink",
+const ESC_EXTRA_POOL = ["noatk", "inertia", "magnet", "clone", "bouncy", "slow", "moon", "sticky", "charge", "wax", "decoy", "broken", "vamp", "rings", "glutton", "statues", "debris", "tail",
   "nojump", "grav", "timer", "tide", "onehit", "gold", "frozen", "swap", "liar", "ammo", "hunter", "portals", "maze", "shadow", "sirens", "switch", "pause", "right", "noback", "midnight"];
 const ESC_ROT_POOL = ESC_MOD_POOL.concat(ESC_EXTRA_POOL.filter(id => !ESC_MOD_POOL.includes(id)));
 const ESC_START_POOL = ["ice", "dark", "wind", "noise", "hot", "shields", "recoil", "decoy", "midnight", "shrink"]; // v59: no Espejo or 3-skull rules on the first card // the first card of a climb
@@ -1912,7 +1945,7 @@ function escSecretTick(p, dt) {
   switch (R.kind) {
     case "treasure":
       if (o.k === "chest" && !o.st && near(o)) { o.st = 1; achAdd("treasure"); escRoomCoins(8, 2, 6, o.x); trkDrop("rare", o.x + 22, (Q.F - 1) * TS + 8); burst(o.x, Q.F * TS - 12, "#f2c14e", 16); toast("¡Tesoro!"); }
-      if (o.k === "mimic" && !o.st && near(o, 40)) { o.st = 1; o.k = null; const e = mkEnemy("charger", o.x - 14, Q.F * TS - 22.01); Object.assign(e, { mimic: true, w: 28, h: 22, hp: 10 + 2 * escTier(), mst: "idle", mcd: 0.5, face: Math.sign(p.x - o.x) || 1 }); e.maxhp = e.hp; e.room = true; e.alert = 99; S.enemies.push(e); R.mimic = e; S.shake = 0.4; toast("¡Era un mímico!"); }
+      if (o.k === "mimic" && !o.st && near(o, 40)) { o.st = 1; o.k = null; const e = mkEnemy("charger", o.x - 14, Q.F * TS - 22.01); Object.assign(e, { mimic: true, w: 28, h: 22, hp: 10 + 2 * escTier(), mst: "idle", mcd: 1.4, wake: 0.9, face: Math.sign(p.x - o.x) || 1 }); /* v173 (user 2026-11-11): 0.9 s to turn round or dodge before it can bite */ e.maxhp = e.hp; e.room = true; e.alert = 99; S.enemies.push(e); R.mimic = e; S.shake = 0.4; toast("¡Era un mímico!"); }
       if (R.mimic && R.mimic.dead && !R.paid) { R.paid = true; escRoomCoins(14, 3, 7, o.x); toast("El mímico suelta el doble"); }
       break;
     case "fountain":
@@ -2664,14 +2697,23 @@ function updateRules(dt, dtW, p) {
     }
     S.debris = S.debris.filter(d => !d.dead);
   }
+  // v173 (user 2026-11-11: "es imposible huir del trail... deberían tener un delay detrás de ti"): the tail follows where
+  // you WERE a moment ago and never sits on you. Segment i aims at your spot from 0.7 + 0.45*i s ago, but only at a spot
+  // at least 30 + 20*i px from where you are now and from everywhere you were in the last second; if there is none (standing still, jumping in place) it waits where it is.
+  // It glides there, and only a resting segment hurts: you get hurt by walking into the line, never by it catching you.
   if (has("tail")) {
-    const last = S.ptrail[S.ptrail.length - 1];
-    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 6) { S.ptrail.push({ x: p.x, y: p.y + p.h }); if (S.ptrail.length > 80) S.ptrail.shift(); }
+    const last = S.ptrail[S.ptrail.length - 1], cx = p.x + p.w / 2, cy = p.y + p.h;
+    if (!last || S.t - last.t > 0.05) { S.ptrail.push({ x: cx, y: cy, t: S.t }); while (S.ptrail.length && S.t - S.ptrail[0].t > 6) S.ptrail.shift(); }
+    const near = S.ptrail.filter(r => S.t - r.t < 1); // where you've been in the last second: the tail never parks there
     S.tail.forEach((s, i) => {
-      const q = S.ptrail[S.ptrail.length - 1 - (i + 1) * 6];
-      if (!q) { s.on = false; return; }
-      s.on = true; s.x = q.x + 8 - s.w / 2; s.y = q.y - s.h;
-      if (S.t - s.born > 1 && p.inv <= 0 && overlap({ x: p.x + 2, y: p.y + 2, w: p.w - 4, h: p.h - 4 }, s)) hurt(Math.sign(p.x - s.x) || 1);
+      const lag = 0.7 + 0.45 * i, gap = 30 + 20 * i; let q = null;
+      for (let k = S.ptrail.length - 1; k >= 0; k--) { const pt = S.ptrail[k]; if (S.t - pt.t < lag) continue;
+        if (Math.hypot(pt.x - cx, pt.y - cy) >= gap && near.every(r => Math.hypot(pt.x - r.x, pt.y - r.y) >= gap)) { q = pt; break; } }
+      if (!s.on) { if (!q) return; s.on = true; s.x = q.x - s.w / 2; s.y = q.y - s.h; }
+      const ox = s.x, oy = s.y;
+      if (q) { const k = Math.min(1, dt * 6); s.x += (q.x - s.w / 2 - s.x) * k; s.y += (q.y - s.h - s.y) * k; }
+      s.spd = Math.hypot(s.x - ox, s.y - oy) / Math.max(dt, 1e-4);
+      if (S.t - s.born > 1 && s.spd < 40 && p.inv <= 0 && overlap({ x: p.x + 2, y: p.y + 2, w: p.w - 4, h: p.h - 4 }, s)) hurt(Math.sign(p.x - s.x) || 1);
     });
   }
   if (S.shadowE && !S.shadowE.caught) {
@@ -2680,9 +2722,13 @@ function updateRules(dt, dtW, p) {
     let vx = 0, vy = 0;
     if (d < 7 * TS) { vx = dx / d * 165; vy = dy / d * 165; } else { vx = Math.sin(s.ph) * 30; vy = Math.cos(s.ph * 1.3) * 20; }
     const nx = s.x + vx * dtW, ny = s.y + vy * dtW;
-    const maxX = S.vertical ? (S.LW - 2) * TS : S.exitX - 2 * TS, minY = S.vertical ? S.exitY + TS : TS;
-    if (freeBox(nx, s.y, s.w, s.h) && nx > TS && nx < maxX) s.x = nx; else s.x += (Math.random() - 0.5) * 6;
-    if (freeBox(s.x, ny, s.w, s.h) && ny > minY && ny < S.LH * TS - 2 * TS) s.y = ny; else s.y += (Math.random() - 0.5) * 6;
+    // v173 (user: "aparece fuera del mapa"): in Escape there's no exit door (exitX was undefined, so it only jittered and
+    // drifted into the walls). Now it stays inside the tower walls and on screen, and never steps into solid tiles.
+    const esc = !!S.escape, maxX = esc || S.vertical ? (S.LW - 1) * TS - s.w : S.exitX - 2 * TS, minY = esc ? (S.camY || 0) + TS : S.vertical ? S.exitY + TS : TS, maxY = esc ? (S.camY || 0) + CH - s.h - TS : S.LH * TS - 2 * TS;
+    s.vx = vx; s.vy = vy; if (Math.abs(vx) > 5) s.face = vx < 0 ? -1 : 1;
+    if (freeBox(nx, s.y, s.w, s.h) && nx > TS && nx < maxX) s.x = nx; else { const jx = s.x + (Math.random() - 0.5) * 6; if (freeBox(jx, s.y, s.w, s.h) && jx > TS && jx < maxX) s.x = jx; }
+    if (freeBox(s.x, ny, s.w, s.h) && ny > minY && ny < maxY) s.y = ny; else { const jy = s.y + (Math.random() - 0.5) * 6; if (freeBox(s.x, jy, s.w, s.h) && jy > minY && jy < maxY) s.y = jy; }
+    if (esc && !(s.y > (S.camY || 0) - CH && s.y < (S.camY || 0) + 2 * CH)) { S.shadowE = null; S.shadowT = 3; }
     if (overlap(p, s) && S.escape) { S.shadowE = null; S.shadowT = 20; if (S.hp < S.maxhp) S.hp++; addGold(10); toast("¡Atrapaste tu sombra! +1 corazón"); burst(s.x + 7, s.y + 10, "#100e1a", 16); }
     else if (overlap(p, s)) { s.caught = true; toast("¡Atrapaste tu sombra! La salida está abierta"); burst(s.x + 7, s.y + 10, "#100e1a", 16); }
   }
@@ -2741,7 +2787,7 @@ function drawRulesWorld(p) {
     ctx.fillStyle = "#6b5a4a"; ctx.fillRect(d.x, d.y, TS, TS); ctx.fillStyle = "#8a7a6a"; ctx.fillRect(d.x, d.y, TS, 3);
   }
   for (const s of S.tail || []) if (s.on) { ctx.globalAlpha = S.t - s.born > 1 ? 0.75 : 0.35; ctx.fillStyle = "#2a2540"; ctx.fillRect(s.x, s.y, s.w, s.h); ctx.fillStyle = "#e0566b"; ctx.fillRect(s.x + s.w / 2 - 3, s.y + 4, 2, 2); ctx.fillRect(s.x + s.w / 2 + 2, s.y + 4, 2, 2); ctx.globalAlpha = 1; }
-  if (S.shadowE && !S.shadowE.caught) { const s = S.shadowE; ctx.globalAlpha = 0.8; ctx.fillStyle = "#06050c"; ctx.fillRect(s.x, s.y, s.w, s.h); ctx.fillStyle = "#ece8f5"; ctx.fillRect(s.x + 3, s.y + 5, 2, 2); ctx.fillRect(s.x + 9, s.y + 5, 2, 2); ctx.globalAlpha = 1; }
+  if (S.shadowE && !S.shadowE.caught && drawShadowHero(S.shadowE)) {} else if (S.shadowE && !S.shadowE.caught) { const s = S.shadowE; ctx.globalAlpha = 0.8; ctx.fillStyle = "#06050c"; ctx.fillRect(s.x, s.y, s.w, s.h); ctx.fillStyle = "#ece8f5"; ctx.fillRect(s.x + 3, s.y + 5, 2, 2); ctx.fillRect(s.x + 9, s.y + 5, 2, 2); ctx.globalAlpha = 1; }
   if (S.beast) { const b = S.beast; ctx.fillStyle = "#3a1f2a"; ctx.fillRect(b.x, b.y + 6, b.w, b.h - 6); ctx.fillStyle = "#c9a36a"; ctx.fillRect(b.x - 4, b.y, 6, 10); ctx.fillRect(b.x + b.w - 2, b.y, 6, 10); ctx.fillStyle = "#e0566b"; ctx.fillRect(b.x + 7, b.y + 14, 4, 4); ctx.fillRect(b.x + 19, b.y + 14, 4, 4); }
   if (has("blink") && S.mode === "play") {
     const t = blinkTarget(p);
@@ -3047,7 +3093,7 @@ function hurtBox(e) {
   return { x, y, w, h };
 }
 // contact: the hero's trimmed box against the hurt box, with 1 px of forgiveness all round
-const hurtsFair = (p, e) => { const b = hurtBox(e); if (b === e) return overlapFair(p, e); const k = ESCAPE ? 2 + 2 * (1 - escWarm()) : 1; // v59: 2 px of forgiveness (4 px in the first minutes)
+const hurtsFair = (p, e) => { if (e.wake > 0) return false; const b = hurtBox(e); if (b === e) return overlapFair(p, e); const k = ESCAPE ? 2 + 2 * (1 - escWarm()) : 1; // v59: 2 px of forgiveness (4 px in the first minutes)
   return overlap({ x: p.x + 2, y: p.y - 1, w: p.w - 4, h: p.h + 1 }, { x: b.x + k, y: b.y + k, w: b.w - 2 * k, h: b.h - 2 * k }); };
 function inWater(y) { if (!has("tide")) return false; if (S.escape) return y > (S.camY || 0) + CH - S.tide; if (S.vertical) return false; return S.gdir > 0 ? y > H * TS - S.tide : y < S.tide; }
 
@@ -3327,12 +3373,19 @@ function update(dt) {
     if (S.ghost && p.inv <= 0 && overlap(p, { x: S.ghost.x + 2, y: S.ghost.y + 2, w: S.ghost.w - 4, h: S.ghost.h - 4 })) hurt(Math.sign(p.x - S.ghost.x) || 1);
   } else { S.trail = []; S.ghost = null; }
   if (has("swap")) {
-    S.swapT -= dtW;
-    const live = S.enemies.filter(e => !e.dead && !e.boss && Math.abs(e.x - p.x) < CW * 0.6);
+    if (!S.swapAnim) S.swapT -= dtW;
+    // v173 (user 2026-11-11 "swap no te debe mandar abajo de la lava"): in Escape only enemies safely on screen can be picked,
+    // never one in the bottom 30% of the view (where the rising lava kills) or in the water of Tide
+    const swOk = e => !S.escape || (e.y > (S.camY || 0) + TS && e.y + e.h < (S.camY || 0) + CH * 0.7 && !inWater(e.y + e.h + TS));
+    const live = S.enemies.filter(e => !e.dead && !e.boss && Math.abs(e.x - p.x) < CW * 0.6 && swOk(e));
+    if (S.swapTarget && !swOk(S.swapTarget)) S.swapTarget = null;
     if (S.swapT < 1 && (!S.swapTarget || S.swapTarget.dead) && live.length) S.swapTarget = live[Math.floor(Math.random() * live.length)];
     if (S.swapT <= 0) {
       const e = S.swapTarget;
-      if (e && !e.dead) { const ox = p.x, oy = p.y; p.x = e.x; p.y = e.y + e.h - p.h; e.x = ox; e.y = oy; e.stun = 0.8; p.inv = Math.max(p.inv, 0.6); p.vx = 0; p.vy = 0; burst(p.x + 8, p.y + 10, "#b9a7ff", 12); }
+      // v173 (user 2026-11-11 "swap no debería ser instantáneo, deberías ver al personaje moverse rápido"): both dash to each
+      // other's spot in 0.25 s (drawn with a trail); the positions are set after physics each frame (see swapAnimTick)
+      if (e && !e.dead && swOk(e)) { S.swapAnim = { t: 0, d: 0.25, e, px: p.x, py: p.y, tx: e.x + (e.w - p.w) / 2, ty: e.y + e.h - p.h, ex: e.x, ey: e.y, etx: p.x + (p.w - e.w) / 2, ety: p.y + p.h - e.h };
+        e.stun = 1.05; p.inv = Math.max(p.inv, 0.85); p.vx = 0; p.vy = 0; burst(p.x + p.w / 2, p.y + p.h / 2, "#b9a7ff", 8); try { omfSfx("mod"); } catch (_) {} }
       S.swapT = 7; S.swapTarget = null;
     }
   }
@@ -3699,6 +3752,7 @@ function escEnemyAI(e, dt, p, dx, dy, dist) {
 // biting hop. Below half health it rests less between bites and jumps farther
 function mimicUpdate(e, dt, p) {
   e.vy = Math.min(MAXF, (e.vy || 0) + G * dt); e.flash = Math.max(0, (e.flash || 0) - dt);
+  if (e.wake > 0) { e.wake -= dt; e.vx = 0; move(e, dt); return; } // just woke up: it shakes in place and can't hurt yet
   if (e.stun > 0) { e.stun -= dt; e.vx *= Math.max(0, 1 - 6 * dt); move(e, dt); if (e.mst === "tele") e.mst = "idle"; return; }
   const dx = p.x + p.w / 2 - (e.x + e.w / 2), angry = e.hp < (e.maxhp || 10) / 2;
   e.mcd = (e.mcd == null ? 0.5 : e.mcd) - dt;
@@ -3711,7 +3765,7 @@ function mimicUpdate(e, dt, p) {
 function mimicDraw(e, white) {
   const cv = sprsCv("mimic1"), k = 2, w = cv.width * k, cx = Math.round(e.x + e.w / 2), by = Math.round(e.y + e.h), face = e.face || 1;
   const tele = e.mst === "tele", gap = tele ? 4 + (Math.floor(S.t * 20) % 2) : e.mst === "lunge" ? 6 : Math.floor(S.t * 2.5) % 3 === 0 ? 1 : 0;
-  const sh = tele ? (Math.floor(S.t * 30) % 2 ? 1 : -1) : 0;
+  const sh = tele || e.wake > 0 ? (Math.floor(S.t * 30) % 2 ? 1 : -1) : 0; // v173: it also rattles while it wakes up
   ctx.save(); ctx.translate(cx + sh, by); ctx.scale(face < 0 ? -1 : 1, 1); ctx.imageSmoothingEnabled = false;
   if (white) ctx.filter = "brightness(3)";
   if (gap) { ctx.fillStyle = "#3a0a14"; ctx.fillRect(-w / 2 + 2 * k, -6 * k - gap * k, w - 4 * k, gap * k + 2); ctx.fillStyle = "#e0566b"; ctx.fillRect(2 * k, -6 * k - Math.min(gap, 3) * k, 4 * k, k); }
@@ -3995,6 +4049,7 @@ function damage(e, n, src) {
   e.hp -= n; e.flash = 0.5;
   if (e.hp <= 0) kill(e, src);
 }
+const CLONE_AS = { urchin: "rat", mimic: "rat" };
 function kill(e, src) {
   // v63: a dead enemy hangs for a moment, flashing white, before it shatters (S.corpses), so a kill reads
   e.dead = true; if (S.mem && !e.critter && !e.decoy) S.mem.kills++;
@@ -4005,7 +4060,9 @@ function kill(e, src) {
   }
   if (has("clone") && !e.boss && !e.small) {
     for (const sgn of [-1, 1]) {
-      const c = mkEnemy(e.type, e.x + e.w / 4, e.y + e.h / 4);
+      // v173 (user 2026-11-11, white screen): an urchin is glued to its platform loop, so a split copy had no loop and a
+      // NaN position that broke drawing every frame. Glued crawlers now split into two small rats.
+      const c = mkEnemy(CLONE_AS[e.type] || e.type, e.x + e.w / 4, e.y + e.h / 4);
       c.w = Math.round(e.w * 0.65); c.h = Math.round(e.h * 0.65); c.hp = 1; c.small = true;
       c.vx = sgn * 160; c.vy = -220 * S.gdir; c.stun = 0.5; c.flash = 0.4; S.spawnQ.push(c);
     }
@@ -4673,14 +4730,16 @@ function showCards() {
   const c = cap(S.floor);
   const replaces = r => { const same = S.rules.find(x => RULE[x].cat === r.cat && !comboPair(x, r.id)); if (same) return RULE[same].name; if (S.rules.length >= c) return RULE[S.rules[0]].name; return null; };
   ov.innerHTML = (ESCAPE ? `<h2>ELIGE TU PRIMER MODIFICADOR</h2>
-    <p>Empiezas la subida con él. Cada 15 s llega otro y el más antiguo se va.</p>` : `<h2>PISO ${S.floor}${isBoss(S.floor) ? " · JEFE" : ""}: ${storyOn() ? "FIRMA UNA CLÁUSULA" : "ELIGE LA REGLA"}</h2>
+    <p>Empiezas la subida con él. Cada 20 s llega otro y el más antiguo se va.</p>` : `<h2>PISO ${S.floor}${isBoss(S.floor) ? " · JEFE" : ""}: ${storyOn() ? "FIRMA UNA CLÁUSULA" : "ELIGE LA REGLA"}</h2>
     <p>Reglas a la vez en este piso: hasta ${c}. Solo una por categoría, salvo las combinaciones con nombre.</p>`) + `
     <div class="cards">${pick.map((r, i) => { const rep = replaces(r); return `<button class="card" data-i="${i}">
       <span class="ic">${r.icon}</span><span class="nm">${r.name}</span><span class="tag">${CATS[r.cat]}</span>${ESCAPE ? skullsHTML(r.cost, true) : ""}<span class="ds">${r.desc}</span>${storyOn() && STORY_FINE[r.id] ? `<span class="fp">${STORY_FINE[r.id]}</span>` : ""}
       ${i === hard ? '<span class="rw">Más difícil: +50% de oro</span>' : ""}
       ${rep ? `<span class="rp">Reemplaza a ${rep}</span>` : ""}
-      <span class="tag key">Tecla ${i + 1}</span></button>`; }).join("")}</div>`;
+      <span class="tag key">Tecla ${i + 1}</span></button>`; }).join("")}</div>${ESCAPE && !S.friend ? `<div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div>` : ""}`;
   ov.querySelectorAll(".card").forEach(b => b.onclick = () => choose(pick, +b.dataset.i, hard));
+  // v173 (user 2026-11-11 "cuando le das climb deberías tener un botón de ir para atrás"): back to the home screen from the first card
+  { const bk = ov.querySelector("#backBtn"); if (bk) bk.onclick = () => { try { omfSfx("click"); } catch (_) {} S.cardPick = null; showTitle(); }; }
   S.cardPick = { pick, hard };
 }
 function choose(pick, i, hard) { S.cardPick = null; S.mult = i === hard ? 1.5 : 1; applyRule(pick[i].id); startFloor();
@@ -5045,7 +5104,7 @@ const EN_PATTERNS = [
 Object.assign(EN_TEXT, { "oro": "gold", "Aspecto desbloqueado:": "Skin unlocked:", "Llega a 300 m en Escape": "Reach 300 m in Escape", "Encuentra 3 salas ocultas": "Find 3 hidden rooms", "Vence a un jefe": "Defeat a boss", "Vence a 3 jefes": "Defeat 3 bosses", "Junta 500 monedas en total": "Collect 500 coins in total", "Haz un combo x20": "Land a x20 combo", "Llega al Reino de las máquinas": "Reach the Machine Kingdom", "Compra 5 veces al mercader": "Buy from the merchant 5 times", "Llega a nivel 10 en Escape": "Reach level 10 in Escape", "Llega a 600 m en Escape": "Reach 600 m in Escape", "Cuervo": "Raven", "Explorador": "Explorer", "Escudero": "Squire", "Caballero": "Knight", "Minero": "Miner", "Bruto con cuernos": "Horned brute", "Gólem": "Golem", "Enano herrero": "Dwarf smith", "Bruja": "Witch", "Sombra": "Shadow" });
 Object.assign(EN_TEXT, { "⚙ AJUSTES": "⚙ SETTINGS", "CONTROLES": "CONTROLS", "Franja": "Strip", "Invisible": "Invisible", "Combinado": "Combined", "Mitad izquierda: stick que aparece donde tocas. A la derecha, los botones GOLPE y SALTO.": "Left half: a stick appears where you touch. On the right, the HIT and JUMP buttons.", "Clásico": "Classic", "Mandos en una franja debajo del juego: no tapan nada y el borde dorado es la línea de caída.": "Controls on a strip below the game: they cover nothing, and the gold edge is the fall line.", "Pantalla limpia. Mitad izquierda: stick que aparece donde tocas. Mitad derecha: toca para golpear, desliza hacia arriba para saltar.": "Clean screen. Left half: a stick appears where you touch. Right half: tap to strike, swipe up to jump.", "Cruceta y botones semitransparentes encima del juego.": "See-through d-pad and buttons over the game." });
 Object.assign(EN_TEXT, { "Saltar escena": "Skip", "Ecos de Velo": "Velo's Echoes", "Eco de Velo": "Velo's Echo", "Finales": "Endings", "FINAL": "ENDING" });
-Object.assign(EN_TEXT, { "Mira cuáles te faltan en el Códice.": "See which ones you're missing in the Codex.", "Logros": "Achievements", "Ranking": "Leaderboard", "ELIGE TU PRIMER MODIFICADOR": "PICK YOUR FIRST MODIFIER", "Empiezas la subida con él. Cada 15 s llega otro y el más antiguo se va.": "You start the climb with it. Every 20 s another one arrives and the oldest leaves." });
+Object.assign(EN_TEXT, { "Mira cuáles te faltan en el Códice.": "See which ones you're missing in the Codex.", "Logros": "Achievements", "Ranking": "Leaderboard", "ELIGE TU PRIMER MODIFICADOR": "PICK YOUR FIRST MODIFIER", "Empiezas la subida con él. Cada 20 s llega otro y el más antiguo se va.": "You start the climb with it. Every 20 s another one arrives and the oldest leaves." });
 EN_PATTERNS.unshift([/^Haz hazañas para añadir reglas a tu mazo · (\d+)\/(\d+)$/, "Pull off feats to add rules to your deck · $1/$2"],
   [/^REGLAS (\d+)\/(\d+) · HAZ HAZAÑAS PARA AÑADIRLAS A TU MAZO$/, "RULES $1/$2 · PULL OFF FEATS TO ADD THEM TO YOUR DECK"], [/^MEJORAS (\d+)\/(\d+)$/, "UPGRADES $1/$2"]);
 Object.assign(EN_TEXT, {"Torre sin fin: la cámara solo sube": "Endless tower: the camera only goes up", "MEJOR": "BEST", "HISTORIA": "STORY", "50 pisos · 5 biomas · jefes cada 5": "50 floors · 5 biomes · a boss every 5", "INFINITO": "ENDLESS", "Sin final: compite por llegar más alto": "No end: compete to climb highest", "DESAFÍO DIARIO": "DAILY CHALLENGE", "La misma torre para todos hoy": "The same tower for everyone today", "HOY": "TODAY", "JEFE · TIEMPO DETENIDO": "BOSS · TIME STOPPED", "¡Jefe! El tiempo se detiene hasta que lo venzas": "Boss! Time stops until you beat it", "El techo se abre: ¡sigue subiendo!": "The ceiling opens: keep climbing!", "Dificultad:": "Difficulty:", "Nuevo modificador:": "New modifier:", "Nuevo bioma:": "New biome:", "Se acaba:": "Ends:", "Paseo": "Stroll", "Calentando": "Warming up", "Cuesta arriba": "Uphill", "Peligroso": "Dangerous", "Despiadado": "Merciless", "Pesadilla": "Nightmare", "La torre despierta": "The tower awakens", "NO MIRES ABAJO": "DON'T LOOK DOWN", "PASEO": "STROLL", "CALENTANDO": "WARMING UP", "CUESTA ARRIBA": "UPHILL", "PELIGROSO": "DANGEROUS", "BRUTAL": "BRUTAL", "DESPIADADO": "MERCILESS", "PESADILLA": "NIGHTMARE", "LA TORRE DESPIERTA": "THE TOWER AWAKENS", "ESCALAR": "CLIMB", "+5 de oro": "+5 gold", "Sube sin parar. Si caes por debajo de la pantalla, se acabó.": "Keep climbing. Fall below the screen and it's over.", "Cada piso impone una regla nueva. ¿Hasta dónde llegas?": "Every floor adds a new rule. How high can you go?", "Modo vertical": "Portrait mode", "CÓMO SE JUEGA": "HOW TO PLAY", "La torre se genera hacia arriba sin fin y la cámara solo sube. Cada pocos minutos cambia el bioma, y cada 30 segundos entra un modificador nuevo que dura 60 (más cuanto más difícil). Cuidado con los fantasmas que atraviesan paredes y los erizos que rodean las plataformas.": "The tower builds itself upward forever and the camera only goes up. Every few minutes the biome changes, and every 30 seconds a new modifier kicks in for 60 (longer as it gets harder). Watch out for ghosts that drift through walls and urchins that crawl around platforms.", "Cruza cada piso hasta la columna de luz. Antes de cada piso eliges la siguiente regla; empiezas con 1 activa y llegan a 5. Cada 5 pisos espera un jefe.": "Cross each floor to the column of light. Before each floor you pick the next rule; you start with 1 active and it grows to 5. Every 5 floors a boss awaits.", "Rompe una regla 3 pisos seguidos para desbloquear otra en tu mazo.": "Survive a rule for 3 floors to unlock another in your deck.", "Reglas en tu mazo": "Rules in your deck", "CAÍSTE": "YOU FELL", "CAÍSTE EN EL PISO": "YOU FELL ON FLOOR", "Altura": "Height", "Tiempo": "Time", "Oro": "Gold", "Piso": "Floor", "Puesto": "Rank", "REGLAS": "RULES", "RELIQUIAS": "RELICS", "Otra vez": "Again", "Menú": "Menu", "Escape": "Escape", "Un piso más": "One more floor"});
@@ -6853,6 +6912,11 @@ function draw() {
     const gh = S.ghost; if (!drawEchoHero(gh)) { ctx.globalAlpha = 0.45; ctx.fillStyle = "#e0566b"; ctx.fillRect(gh.x, gh.y, gh.w, gh.h);
     ctx.globalAlpha = 1; ctx.strokeStyle = "#ffb0b8"; ctx.lineWidth = 1; ctx.strokeRect(gh.x + 0.5, gh.y + 0.5, gh.w - 1, gh.h - 1); }
   }
+  // v173: Swap dash afterimages (pixel blocks in the swap colour, fading over 0.3 s)
+  { const A = S.swapAnim, T0 = S.swapTrail, pts = A ? A.trail : T0 && S.t - T0.t < 0.3 ? T0.pts : null;
+    if (pts) { const fade = A ? 1 : 1 - (S.t - T0.t) / 0.3, pw = S.player.w, ph = S.player.h;
+      pts.forEach((q, i) => { if (i % 2 && !q.e) return; const a = fade * (0.15 + 0.5 * i / pts.length); ctx.fillStyle = q.e ? `rgba(224,86,107,${a})` : `rgba(185,167,255,${a})`;
+        const w = q.e ? (A ? A.e.w : T0.ew) : pw, h = q.e ? (A ? A.e.h : T0.eh) : ph; ctx.fillRect(Math.round(q.x + 2), Math.round(q.y + 2), Math.round(w - 4), Math.round(h - 4)); }); } }
   if (S.swapTarget && !S.swapTarget.dead && has("swap")) {
     const e = S.swapTarget; ctx.strokeStyle = "#b9a7ff"; ctx.lineWidth = 2; ctx.beginPath();
     ctx.arc(e.x + e.w / 2, e.y + e.h / 2, 18 + Math.sin(S.t * 20) * 3, 0, Math.PI * 2); ctx.stroke();
@@ -9951,6 +10015,18 @@ function drawNextMod(nx) { // v70 (user: "the new-modifier messages take a lot o
 const echoTintCache = new Map();
 function echoTint(cv) { let t = echoTintCache.get(cv); if (t) return t; t = document.createElement("canvas"); t.width = cv.width; t.height = cv.height; const c = t.getContext("2d");
   c.drawImage(cv, 0, 0); c.globalCompositeOperation = "source-atop"; c.fillStyle = "rgba(200,20,40,.78)"; c.fillRect(0, 0, t.width, t.height); echoTintCache.set(cv, t); return t; }
+// v173 (user 2026-11-11 "debería ser tu skin pero negra"): the loose shadow is your own hero and skin, drawn pitch black
+const shadowTintCache = new WeakMap();
+function shadowTint(cv) { let t = shadowTintCache.get(cv); if (t) return t; t = document.createElement("canvas"); t.width = cv.width; t.height = cv.height; const c = t.getContext("2d");
+  c.drawImage(cv, 0, 0); c.globalCompositeOperation = "source-atop"; c.fillStyle = "#07060d"; c.fillRect(0, 0, t.width, t.height); shadowTintCache.set(cv, t); return t; }
+function drawShadowHero(s) {
+  if (typeof heroFrame !== "function" || typeof sprBlit !== "function") return false;
+  const cid = S.char && S.char.id, id = heroSkinOf(cid === "rolo" ? "kai" : cid), mv = Math.abs(s.vx || 0) + Math.abs(s.vy || 0) > 40;
+  const cv = mv ? heroFrame(id, "run", Math.floor(S.t * 12) % 6) : heroFrame(id, "idle", Math.floor(S.t * 4) % 4); if (!cv) return false;
+  ctx.save(); ctx.globalAlpha = 0.92; sprBlit(shadowTint(cv), s.x + s.w / 2, s.y + s.h, s.w / 16, (s.face || 1) < 0, false);
+  ctx.fillStyle = "#c9c3e6"; ctx.globalAlpha = 0.7 + 0.3 * Math.sin(S.t * 6); const ex = s.x + s.w / 2 + ((s.face || 1) < 0 ? -3 : 1); ctx.fillRect(Math.round(ex), Math.round(s.y + s.h * 0.3), 1, 1); ctx.fillRect(Math.round(ex + 2), Math.round(s.y + s.h * 0.3), 1, 1);
+  ctx.restore(); SQX = SQY = 1; return true;
+}
 function drawEchoHero(g) {
   if (typeof heroFrame !== "function" || typeof sprBlit !== "function") return false;
   const cid = S.char && S.char.id, id = heroSkinOf(cid === "rolo" ? "kai" : cid);
@@ -10736,7 +10812,7 @@ function devDraw(p, cx, cy) {
   const dither = (x0, y0, w, h, c, step) => { const X0 = Math.floor(x0), Y0 = Math.floor(y0), nx = Math.ceil(x0 + w) - X0, ny = Math.ceil(y0 + h) - Y0; if (nx <= 0 || ny <= 0) return; ctx.fillStyle = devPat(c, step, k); ctx.fillRect(X0 * k, Y0 * k, nx * k, ny * k); }; // v134: one pattern fill, same pixels
   const tt = t * agit, wave = x => Math.round(SURF + Math.sin(x * 0.13 + tt * 2.2) * (1 + d * 1.2) + Math.sin(x * 0.05 - tt * 1.1) * 1.2);
   ctx.save();
-  if (!sleep) { ctx.globalAlpha = 0.55 + 0.3 * d; dither(0, SURF - 5, W, 4, L.glow, 2); if (d > 0.3) dither(0, SURF - 12, W, 7, L.glow, 4); ctx.globalAlpha = 1; }
+  // v173 (user 2026-11-11 "encima de la lava sale una línea, quítala, que solo sea la lava"): no dithered glow band above the surface
   for (let x = 0; x < W; x += 2) { const sy = wave(x); r(x, sy, 2, 1, L.hot); r(x, sy + 1, 2, 2, L.mid); r(x, sy + 3, 2, base + 4 - sy - 3, L.deep); }
   for (let q = 0; q < 6; q++) { const sx = ((q * 37 + tt * (6 + q) * (q % 2 ? 1 : -1)) % (W + 12) + W + 12) % (W + 12) - 12; r(sx, SURF + 5 + (q % 4) * 2, 10, 1, L.dark); }
   for (let q = 0; q < 3; q++) { const bx = ((q * 47 + tt * 5) % (W + 20) + W + 20) % (W + 20) - 10, y = wave(bx | 0); r(bx, y, 8, 1, L.dark); }
@@ -11022,7 +11098,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v170";
+var OMF_VER = "Escape v173";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -13272,7 +13348,7 @@ if (typeof ESC_PI === "object" && !ESC_PI.ghost) ESC_PI.ghost = ["..#####..", ".
 
 // ---------- network ----------
 function duTx(o) { const w = DU.ws; if (w && w.readyState === 1) try { w.send(JSON.stringify(o)); } catch (_) {} }
-function duClose() { if (DU.ws) { const w = DU.ws; DU.ws = null; try { if (w.readyState === 1) w.send(JSON.stringify({ t: "leave" })); w.close(); } catch (_) {} } DU.net = false; DU.peer = false; clearTimeout(DU.qTimer); }
+function duClose() { DU.reOK = false; DU.re = 0; clearTimeout(DU.reTimer); if (DU.ws) { const w = DU.ws; DU.ws = null; try { if (w.readyState === 1) w.send(JSON.stringify({ t: "leave" })); w.close(); } catch (_) {} } DU.net = false; DU.peer = false; clearTimeout(DU.qTimer); }
 function duConnect(then) {
   duClose(); const u = duelRelay();
   if (!u) { duNote(Lx("El servidor de duelo aún no está listo.", "The duel server isn't ready yet.")); return; }
@@ -13281,10 +13357,33 @@ function duConnect(then) {
   ws.onopen = () => { if (DU.ws === ws) { duNote(""); then(); } };
   ws.onmessage = e => { if (DU.ws !== ws) return; let m; try { m = JSON.parse(e.data); } catch (_) { return; } if (m && typeof m === "object") duRx(m); };
   ws.onclose = ws.onerror = () => { if (DU.ws !== ws) return; DU.ws = null; DU.net = false; DU.peer = false;
+    if (DU.reOK && DU.code) return duReconnect(); // v173: a dropped socket comes back by itself
     if (!DU.on && DU.scr) duNote(Lx("Se perdió la conexión con el servidor.", "Lost the connection to the server.")); };
 }
+// v173 (user 2026-11-11 "perdimos la conexión y estuvimos separados", "mejora la estabilidad de duel"): if the socket drops
+// (phone changes network, app goes to background, idle timeout) the game reconnects to the SAME room for up to 25 s and
+// carries on: same round, same tower, same score. A 15 s ping keeps idle lobbies open. The rival only counts as gone after 25 s.
+var DU_RE_MAX = 25;
+function duReconnect() {
+  clearTimeout(DU.reTimer); if (!DU.reOK || !DU.code || DU.ws) return;
+  if (!DU.reT0) DU.reT0 = duNow();
+  if (duNow() - DU.reT0 > DU_RE_MAX) { DU.reOK = false; DU.reT0 = 0; if (!DU.on && DU.scr) duNote(Lx("Se perdió la conexión con el servidor.", "Lost the connection to the server.")); return; }
+  if (!DU.on && DU.scr) duNote(Lx("Reconectando...", "Reconnecting..."));
+  if (document.hidden) return; // retried when the app comes back (visibilitychange below)
+  const u = duelRelay(); let ws; try { ws = new WebSocket(u); } catch (_) { DU.reTimer = setTimeout(duReconnect, 1500); return; }
+  DU.ws = ws; DU.re = 1;
+  ws.onopen = () => { if (DU.ws === ws) duTx({ t: "join", code: DU.code, re: 1, role: DU.role }); };
+  ws.onmessage = e => { if (DU.ws !== ws) return; let m; try { m = JSON.parse(e.data); } catch (_) { return; } if (m && typeof m === "object") duRx(m); };
+  ws.onclose = ws.onerror = () => { if (DU.ws !== ws) return; DU.ws = null; DU.net = false; DU.peer = false; DU.re = 0; if (DU.reOK) DU.reTimer = setTimeout(duReconnect, 1500); };
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && DU.reOK && DU.code && !DU.ws) { DU.reT0 = duNow(); duReconnect(); } });
+setInterval(() => { if (DU.ws && DU.ws.readyState === 1 && DU.net) duTx({ t: "ping" }); }, 15000);
 function duRx(m) {
-  if (m.t === "room" || m.t === "joined" || m.t === "matched") { DU.net = true; DU.role = m.role === "guest" ? "guest" : "host"; DU.code = String(m.code || "").slice(0, 4); DU.wins = [0, 0]; DU.round = 0; DU.seed = 0;
+  if (DU.re) { // the answer to a reconnect: keep the duel as it was
+    if (m.t === "joined") { DU.re = 0; DU.net = true; DU.reT0 = 0; if (!DU.on && DU.scr) duNote(""); DU.lastRx = Math.max(DU.lastRx, duNow() - 5); duHello(); if (DU.on) duSendNow(); return; }
+    if (m.t === "err") { const w = DU.ws; DU.ws = null; DU.re = 0; try { w && w.close(); } catch (_) {} DU.reTimer = setTimeout(duReconnect, 1500); return; }
+  }
+  if (m.t === "room" || m.t === "joined" || m.t === "matched") { DU.net = true; DU.reOK = true; DU.reT0 = 0; DU.role = m.role === "guest" ? "guest" : "host"; DU.code = String(m.code || "").slice(0, 4); DU.wins = [0, 0]; DU.round = 0; DU.seed = 0;
     if (m.t === "matched") clearTimeout(DU.qTimer); duWait(); return; }
   if (m.t === "err") { duNote(m.e === "nosuch" ? Lx("No existe esa sala. Revisa el código.", "That room doesn't exist. Check the code.") : m.e === "full" ? Lx("Esa sala ya está llena.", "That room is full.") : Lx("El servidor está ocupado. Prueba otra vez.", "The server is busy. Try again.")); return; }
   if (m.t === "peer") { DU.peer = !!m.on;
@@ -13293,10 +13392,10 @@ function duRx(m) {
     return; }
   if (m.t === "msg") duState(m.d);
 }
-var DUEL_GV = 6; // v167: modifiers every 20 s // v164b: modifiers last 20 s // v164: every modifier + shuffled biome order in the duel, so older duel towers differ // duel rules version: bump whenever the tower or the messages change
-function duHello() { duTx({ t: "msg", d: { v: 1, gv: DUEL_GV, role: DU.role, name: duName(), pid: duPid(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff } }); }
+var DUEL_GV = 7; // v173: friend tower duels (fr) + reconnect // v167: modifiers every 20 s // v164b: modifiers last 20 s // v164: every modifier + shuffled biome order in the duel, so older duel towers differ // duel rules version: bump whenever the tower or the messages change
+function duHello() { duTx({ t: "msg", d: { v: 1, gv: DUEL_GV, fr: DU.fr ? DU.fr.code : "", role: DU.role, name: duName(), pid: duPid(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff } }); }
 function duMine() { const p = S.player, dead = S.mode === "dead" || DU.quit;
-  return { v: 1, gv: DUEL_GV, ts: Math.round(duNow() * 1000) / 1000, role: DU.role, name: duName(), pid: duPid(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, w: Math.round(p.w), f: p.face < 0 ? -1 : 1,
+  return { v: 1, gv: DUEL_GV, fr: DU.fr ? DU.fr.code : "", ts: Math.round(duNow() * 1000) / 1000, role: DU.role, name: duName(), pid: duPid(), st: "play", round: DU.round, seed: DU.seed, diff: DU.diff, x: Math.round(p.x * 10) / 10, y: Math.round((p.y + p.h) * 10) / 10, w: Math.round(p.w), f: p.face < 0 ? -1 : 1,
     j: p.ground ? 0 : 1, inv: p.inv > 0 ? 1 : 0, hp: S.hp | 0, best: S.escBest | 0, dead: dead ? 1 : 0, why: DU.quit ? "quit" : /fell|lava|tide|cam/.test(S.deathCause || "fell") ? "lava" : "hp", cs: DU.cs, ci: DU.ci,
     sk: (() => { try { return heroSkinOf(S.char.id); } catch (_) { return "velo"; } })() }; }
 function duSendNow() { if (DU.net && DU.on && S && S.duel && S.player) duTx({ t: "msg", d: duMine() }); }
@@ -13307,6 +13406,7 @@ function duState(d) {
   if (d.gv !== DUEL_GV) { if (!DU.gvWarn) { DU.gvWarn = 1; duNote(Lx("Tu rival tiene otra versión del juego. Actualizad los dos para jugar juntos.", "Your rival has another version of the game. Both of you need to update to play together.")); } return; }
   DU.lastRx = duNow(); DU.rvName = duClean(d.name); if (d.pid) DU.rvPid = String(d.pid).replace(/[^A-Za-z0-9]/g, "").slice(0, 12);
   const ci = n => Math.max(0, Math.min(2, n | 0));
+  if (DU.role === "guest" && typeof frDecode === "function") { const fc = String(d.fr || ""); if (fc !== (DU.fr ? DU.fr.code : "")) { DU.fr = fc ? frDecode(fc) : null; if (!DU.on && DU.scr === "vs") duVs(); } }
   if (d.st === "lobby") { if (DU.role === "guest") DU.diff = ci(d.diff); if (!DU.on && (DU.scr === "wait" || DU.scr === "vs")) duVs(); return; }
   if (d.st !== "play") return;
   const seed = (+d.seed) >>> 0, round = d.round | 0;
@@ -13329,7 +13429,7 @@ function duCurseIn(id) {
   DU.cRx++; lastHud = ""; S.duBan = { s: Lx(DU.rvName + " TE MANDA " + T(RULE[id].name).toUpperCase(), DU.rvName + " SENDS YOU " + T(RULE[id].name).toUpperCase()), t: 2.6 };
   try { navigator.vibrate && navigator.vibrate(80); } catch (_) {} S.shake = Math.max(S.shake || 0, 0.25);
 }
-function duCurseOut() { const pool = duCursePool(); if (!pool.length) return; const id = pool[Math.floor(Math.random() * pool.length)]; DU.cs++; DU.ci = id;
+function duCurseOut() { if (S && S.frDuel) { DU.cs++; return; } const pool = duCursePool(); if (!pool.length) return; const id = pool[Math.floor(Math.random() * pool.length)]; DU.cs++; DU.ci = id;
   toast(Lx("MANDAS ", "YOU SEND ") + RULE[id].icon + " " + T(RULE[id].name).toUpperCase()); omfSfx("mod");
   if (DU.cs >= 5 && !DU.bot) duAch("curse5"); }
 
@@ -13346,12 +13446,15 @@ function duBotTick(dt) { const B = DU.bot; if (!B || B.dead) return;
 
 // ---------- rounds ----------
 function duStartRound(seed) {
+  if (DU.fr) DU.diff = DU.fr.diff; // v173: a friend's tower duel is played at the tower's own difficulty
   DU.seed = seed >>> 0 || 1; DU.on = true; DU.over = null; DU.cs = 0; DU.ci = null; DU.seenCs = 0; DU.cRx = 0; DU.snaps = []; DU.rv = { best: 0, hp: 3 }; DU.low = 0; DU.quit = false; DU.lastRx = duNow(); DU.t0 = 0; DU.sendT = 0;
   if (DU.bot) Object.assign(DU.bot, { h: 0, x: 120, vx: 60, dead: false, cs: 0, ph: Math.random() * 6, rate: [0.55, 0.75, 0.95][DU.diff] * (0.9 + Math.random() * 0.25) });
   const e = META.easy, h = META.hard; META.easy = DU.diff === 0; META.hard = DU.diff === 2;
   try { newRun({ char: S.char.id, kind: "escape" }); } finally { META.easy = e; META.hard = h; }
   S.duel = true; S.run = "duel"; S.seed = DU.seed; S.rng = mulberry(DU.seed);
+  S.frDuel = DU.fr || null; if (S.frDuel) { S.seed = S.frDuel.seed; S.rng = mulberry(S.seed); S.rules = S.frDuel.mods.filter(id => !(S.easy && id === "mirror")); }
   startFloor(); duHudOn(true);
+  if (S.frDuel) { S.escMods = S.rules.map(id => ({ id, until: 1e12 })); S.escNextMod = 1e12; S.escNextId = null; lastHud = ""; }
   S.mode = "menu"; ov.hidden = false; ov.classList.remove("dead"); DU.scr = "cd";
   let n = 3; const tick = () => { if (!DU.on || DU.scr !== "cd" || !S.duel) return;
     if (n > 0) { ov.innerHTML = `<div class="menu ducd"><p class="tagline">${Lx("RONDA", "ROUND")} ${DU.round} · ${T("TÚ")} ${DU.wins[0]} - ${DU.wins[1]} ${DU.rvName}</p><h1>${n}</h1><p>${Lx("Cada 25 m mandas una maldición", "Every 25 m you send a curse")}</p></div>`; omfSfx("click"); n--; setTimeout(tick, 1000); return; } // v164 (user): a clear 3-2-1, one second each
@@ -13368,7 +13471,8 @@ function duTick(p, dt) {
   if (ov.querySelector(".cards")) p.inv = Math.max(p.inv, 0.3); // a level-up doesn't stop the duel: safe while you pick
   while (Math.floor((S.escBest || 0) / 25) > DU.cs) duCurseOut();
   if (DU.bot) duBotTick(dt);
-  else if (duNow() - DU.lastRx > 10) return duEnd(0, duWhy("gone", DU.rvName));
+  else if (duNow() - DU.lastRx > DU_RE_MAX) return duEnd(0, duWhy("gone", DU.rvName));
+  if (!DU.bot && (!DU.net || duNow() - DU.lastRx > 3) && !S.duBan) S.duBan = { s: Lx("RECONECTANDO...", "RECONNECTING..."), t: 0.5 };
   DU.low = Math.min(DU.low, (S.escBest || 0) - DU.rv.best);
   if (duEl() >= DU_LIMIT) { const a = S.escBest || 0, b = DU.rv.best; return duEnd(a >= b ? 0 : 1, Lx("SE ACABÓ EL TIEMPO: ", "TIME'S UP: ") + (a >= b ? Lx("HAS LLEGADO MÁS ALTO", "YOU CLIMBED HIGHER") : Lx(DU.rvName + " LLEGÓ MÁS ALTO", DU.rvName + " CLIMBED HIGHER"))); }
   duHud();
@@ -13502,10 +13606,10 @@ function duDrawGhost() {
 var du_draw0 = draw; draw = function () { const r = du_draw0.apply(this, arguments); if (S && S.duel && DU.on && S.player) try { duDrawGhost(); } catch (_) {} return r; };
 
 // ---------- the same tower on both phones: seed + row only, no active modifiers, difficulty by height ----------
-var du_be0 = buildEscape; buildEscape = function () { if (!(S && S.duel)) return du_be0.apply(this, arguments);
+var du_be0 = buildEscape; buildEscape = function () { if (!(S && S.duel) || S.frDuel) return du_be0.apply(this, arguments);
   const mr = Math.random; Math.random = mulberry((S.seed ^ 0x5bd1e995) >>> 0); S.rng = mulberry(S.seed);
   try { return du_be0.apply(this, arguments); } finally { Math.random = mr; } };
-var du_gs0 = genEscSegment; genEscSegment = function () { if (!(S && S.duel && S.eg)) return du_gs0.apply(this, arguments);
+var du_gs0 = genEscSegment; genEscSegment = function () { if (!(S && S.duel && S.eg) || S.frDuel) return du_gs0.apply(this, arguments);
   const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, rules = S.rules, h = Math.max(0, (S.LH - 2) - S.eg.row), r = mulberry((S.seed | 0) * 7919 + S.eg.row * 31 + DU.diff);
   Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.rules = [];
   try { return du_gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.rules = rules; } };
@@ -13750,7 +13854,7 @@ var MF = { deadAt: 0, drewDead: false };
 // LISTO; the duel starts only when both are ready (the room creator's phone starts it, as before). Pressing again takes it back.
 DU.rdy = false; DU.rvRdy = false;
 function duRdyReset() { DU.rdy = false; DU.rvRdy = false; }
-duHello = function () { duTx({ t: "msg", d: { v: 1, gv: DUEL_GV, role: DU.role, name: duName(), pid: duPid(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff, rdy: DU.rdy ? 1 : 0 } }); };
+duHello = function () { duTx({ t: "msg", d: { v: 1, gv: DUEL_GV, fr: DU.fr ? DU.fr.code : "", role: DU.role, name: duName(), pid: duPid(), st: "lobby", round: DU.round, seed: DU.seed, diff: DU.diff, rdy: DU.rdy ? 1 : 0 } }); };
 function duRdyCheck() { if (DU.net && DU.peer && DU.role === "host" && DU.rdy && DU.rvRdy && !DU.on && DU.scr === "vs") { duRdyReset(); duHostStart(false); } }
 { const s0 = duState; duState = function (d) { if (d && typeof d === "object" && d.v === 1 && d.st === "lobby") DU.rvRdy = !!d.rdy; const r = s0.apply(this, arguments); if (d && d.st === "lobby") duRdyCheck(); return r; }; }
 { const w0 = duWait; duWait = function () { duRdyReset(); return w0.apply(this, arguments); }; }
@@ -14854,6 +14958,11 @@ const MOD_PX = {
 };
 const MOD_PUA = {};
 if (ESCAPE) RULES.forEach((r, i) => { if (!MOD_PX[r.id]) return; const ch = String.fromCharCode(0xE100 + i); PXE_ART[ch] = MOD_PX[r.id]; MOD_PUA[ch] = r; r.icon = ch; });
+// v173 (user 2026-11-11 "Elimina el modificador de ritmo"): Ritmo is gone from Escape (rotation, curses, duel, friend tower, Create tower, Codex, unlocks). RULE.rhythm stays so old saves never break.
+// v173 (user 2026-11-11 "Beanstalk no funciona remuévelo"): Habichuela gone too. Its unlock stays only because the Game Center
+// achievement "bean" (spend 300 gold in shops) is earned through it.
+var ESC_GONE = ["rhythm", "bean", "blink"]; // blink: user 2026-11-11 "Remove blink"
+if (ESCAPE) { for (const id of ESC_GONE) { const i = RULES.findIndex(r => r.id === id); if (i >= 0) RULES.splice(i, 1); } delete UNLOCKS.rhythm; }
 { const t1 = toast; toast = function (text) { try { text = String(T(text)).replace(/[\uE000-\uF8FF]\s?/g, "").replace(/^([+\u2212\-])\s+/, "$1 "); } catch (_) {} return t1.call(this, text); }; }
 PXE_ART["\u25CC"] = ["..............", ".....a..a.....", "...a......a...", "..............", "..a........a..", "..............", ".a..........a.", ".a..........a.", "..............", "..a........a..", "..............", "...a......a...", ".....a..a.....", ".............."]; // Eco: a dotted ring
 const PXS_RE = /([←-⇿⌀-⏿■-➿⤀-⥿⬀-⯿☀-⛿\uE000-\uF8FF]|\p{Extended_Pictographic})[︎️]?/u;
@@ -14901,6 +15010,7 @@ function frDecode(txt) { const s = frClean(txt); if (s.length !== 8) return null
   const m3 = n % 128; n = Math.floor(n / 128); const m2 = n % 128; n = Math.floor(n / 128); const m1 = n % 128; n = Math.floor(n / 128);
   const diff = n % 4, ver = Math.floor(n / 4); if (ver !== 0 || diff > 2) return null;
   const mods = []; for (const k of [m1, m2, m3]) { if (k === 127) continue; if (k >= FR_IDS.length || !RULE[FR_IDS[k]]) return null; if (!mods.includes(FR_IDS[k])) mods.push(FR_IDS[k]); }
+  for (let i = mods.length - 1; i >= 0; i--) if (typeof ESC_GONE !== "undefined" && ESC_GONE.includes(mods[i])) mods.splice(i, 1); // v173: removed modifiers drop out of old codes
   const d = { diff, mods, seed }; d.code = frEncode(d); return d; }
 // modifiers you can pick: the ones Escape uses that you've already met
 // one shared padlock image (47 small canvases made the page slow to open, rule 4)
@@ -14934,13 +15044,17 @@ function frMenu() {
     <p class="frdn">${Lx("Para CREAR. Al entrar un código se juega en la dificultad que guarda.", "For CREATE. A code is played at the difficulty it holds.")}</p>
     <div class="rowbig"><button class="go" id="frNew">${Lx("CREAR", "CREATE")}</button></div>
     <div class="rowbig"><button class="go alt" id="frIn">${Lx("ENTRAR CÓDIGO", "ENTER CODE")}</button></div>
-    ${recent.length ? `<div class="mlabel">${Lx("ÚLTIMOS CÓDIGOS", "RECENT CODES")}</div><div class="frrecent">${recent.map(e => `<button data-c="${e.c}"><b>${e.c}</b><span>${e.b} m</span></button>`).join("")}</div>` : ""}
+    ${recent.length ? `<div class="mlabel">${Lx("ÚLTIMOS CÓDIGOS", "RECENT CODES")}</div><div class="frrecent">${recent.map(e => `<div class="frrc"><button data-c="${e.c}"><b>${e.c}</b><span>${e.b} m</span></button><button class="frdel" data-del="${e.c}" aria-label="${Lx("Borrar", "Delete")} ${e.c}">X</button></div>`).join("")}</div>` : ""}
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
   ov.scrollTop = 0;
   ov.querySelector("#frNew").onclick = () => frCreate();
   ov.querySelectorAll("[data-frmd]").forEach(b => b.onclick = () => { if (b.dataset.frmd === difMeta()) return; difSet(b.dataset.frmd); const y = ov.scrollTop; frMenu(); ov.scrollTop = y; });
   ov.querySelector("#frIn").onclick = () => frEnter("");
-  ov.querySelectorAll(".frrecent button").forEach(b => b.onclick = () => frEnter(b.dataset.c));
+  ov.querySelectorAll(".frrecent [data-c]").forEach(b => b.onclick = () => frEnter(b.dataset.c));
+  // v173 (user 2026-11-11 "en friend deberías poder eliminar previas torres"): X forgets a code and its best height
+  ov.querySelectorAll(".frrecent [data-del]").forEach(b => b.onclick = () => {
+    META.friend = (META.friend || []).filter(x => x.c !== b.dataset.del); try { saveMeta(); } catch (_) {}
+    const y = ov.scrollTop; frMenu(); ov.scrollTop = y; });
   ov.querySelector("#backBtn").onclick = () => { try { omfSfx("click"); } catch (_) {} showTitle(); };
 }
 // v165b (user: "va muy lageado" / "todos los menús deben ser fluidos"): picking a modifier no longer rebuilds the whole page,
@@ -14981,8 +15095,9 @@ function frCreate(st) {
     <textarea id="frTa" class="frta" readonly aria-hidden="true"></textarea>
     <p class="frnote" id="frNote"></p>
     <div class="rowbig two"><button class="go alt" id="frCopy">${Lx("COPIAR", "COPY")}</button><button class="go" id="frPlay">${Lx("JUGAR", "PLAY")}</button></div>
+    <div class="rowbig"><button class="go alt" id="frDu">${Lx("DUELO CON ESTA TORRE", "DUEL ON THIS TOWER")}</button></div>
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
-  paintPxi(ov);
+  paintPxi(ov); ov.querySelector("#frDu").onclick = () => frDuel(frDecode(frEncode(st)));
   ov.querySelectorAll("[data-fd]").forEach(b => b.onclick = () => { st.diff = { e: 0, n: 1, h: 2 }[b.dataset.fd]; const y = ov.scrollTop; frCreate(st); ov.scrollTop = y; });
   // v164b (user 2026-11-08): tapping a modifier opens a pop-up with what it does, and SELECT / CLOSE
   ov.querySelectorAll("[data-m]").forEach(b => b.onclick = () => frModPop(b.dataset.m, st));
@@ -15002,17 +15117,19 @@ function frEnter(pre) {
     <p class="frnote" id="frNote">&nbsp;</p>
     <div id="frPrev" class="frprev"></div>
     <div class="rowbig two"><button class="go alt" id="frPaste">${Lx("PEGAR", "PASTE")}</button><button class="go" id="frPlay" disabled>${Lx("JUGAR", "PLAY")}</button></div>
+    <div class="rowbig"><button class="go alt" id="frDu" disabled>${Lx("DUELO CON ESTA TORRE", "DUEL ON THIS TOWER")}</button></div>
     <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
   const inp = ov.querySelector("#frInp"), cells = ov.querySelectorAll(".frbox i"), note = ov.querySelector("#frNote"), prev = ov.querySelector("#frPrev"), play = ov.querySelector("#frPlay");
   let cur = null;
   const sync = () => { const s = frClean(inp.value).slice(0, 8); cells.forEach((c, i) => { c.textContent = s[i] || ""; c.classList.toggle("cur", i === s.length); });
-    cur = s.length === 8 ? frDecode(s) : null; play.disabled = !cur;
+    cur = s.length === 8 ? frDecode(s) : null; play.disabled = !cur; const du = ov.querySelector("#frDu"); if (du) du.disabled = !cur;
     note.textContent = s.length === 8 && !cur ? Lx("Código no válido", "Invalid code") : " "; note.classList.toggle("bad", s.length === 8 && !cur);
     prev.innerHTML = cur ? `<div class="mlabel">${Lx("ESTA TORRE", "THIS TOWER")}</div><p>${frDifHTML(cur.diff)}</p><div class="frmods">${frModsHTML(cur.mods)}</div>${frBest(cur.code) ? `<p class="hbest">${Lx("Tu mejor altura aquí", "Your best here")}: <b>${frBest(cur.code)} m</b></p>` : ""}` : ""; };
   inp.addEventListener("input", sync); inp.onkeydown = e => { e.stopPropagation(); if (e.key === "Enter" && cur) frStart(cur); }; inp.onkeyup = e => e.stopPropagation();
   inp.value = pre || ""; sync(); setTimeout(() => { try { inp.focus({ preventScroll: true }); } catch (_) {} }, 50);
   ov.querySelector("#frPaste").onclick = async () => { try { omfSfx("click"); } catch (_) {} try { const t = await navigator.clipboard.readText(); const m = String(t || "").toUpperCase().match(/[A-Z0-9]{4}[\s-]?[A-Z0-9]{4}/); inp.value = m ? m[0] : String(t || "").slice(0, 12); sync(); } catch (_) { note.textContent = Lx("No pude leer el portapapeles: escríbelo a mano.", "Couldn't read the clipboard: type it in."); inp.focus(); } };
   play.onclick = () => { if (cur) frStart(cur); };
+  ov.querySelector("#frDu").onclick = () => { if (cur) frDuel(cur); };
   ov.querySelector("#backBtn").onclick = () => frMenu();
 }
 function frStart(d) {
@@ -15026,12 +15143,12 @@ function frStart(d) {
   if (S.rules.length) toast(Lx("Modificadores fijos: ", "Fixed modifiers: ") + S.rules.map(id => T(RULE[id].name)).join(", "));
 }
 // the same tower on every phone: generation depends only on seed, row and the code's modifiers (as in the duel)
-{ const be = buildEscape; buildEscape = function () { if (!(S && S.friend)) return be.apply(this, arguments);
+{ const be = buildEscape; buildEscape = function () { if (!(S && (S.friend || S.frDuel))) return be.apply(this, arguments);
     const mr = Math.random; Math.random = mulberry((S.seed ^ 0x2c1b3c6d) >>> 0); S.rng = mulberry(S.seed);
     try { return be.apply(this, arguments); } finally { Math.random = mr; } }; }
-{ const gs = genEscSegment; genEscSegment = function () { if (!(S && S.friend && S.eg)) return gs.apply(this, arguments);
-    const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, rules = S.rules, h = Math.max(0, (S.LH - 2) - S.eg.row), r = mulberry(((S.seed | 0) + 1) * 7919 + S.eg.row * 31 + S.friend.diff * 104729);
-    Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.rules = S.friend.mods.filter(id => !(S.easy && id === "mirror"));
+{ const gs = genEscSegment; genEscSegment = function () { const FT = S && (S.friend || S.frDuel); if (!(FT && S.eg)) return gs.apply(this, arguments);
+    const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, rules = S.rules, h = Math.max(0, (S.LH - 2) - S.eg.row), r = mulberry(((S.seed | 0) + 1) * 7919 + S.eg.row * 31 + FT.diff * 104729);
+    Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.rules = FT.mods.filter(id => !(S.easy && id === "mirror"));
     try { return gs.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.rules = rules; } }; }
 // fixed modifiers: a level-up never offers to remove them
 { const lc = escLevelCards; escLevelCards = function () { if (!(S && S.friend)) return lc.apply(this, arguments);
@@ -15075,11 +15192,21 @@ function frStart(d) {
 .frbox i.cur{box-shadow:inset 0 0 0 2px #f2c14e;animation:a3blink 1s steps(2) infinite}.frbox em{font:700 18px Silkscreen,monospace;color:#5a5478;font-style:normal}
 .frprev{min-height:20px}.frprev p{margin:4px 0}.frdif{font:700 13px Silkscreen,monospace;letter-spacing:1px}
 .frmods{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:6px 0}.frm{display:flex;align-items:center;gap:4px;padding:4px 8px;background:#14102a;box-shadow:inset 0 0 0 2px #3e3960;color:#c9c3e6;font-size:12px}.frm b{font-weight:400}.frm img.pxe{width:20px;height:20px}.frm.none{color:#a59cbd}
-.frrecent{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.frrecent button{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#14102a;border:2px solid #3e3960;color:#c9c3e6}.frrecent b{font:700 12px Silkscreen,monospace;color:#f2c14e;letter-spacing:1px}.frrecent span{font-size:11px}
+.frrecent{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.frrc{display:flex;min-width:0}.frrc > button:first-child{flex:1 1 auto;min-width:0}.frrecent .frdel{flex:0 0 28px;justify-content:center;padding:0;margin-left:-2px;font:700 12px Silkscreen,monospace;color:#e0566b}.frrecent button{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#14102a;border:2px solid #3e3960;color:#c9c3e6}.frrecent b{font:700 12px Silkscreen,monospace;color:#f2c14e;letter-spacing:1px}.frrecent span{font-size:11px}
 .frdead{display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px auto;padding:8px 10px;background:#0b0912;box-shadow:inset 0 0 0 2px #3e3960;max-width:360px}.frdead .best{font-size:12px;color:#c9c3e6}.frdead .best b{color:#f2c14e}.frdead .go{margin-top:4px;padding:6px 14px}`;
   document.head.appendChild(st); })();
 
 (() => { const st = document.createElement("style"); st.textContent = `.frgrid button{position:relative}.frgrid button .frlki{position:absolute;top:2px;right:2px;line-height:0;font-style:normal}.frgrid button .frlki img{width:9px;height:9px;image-rendering:pixelated}`; document.head.appendChild(st); })();
+// v173 (user 2026-11-11 "cuando creas una torre no deberían cambiar los modificadores conforme subes"): a code's modifiers are
+// the only ones for the whole climb. Nothing else can add one (cursed chests gave a random one) or take one away.
+{ const am = escAddMod; escAddMod = function () { if (S && (S.friend || S.frDuel)) return; return am.apply(this, arguments); }; }
+{ const rm = escRemoveMod; escRemoveMod = function (id) { const F = S && (S.friend || S.frDuel); if (F && F.mods.includes(id)) return; return rm.apply(this, arguments); }; }
+// v173 (user 2026-11-11 "friends tower debería poder invitar a alguien para jugar esa torre específica con un código como en duel"):
+// DUELO CON ESTA TORRE opens a duel room (4-letter code, same as DUEL) whose rounds are this exact tower: same layout, same
+// difficulty, the same fixed modifiers all the way up, no curses. The guest gets the tower from the host's messages.
+function frDuel(d) { if (!d) return; try { omfSfx("click"); } catch (_) {}
+  DU.frKeep = true; duMenu(); DU.fr = d; DU.diff = d.diff; DU.bot = null; duConnect(() => duTx({ t: "create" })); }
+{ const dm = duMenu; duMenu = function () { if (!DU.frKeep) DU.fr = null; DU.frKeep = false; return dm.apply(this, arguments); }; }
 
 // ===================================================================
 // TALLER DE TORRES (tower workshop) · add-on. Spec /mnt/project-files/editor-torres/editor-torres-spec.md
@@ -16011,7 +16138,7 @@ function duTowerAt(el) { // the tower's active modifiers at duel second el: a pu
 }
 function duTowerNext(el) { const t = (Math.floor(el / ESC_MOD_EVERY) + 1) * ESC_MOD_EVERY, now = duTowerAt(el).map(o => o.id), nx = duTowerAt(t + 0.001).map(o => o.id).find(id => !now.includes(id)); return { t, id: nx || null }; }
 function duTowerSync() {
-  if (!S || !S.duel || !DU.on || !DU.t0 || DU.over) return;
+  if (!S || !S.duel || S.frDuel || !DU.on || !DU.t0 || DU.over) return;
   const el = duEl(); S.escT0 = S.t - el; // the run clock = the duel clock
   const want = duTowerAt(el), ids = want.map(o => o.id), had = DU.tw || [];
   for (const id of had) if (!ids.includes(id)) { DU.tw = (DU.tw || []).filter(x => x !== id); const curse = S.escMods.find(m => m.id === id && m.curse);
@@ -16029,7 +16156,7 @@ setInterval(() => { try { if (S && S.duel && DU.on && !DU.over && S.mode === "me
 // v164 (user: "en duelos los 5 biomas pueden aparecer random, no necesariamente empiezas por el número 1"): in a duel the biome
 // order is a shuffle of the 5, taken from the duel seed, so both players (phone or PC) climb the same order.
 function duBiomeOrder(seed) { const o = [0, 1, 2, 3, 4], R = mulberry(((seed | 0) * 31 + 977) >>> 0 || 1); for (let i = 4; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; }
-{ const bz = escBiomeAt; escBiomeAt = function (t) { const z = bz.apply(this, arguments); if (!S || !S.duel || !DU.seed || S.descent) return z;
+{ const bz = escBiomeAt; escBiomeAt = function (t) { const z = bz.apply(this, arguments); if (!S || !S.duel || !DU.seed || S.descent || S.frDuel) return z;
     if (S.duBioSeed !== DU.seed) { S.duBioSeed = DU.seed; S.duBio = duBiomeOrder(DU.seed); } return S.duBio[Math.max(0, Math.min(4, z))]; }; }
 // biome feats and biome skins aren't earned in a duel (the order is shuffled there)
 { const am = achMax; achMax = function (k) { if (S && S.duel && /^e_z\d/.test(String(k))) return; return am.apply(this, arguments); }; }
@@ -16574,11 +16701,31 @@ function nbSync() { const w = nbWant(); if (w !== NB_ALT) { nbApply(w);
     nb3Band(NB_ALT, th, c, W, SPRV_BAND, (a, b, k) => sprHash(a, b, k + vv * 17)); sprvBandCache.set(key, cv); return cv; }; }
 { const l0 = sprvBandLive; sprvBandLive = function (zi, th, X, Y, A, W, vv) {
     if (zi !== 0 || !NB_ALT) return l0.apply(this, arguments); nb3BandLive(NB_ALT, th, X, Y, A, W, (a, b, k) => sprHash(a, b, k + vv * 17)); }; }
+// v173 (user 2026-11-11 "en el nuevo bioma hay mobs que no tienen animaciones"): each look has ONE drawn model per type, so
+// every animation frame used to show the same picture. Now the frames the game asks for are built from that model:
+// walk/charge/knight steps shuffle the feet, bats and petrels flap the outer columns, a hopper in the air stretches,
+// the turret dips when it fires. Built once per frame name and cached in SPR.
+function nb3Frame(to, base) {
+  const rows = SPR[to]; if (!rows) return to; let k = null, fn = null;
+  const shiftRow = (r, d) => d > 0 ? ".".repeat(d) + r.slice(0, r.length - d) : r.slice(-d) + ".".repeat(-d);
+  const legs = d => rows.map((r, i) => i >= rows.length - 2 ? shiftRow(r, i === rows.length - 1 ? d : -d) : r);
+  const flap = dy => { const w = rows[0].length, H = rows.length, out = rows.map(r => r.split(""));
+    for (let x = 0; x < w; x++) { if (x >= w * 0.3 && x < w * 0.7) continue; for (let y = 0; y < H; y++) { const sy = y - dy; out[y][x] = sy >= 0 && sy < H ? rows[sy][x] : "."; } }
+    return out.map(r => r.join("")); };
+  let m;
+  if (/_m$/.test(base)) { k = "m"; fn = () => legs(1); }
+  else if (/_b$/.test(base)) { k = "b"; fn = () => legs(-1); }
+  else if (/_air$/.test(base)) { k = "air"; fn = () => { const mid = Math.floor(rows.length / 2); return rows.slice(0, mid).concat([rows[mid]], rows.slice(mid)); }; }
+  else if ((m = /^(bat|bmb)(\d)$/.exec(base))) { const f = +m[2]; if (f !== 1) { k = "f" + f; fn = () => flap(f === 0 ? -1 : 1); } }
+  else if (base === "arc2") { k = "rc"; fn = () => ["".padEnd(rows[0].length, ".")].concat(rows.slice(0, rows.length - 1)); }
+  if (!k) return to;
+  const key = to + "~" + k; if (!SPR[key]) SPR[key] = fn(); return key;
+}
 // ---- enemies: every type gets this look's own model (like SPRB2 does per biome) ----
 { const c0 = sprCanvas; sprCanvas = function (name, palKey, pal, white) {
     if (NB_ALT && typeof name === "string" && palKey === "z0") {
       const base = name.split("#")[0], t = sprb2Type(base), to = t && "n" + NB_ALT + "_" + t;
-      if (to && SPR[to]) { Object.assign(pal, NB3_EPAL[NB_ALT]); name = to + name.slice(base.length); } }
+      if (to && SPR[to]) { Object.assign(pal, NB3_EPAL[NB_ALT]); name = nb3Frame(to, base) + name.slice(base.length); } }
     return c0.call(this, name, palKey, pal, white); }; }
 // ---- floor props: castle ones swapped for this look's own; castle statue/door hidden ----
 const nbRow0 = y => { if (!S || !S.rowZone || !S.rowZone.length) return true; const r = Math.max(0, Math.min(S.rowZone.length - 1, Math.floor(y / TS))); return S.rowZone[r] === 0; };
@@ -16942,13 +17089,28 @@ function escFixTick(dt) {
   else if (S.orbs.length) S.orbs = [];
   // Loose shadow: comes back 20 s after you catch it
   if (has("shadow")) { if (S.shadowE && S.shadowE.y > (S.camY || 0) + CH + 60) S.shadowE = null;
-    if (!S.shadowE) { S.shadowT = (S.shadowT || 0) - dt; if (S.shadowT <= 0) { const q = escFreeSpot(); S.shadowT = 3; if (q) { S.shadowE = { x: q.x + 4, y: q.y + 2, w: 14, h: 20, caught: false, ph: 0 }; S.shadowT = 20; toast("Tu sombra anda suelta"); } } } }
+    if (!S.shadowE) { S.shadowT = (S.shadowT || 0) - dt; if (S.shadowT <= 0) { const q = escFreeSpot(); S.shadowT = 3; if (q) { const P = S.player, w = P ? P.w : 14, h = P ? P.h : 20; S.shadowE = { x: q.x + (TS - w) / 2, y: q.y + TS - h - 0.01, w, h, caught: false, ph: 0, face: 1 }; S.shadowT = 20; toast("Tu sombra anda suelta"); } } } }
   else S.shadowE = null;
   if (!has("maze")) S.beast = null;
   // Switch: the platforms of new tower segments turn red and blue too
   if (has("switch")) for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.kind = "sw"; m.h = TS / 2; }
 }
 var mfx_up0 = update; update = function (dt) { const r = mfx_up0.apply(this, arguments); if (S && S.escape && !S.duel) escFixTick(dt); return r; };
+// v173 (user 2026-11-11, white screen with Split): safety net. An enemy that ends up with a non-finite position is removed
+// before drawing, so one bad enemy can never break every frame again.
+{ const u0 = update; update = function () { const r = u0.apply(this, arguments);
+    try { if (S && S.enemies) for (const e of S.enemies) if (!e.dead && !(isFinite(e.x) && isFinite(e.y))) { e.dead = true; e.x = e.y = -9999; } } catch (_) {}
+    return r; }; }
+
+// v173: Swap dash. Runs after the frame's physics so walls in between never catch either of them mid-dash.
+function swapAnimTick(dt) { const A = S && S.swapAnim; if (!A) return; const p = S.player, e = A.e;
+  if (!p || !e || e.dead || S.mode !== "play") { S.swapAnim = null; return; }
+  A.t += dt; const k = Math.min(1, A.t / A.d), q = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  p.x = A.px + (A.tx - A.px) * q; p.y = A.py + (A.ty - A.py) * q; p.vx = 0; p.vy = 0;
+  e.x = A.ex + (A.etx - A.ex) * q; e.y = A.ey + (A.ety - A.ey) * q; e.vx = 0; e.vy = 0;
+  (A.trail = A.trail || []).push({ x: p.x, y: p.y, t: S.t }, { x: e.x, y: e.y, t: S.t, e: 1 }); if (A.trail.length > 24) A.trail.splice(0, 2);
+  if (k >= 1) { S.swapAnim = null; burst(p.x + p.w / 2, p.y + p.h / 2, "#b9a7ff", 12); S.swapTrail = { pts: A.trail, t: S.t, w: p.w, h: p.h, ew: e.w, eh: e.h }; } }
+{ const u1 = update; update = function (dt) { const r = u1.apply(this, arguments); try { swapAnimTick(dt); } catch (_) { S.swapAnim = null; } return r; }; }
 
 // ===================================================================
 // v166 (user 2026-11-08 11:11 "me gusta sube y crea la in app en apple para la siguiente version"): PAID SKIN COLLECTIONS.
@@ -17198,6 +17360,156 @@ function colBuy(s, btn) {
 .wardrobe .wtile.colk{box-shadow:inset 0 0 0 2px #c98a2a}
 .wardrobe .wtile.colk.sel,.wardrobe .wtile.colk.peek{box-shadow:inset 0 0 0 2px #f2c14e}
 .wardrobe .wtile .wcolb{position:absolute;top:2px;right:2px;font-style:normal;line-height:0}`; document.head.appendChild(st); })();
+
+// v171 (user 2026-11-09 "implementa la opción de redeem"): REDEEM CODE. Settings > CANJEAR CÓDIGO opens a code page
+// (same look as the friend's tower code page; touch keyboard, PC keyboard or the pad's pixel keyboard). Works offline:
+// a code is 10 letters (XXXXX-XXXXX, the friend-code alphabet, 50 bits) = reward id (6 bits) + serial (16 bits) + a
+// 28-bit keyed check, scrambled so neighbouring codes don't look alike. A random guess is right about 1 in 268 million.
+// Each code works once per device (META.redeemed). Generator: /mnt/project-files/herramientas/codigos/generar-codigos.js
+// (same secret and maths; keep them in step). REDEEM_REWARDS is FROZEN by id: only add new ids.
+const RD_SECRET = "__OMF_REDEEM_SECRET__"; // placeholder: the iOS build (sync-game.mjs) swaps in the real value from a GitHub Actions secret; real value lives only in movil/privado/redeem-secret.txt
+const RD_REWARDS = {
+  1: { es: "Aspecto de tester de Android", en: "Android tester skin", skin: "tester_android" }, // skin art comes from the design thread
+  2: { es: "500 de oro para la bolsa", en: "500 gold for your bag", bank: 500 },
+  3: { es: "Colección CRISTAL VIVO (4 aspectos)", en: "LIVING CRYSTAL collection (4 skins)", col: "K4" }, // user 2026-11-11
+};
+const rdH = (n, salt) => { let h = 0x811c9dc5 ^ salt; const s = RD_SECRET + ":" + n + ":" + salt;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
+const RD_URL = "https://one-more-floor.kevindevrk-96e.workers.dev"; // same Worker as the duel relay (relay-cloudflare/worker.js, /redeem)
+const RD_T = 268435456, RD_P = 4194304; // 2^28 check, 2^22 payload
+function rdEncode(reward, serial) { const P = reward * 65536 + serial, T = rdH(P, 1) % RD_T, Ps = (P ^ (rdH(T, 2) % RD_P)) >>> 0;
+  let n = Ps * RD_T + T, s = ""; for (let i = 0; i < 10; i++) { s = FR_A32[n % 32] + s; n = Math.floor(n / 32); } return s.slice(0, 5) + "-" + s.slice(5); }
+function rdDecode(txt) { const s = String(txt || "").toUpperCase().replace(/[\s\-_.]/g, "").replace(/[I1]/g, "L"); if (s.length !== 10) return null;
+  let n = 0; for (const ch of s) { const k = FR_A32.indexOf(ch); if (k < 0) return null; n = n * 32 + k; }
+  const T = n % RD_T, P = ((Math.floor(n / RD_T)) ^ (rdH(T, 2) % RD_P)) >>> 0; if (rdH(P, 1) % RD_T !== T) return null;
+  const reward = Math.floor(P / 65536), serial = P % 65536; if (!RD_REWARDS[reward]) return null;
+  return { reward, serial, code: s.slice(0, 5) + "-" + s.slice(5) }; }
+function rdHas(reward) { return Array.isArray(META.rewards) && META.rewards.includes(reward); }
+function rdGrant(d) { const R = RD_REWARDS[d.reward];
+  META.redeemed = Array.isArray(META.redeemed) ? META.redeemed : []; META.rewards = Array.isArray(META.rewards) ? META.rewards : [];
+  META.redeemed.push(d.code); if (!META.rewards.includes(d.reward)) META.rewards.push(d.reward);
+  if (R.bank) META.bank = (META.bank || 0) + R.bank;
+  try { saveMeta(); } catch (_) {} }
+// a reward skin counts as owned once its code was redeemed (the skin itself is added to HERO_SKINS when its art lands)
+{ const so = skinOwned; skinOwned = function (id) { for (const k in RD_REWARDS) if (RD_REWARDS[k].skin === id) return rdHas(+k); return so.apply(this, arguments); }; }
+// a reward collection counts as owned once its code was redeemed (on top of the store purchase)
+if (typeof colOwned === "function") { const co = colOwned; colOwned = function (pk) { for (const k in RD_REWARDS) if (RD_REWARDS[k].col && RD_REWARDS[k].col === pk && rdHas(+k)) return true; return co.apply(this, arguments); }; }
+function showRedeem() {
+  try { omfSfx("click"); } catch (_) {}
+  ov.hidden = false; ov.classList.remove("dead");
+  ov.innerHTML = `<div class="menu setpage fullpg frpage rdpage"><h2>${Lx("CANJEAR CÓDIGO", "REDEEM CODE")}</h2>
+    <p class="rdhelp">${Lx("Escribe el código que te dimos. Cada código sirve una vez.", "Type the code you were given. Each code works once.")}</p>
+    <label class="frbox rdbox" for="rdInp"><input id="rdInp" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="${Lx("Código", "Code")}">
+      <span class="cells">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => `<i data-k="${i}"></i>${i === 4 ? "<em>-</em>" : ""}`).join("")}</span></label>
+    <p class="frnote" id="rdNote">&nbsp;</p>
+    <div class="rdprev" id="rdPrev">&nbsp;</div>
+    <div class="rowbig two"><button class="go alt" id="rdPaste">${Lx("PEGAR", "PASTE")}</button><button class="go" id="rdGo" disabled>${Lx("CANJEAR", "REDEEM")}</button></div>
+    <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
+  const inp = ov.querySelector("#rdInp"), cells = ov.querySelectorAll(".rdbox i"), note = ov.querySelector("#rdNote"), prev = ov.querySelector("#rdPrev"), go = ov.querySelector("#rdGo");
+  let cur = null;
+  const say = (t, bad) => { note.textContent = t || " "; note.classList.toggle("bad", !!bad); };
+  const sync = () => { const s = String(inp.value || "").toUpperCase().replace(/[\s\-_.]/g, "").slice(0, 10);
+    cells.forEach((c, i) => { c.textContent = s[i] || ""; c.classList.toggle("cur", i === s.length); });
+    cur = s.length === 10 ? rdDecode(s) : null; const used = cur && (META.redeemed || []).includes(cur.code);
+    go.disabled = !cur || used; prev.textContent = cur ? Lx(RD_REWARDS[cur.reward].es, RD_REWARDS[cur.reward].en) : " ";
+    say(s.length === 10 ? (!cur ? Lx("Código no válido", "Invalid code") : used ? Lx("Ya canjeaste este código", "You already redeemed this code") : "") : "", s.length === 10 && (!cur || used)); };
+  inp.addEventListener("input", sync); inp.onkeydown = e => { e.stopPropagation(); if (e.key === "Enter" && !go.disabled) go.click(); }; inp.onkeyup = e => e.stopPropagation();
+  sync(); setTimeout(() => { try { inp.focus({ preventScroll: true }); } catch (_) {} }, 50);
+  ov.querySelector("#rdPaste").onclick = async () => { try { omfSfx("click"); } catch (_) {}
+    try { const t = await navigator.clipboard.readText(); const m = String(t || "").toUpperCase().match(/[A-Z0-9]{5}[\s-]?[A-Z0-9]{5}/); inp.value = m ? m[0] : String(t || "").slice(0, 14); sync(); }
+    catch (_) { say(Lx("No pude leer el portapapeles: escríbelo a mano.", "Couldn't read the clipboard: type it in."), true); inp.focus(); } };
+  // v173 (user 2026-11-11 "códigos de un solo uso", "no quiero que el juego requiera internet solo esto"): each code works ONCE
+  // in the whole world. The game stays offline; only this button asks the server (POST RD_URL/redeem) to mark the code used.
+  go.onclick = async () => { if (!cur || go.disabled || go.dataset.busy) return; const d = cur; go.dataset.busy = "1"; go.disabled = true;
+    say(Lx("Comprobando...", "Checking..."), false); let r = null;
+    try { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 8000);
+      const res = await fetch(RD_URL + "/redeem", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: d.code }), signal: ac.signal });
+      clearTimeout(tm); r = await res.json(); } catch (_) { r = null; }
+    delete go.dataset.busy;
+    if (r && r.ok && r.reward === d.reward) { rdGrant(d); try { omfSfx("record"); } catch (_) {}
+      say(Lx("¡Canjeado! Ya es tuyo.", "Redeemed! It's yours now."), false); note.classList.add("ok"); return; }
+    go.disabled = false;
+    say(!r ? Lx("Necesitas conexión a internet para canjear. Inténtalo otra vez.", "You need an internet connection to redeem. Try again.")
+      : r.e === "used" ? Lx("Este código ya se usó.", "This code was already used.")
+      : r.e === "bad" ? Lx("Código no válido", "Invalid code") : Lx("No se pudo canjear ahora. Prueba más tarde.", "Couldn't redeem right now. Try later."), true);
+    if (r && r.e === "used") go.disabled = true; };
+  ov.querySelector("#backBtn").onclick = () => showSettings();
+}
+// the Settings page gets a CANJEAR CÓDIGO button beside "Cómo se juega" (same row and style, so the page keeps its height)
+if (typeof ESC_PI === "object" && !ESC_PI.key) ESC_PI.key = [".........", ".###.....", "#...#....", "#...#####", "#...#.#.#", ".###..#.#", ".........", ".........", "........."];
+{ const ss = showSettings; showSettings = function () { const r = ss.apply(this, arguments);
+    try { const how = document.getElementById("howBtnS"), row = how && how.parentElement;
+      if (row && !document.getElementById("rdBtn")) { how.insertAdjacentHTML("afterend", `<button id="rdBtn">${pxi("key", "#f2c14e")} ${Lx("Canjear código", "Redeem code")}</button>`);
+        row.classList.add("rdrow"); document.getElementById("rdBtn").onclick = showRedeem; if (typeof paintPxi === "function") paintPxi(row); } } catch (_) {}
+    return r; }; }
+(() => { const st = document.createElement("style"); st.textContent = `.rdpage .rdhelp{margin:0 0 8px;font-size:12px;color:var(--muted);text-align:center}
+.rdpage .rdbox .cells i{width:22px}.rdpage .rdprev{min-height:18px;text-align:center;color:#f2c14e;font-size:12px;margin:2px 0 8px}
+.rdpage .frnote.ok{color:#7fbf6a}
+.tools.rdrow{display:flex;gap:8px;justify-content:center}.tools.rdrow > button{flex:1 1 0;min-width:0;max-width:170px;justify-content:center}`; document.head.appendChild(st); })();
+
+// v173 (user 2026-11-11 "añade al lado de los desafíos un botón para promocionar", "que sea servidor side así podemos actualizarlo
+// en todos los juegos", "que lleve a nuestra web"): STUDIO NEWS. A newspaper button sits next to the challenges target on the
+// home screen (always there, so the bar never changes size). It reads GET NEWS_URL (the duel Worker, file noticias.json there),
+// shared by every Iron Sprite game. Offline, the page says you need a connection. Each item opens its link, by default
+// ironspritegames.com. The button shows how many items you have not seen (seen ids kept in META.newsSeenIds).
+var NEWS_URL = "https://one-more-floor.kevindevrk-96e.workers.dev/news", NEWS_SITE = "https://ironspritegames.com";
+var NEWS = { list: null, at: 0, busy: null };
+if (typeof ESC_PI === "object" && !ESC_PI.news) ESC_PI.news = ["#########", "#.......#", "#.###.#.#", "#.###...#", "#.###.#.#", "#.......#", "#.#####.#", "#.......#", "#########"];
+function newsFetch() {
+  if (NEWS.busy) return NEWS.busy;
+  const ac = typeof AbortController === "function" ? new AbortController() : null, tm = setTimeout(() => { try { ac && ac.abort(); } catch (_) {} }, 7000);
+  NEWS.busy = fetch(NEWS_URL + "?g=escape&l=" + (LANG === "en" ? "en" : "es"), { signal: ac ? ac.signal : undefined, cache: "no-store" })
+    .then(r => r.json()).then(j => { const L = Array.isArray(j && j.items) ? j.items.filter(x => x && x.id).slice(0, 8) : []; NEWS.list = L; NEWS.at = Date.now(); newsBadgeSync(); return L; })
+    .catch(() => null).finally(() => { clearTimeout(tm); NEWS.busy = null; });
+  return NEWS.busy;
+}
+// v173 (user 2026-11-11 "solo debería salir un 1 o 2 dependiendo de cuantas noticias, y solo la primera vez"): the page never
+// opens by itself; the button shows how many news items you haven't seen yet, and once you open the page they count as seen
+function newsSeenSet() { const a = Array.isArray(META.newsSeenIds) ? META.newsSeenIds : []; return new Set(a.map(String)); }
+function newsUnseen() { const L = NEWS.list; if (!L || !L.length) return 0; const seen = newsSeenSet(); return L.filter(x => !seen.has(String(x.id))).length; }
+function newsBadgeHTML() { const n = newsUnseen(); return n ? `<i class="rbadge nbadge">${n}</i>` : ""; }
+function newsBadgeSync() { const b = document.getElementById("newsBtn"); if (!b) return; const i = b.querySelector(".nbadge"); if (i) i.remove(); const h = newsBadgeHTML(); if (h) b.insertAdjacentHTML("beforeend", h); }
+function newsTxt(x, k) { return String((LANG === "en" ? x[k + "_en"] || x[k] : x[k] || x[k + "_en"]) || ""); }
+function newsSafeUrl(u) { u = String(u || ""); return /^https:\/\/[^\s"'<>]+$/.test(u) ? u : NEWS_SITE; }
+function newsOpen(url) { try { omfSfx("click"); } catch (_) {} const a = document.createElement("a"); a.href = newsSafeUrl(url); a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); }
+// a news item can carry a picture (img) and a short muted looping clip (video), both https only; the box is 16:9 and fixed
+function newsMedia(x) { const im = /^https:\/\/[^\s"'<>]+$/.test(String(x.img || "")) ? x.img : "", vd = /^https:\/\/[^\s"'<>]+$/.test(String(x.video || "")) ? x.video : "";
+  if (!im && !vd) return ""; return `<span class="nmedia">${vd ? `<video src="${vd}"${im ? ` poster="${im}"` : ""} muted autoplay loop playsinline preload="metadata" aria-hidden="true"></video>` : `<img src="${im}" alt="" loading="lazy">`}</span>`; }
+function newsEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+function showNews() {
+  try { omfSfx("click"); } catch (_) {}
+  ov.hidden = false; ov.classList.remove("dead");
+  ov.innerHTML = `<div class="menu setpage fullpg newspg"><h2>${pxi("news", "#f2c14e", 2)} ${Lx("NOTICIAS DEL ESTUDIO", "STUDIO NEWS")}</h2>
+    <p class="rsub">Iron Sprite Games</p><div class="nlist" id="nList"><p class="nmsg">${Lx("Cargando...", "Loading...")}</p></div>
+    <div class="rowbig"><button class="go alt" id="nSite">${Lx("VISITAR LA WEB", "VISIT OUR WEBSITE")}</button></div>
+    <div class="ctlsel"><button id="backBtn">${T("Volver")}</button></div></div>`;
+  paintPxi(ov);
+  ov.querySelector("#nSite").onclick = () => newsOpen(NEWS_SITE);
+  ov.querySelector("#backBtn").onclick = () => { try { omfSfx("click"); } catch (_) {} showTitle(); };
+  const fill = L => { const box = document.getElementById("nList"); if (!box) return;
+    if (!L) { box.innerHTML = `<p class="nmsg bad">${Lx("Necesitas conexión a internet para ver las noticias del estudio.", "You need an internet connection to see the studio news.")}</p>`; return; }
+    if (!L.length) { box.innerHTML = `<p class="nmsg">${Lx("No hay noticias ahora mismo.", "No news right now.")}</p>`; return; }
+    box.innerHTML = L.map((x, i) => `<button class="nitem" data-i="${i}">${newsMedia(x)}<b>${newsEsc(newsTxt(x, "title"))}</b><span>${newsEsc(newsTxt(x, "body"))}</span><em>${newsEsc(newsTxt(x, "cta") || Lx("VER MÁS", "SEE MORE"))} &gt;</em></button>`).join("");
+    box.querySelectorAll(".nitem").forEach(b => b.onclick = () => newsOpen(L[+b.dataset.i].url));
+    const seen = newsSeenSet(); L.forEach(x => seen.add(String(x.id))); META.newsSeenIds = [...seen].slice(-60); try { saveMeta(); } catch (_) {} newsBadgeSync(); };
+  newsFetch().then(fill);
+}
+{ const th = escTitleHTML; escTitleHTML = function () { let h = th.apply(this, arguments);
+    try { if (typeof h === "string" && h.includes('class="a3top"') && !h.includes('id="newsBtn"')) {
+      const btn = `<button id="newsBtn" class="a3ib" aria-label="${Lx("Noticias del estudio", "Studio news")}">${pxi("news", "#f2c14e")}${newsBadgeHTML()}</button>`;
+      const k = h.indexOf('id="retoBtn"'), s = k >= 0 ? h.lastIndexOf("<button", k) : -1;
+      h = s >= 0 ? h.slice(0, s) + btn + h.slice(s) : h.replace('<span class="a3sp"></span>', '<span class="a3sp"></span>' + btn); } } catch (_) {}
+    return h; }; }
+{ const tw = escTitleWire; escTitleWire = function () { const r = tw.apply(this, arguments);
+    try { const b = document.getElementById("newsBtn"); if (b) { b.onclick = showNews; if (typeof paintPxi === "function") paintPxi(b.parentElement); } if (!NEWS.list || Date.now() - NEWS.at > 30 * 60000) newsFetch(); } catch (_) {}
+    return r; }; }
+(() => { const st = document.createElement("style"); st.textContent = `.a3ib .nbadge{position:absolute;top:-6px;right:-6px}
+.newspg{text-align:center;max-width:440px;margin:0 auto}.newspg .nlist{display:flex;flex-direction:column;gap:8px;margin:8px 0 12px;min-height:140px}
+.newspg .nmsg{color:var(--muted);font-size:12px;margin:24px 0}.newspg .nmsg.bad{color:#e0566b}
+.newspg .nitem{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:10px 12px;background:#14102a;border:2px solid #3e3960;color:#c9c3e6;width:100%}
+.newspg .nmedia{display:block;width:100%;aspect-ratio:16/9;background:#0a0812;border:2px solid #3e3960;overflow:hidden;margin-bottom:4px}.newspg .nmedia video,.newspg .nmedia img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.newspg .nitem b{font:700 12px Silkscreen,monospace;color:#f2c14e;letter-spacing:1px}.newspg .nitem span{font-size:12px;line-height:1.35}.newspg .nitem em{font:700 10px Silkscreen,monospace;font-style:normal;color:#5fd1c4;align-self:flex-end}`; document.head.appendChild(st); })();
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
