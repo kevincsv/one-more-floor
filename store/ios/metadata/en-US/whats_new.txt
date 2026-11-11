@@ -6,3 +6,6 @@
 • Sand biome removed. Rhythm, Beanstalk and Blink modifiers removed due to bugs. we will add them later
 • Fixes: Split no longer leaves the screen white, Tail follows behind you, Mimic waits a moment before biting, Swap dashes where you can see it, the loose shadow wears your skin, a back button after CLIMB.
 • The lock screen shows the game's name and icon while music plays.
+• First launch lets you pick your controls.
+• Settings > Controls shows real screenshots of each layout.
+• The interface scales properly on iPad.

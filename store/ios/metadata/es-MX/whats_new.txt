@@ -6,3 +6,6 @@
 • Fuera el bioma de arena. Quitamos los modificadores Ritmo, Habichuela y Parpadeo por errores. Volverán más adelante.
 • Arreglos: Dividir ya no deja la pantalla en blanco, Cola te sigue por detrás, el Mimo espera un momento antes de morder, Cambio se ve al desplazarse, la sombra suelta lleva tu aspecto, botón para volver tras ESCALAR.
 • La pantalla de bloqueo muestra el nombre y el icono del juego mientras suena la música.
+• Al abrir el juego por primera vez eliges tus controles.
+• Ajustes > Controles muestra capturas reales de cada esquema.
+• La interfaz se adapta bien al iPad.
