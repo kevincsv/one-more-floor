@@ -1,8 +1,8 @@
 • Canjear códigos: página nueva en Ajustes. Cada código sirve una vez y hace falta internet para canjearlo.
-• Botón de noticias del estudio, con un aviso de las que no has visto.
+• Botón de noticias del estudio, con un aviso de las que no has visto. ¡Atentos a nuestros próximos juegos! :D
 • Torre de un amigo: borra códigos viejos, modificadores corregidos e invita a ese amigo a un duelo.
 • El duelo se reconecta solo si se corta la conexión.
 • El mensaje de muerte dice lo que de verdad te mató.
-• Fuera el bioma de arena. Fuera los modificadores Ritmo, Habichuela y Parpadeo.
+• Fuera el bioma de arena. Quitamos los modificadores Ritmo, Habichuela y Parpadeo por errores. Volverán más adelante.
 • Arreglos: Dividir ya no deja la pantalla en blanco, Cola te sigue por detrás, el Mimo espera un momento antes de morder, Cambio se ve al desplazarse, la sombra suelta lleva tu aspecto, botón para volver tras ESCALAR.
 • La pantalla de bloqueo muestra el nombre y el icono del juego mientras suena la música.
