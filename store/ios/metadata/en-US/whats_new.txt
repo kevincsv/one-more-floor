@@ -1,8 +1,8 @@
 • Redeem codes: a new page in Settings. Each code works once and needs internet to redeem.
-• Studio news button, with a badge for news you haven't seen. Look out for our new games :D
+• Studio news button, with a badge for news you haven't seen. look out for our new games :D
 • Friend's tower: delete old codes, fixed modifiers, and invite that friend to a duel.
 • The duel reconnects on its own if the connection drops.
 • The death message now names what really killed you.
-• Sand biome removed. Rhythm, Beanstalk and Blink modifiers removed due to bugs. We will add them later.
+• Sand biome removed. Rhythm, Beanstalk and Blink modifiers removed due to bugs. we will add them later
 • Fixes: Split no longer leaves the screen white, Tail follows behind you, Mimic waits a moment before biting, Swap dashes where you can see it, the loose shadow wears your skin, a back button after CLIMB.
 • The lock screen shows the game's name and icon while music plays.
