@@ -1,6 +1,7 @@
 name = "one-more-floor"
 main = "worker.js"
 compatibility_date = "2025-09-01"
+
 workers_dev = true
 
 # No logs: observability stays off so nothing about players is kept.
@@ -15,3 +16,18 @@ class_name = "Hub"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Hub"]
+
+# v2 (2026-11-11): single-use redeem codes. Secret: npx wrangler secret put REDEEM_SECRET
+[[durable_objects.bindings]]
+name = "CODES"
+class_name = "Codes"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Codes"]
+
+# v2: news media files bundled as binary data
+[[rules]]
+type = "Data"
+globs = ["**/*.mp4", "**/*.webp"]
+fallthrough = true

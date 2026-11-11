@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": "2026-11-11-forgotten-mine",
+      "title": "FORGOTTEN MINE",
+      "title_en": "FORGOTTEN MINE",
+      "body": "Nuestro próximo juego: hereda una mina abandonada en 1891, contrata mineros y baja nivel a nivel. Sale el 7 de diciembre en iPhone.",
+      "body_en": "Our next game: inherit a mine abandoned in 1891, hire miners and dig level by level. Out December 7 on iPhone.",
+      "cta": "VER EL JUEGO",
+      "cta_en": "SEE THE GAME",
+      "img": "https://one-more-floor.kevindevrk-96e.workers.dev/news/fm-clip-poster.webp",
+      "video": "https://one-more-floor.kevindevrk-96e.workers.dev/news/fm-clip.mp4",
+      "url": "https://ironspritegames.com/#forgotten-mine"
+    },
+    {
+      "id": "2026-11-11-web",
+      "title": "IRON SPRITE GAMES",
+      "title_en": "IRON SPRITE GAMES",
+      "body": "Somos el pequeño estudio detrás de One More Floor Escape. Mira nuestros juegos y lo que viene en nuestra web.",
+      "body_en": "We're the small studio behind One More Floor Escape. See our games and what's coming on our website.",
+      "cta": "IR A LA WEB",
+      "cta_en": "GO TO THE WEBSITE",
+      "url": "https://ironspritegames.com"
+    }
+  ]
+}
