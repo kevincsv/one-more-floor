@@ -15,3 +15,6 @@ vers = {i["id"]: i["attributes"]["version"] for i in d.get("included", []) if i[
 for b in d["data"]:
     a = b["attributes"]; pv = b["relationships"]["preReleaseVersion"]["data"]
     print(f'{vers.get(pv["id"] if pv else "", "?")} ({a["version"]}) {a["processingState"]} uploaded={a["uploadedDate"]} expired={a.get("expired")}')
+v = get(f"/v1/apps/{app}/appStoreVersions?limit=5&fields[appStoreVersions]=versionString,appStoreState,appVersionState")
+for x in v["data"]:
+    a = x["attributes"]; print("VERSION", a["versionString"], a.get("appStoreState"), a.get("appVersionState"))
