@@ -828,7 +828,7 @@ const RULES = [
   { id: "broken", cat: "per", name: "Pantalla rota", icon: "\u2592", cost: 1, desc: "No ves tu vida, tu oro ni el tiempo." },
   { id: "blackout", cat: "per", name: "Apagón", icon: "\u25A0", cost: 2, desc: "La pantalla se pone negra 1 s cada 5 s. El juego sigue." },
   { id: "liar", cat: "per", name: "Mentiroso", icon: "\u2048", cost: 1, desc: "Una de las reglas del piso está oculta durante los primeros 15 s." },
-  { id: "vamp", cat: "com", name: "Vampiro", icon: "\u2625", cost: 2, desc: "Pierdes un corazón cada 10 s (Fácil 15 s, Hardcore 8 s; nunca el último). Cada enemigo que vences te cura." },
+  { id: "vamp", cat: "com", name: "Vampiro", icon: "\u2625", cost: 2, desc: "Pierdes un corazón cada 10 s (Fácil 15 s, Hardcore 8 s; nunca el último). Cada 6 enemigos que vences te curan 1 corazón." },
   { id: "ammo", cat: "com", name: "Munición", icon: "\u2059", cost: 2, desc: "Solo 5 ataques. Se recargan al tocar el suelo." },
   { id: "shields", cat: "com", name: "Escudos", icon: "\u26E8", cost: 2, desc: "Todos los enemigos se cubren por delante: golpéalos por detrás o desde arriba." },
   { id: "recoil", cat: "com", name: "Retroceso", icon: "\u21DC", cost: 1, desc: "Cada golpe te empuja con fuerza en sentido contrario." },
@@ -1081,7 +1081,7 @@ function achFinishFloor(was) {
 function achDie() { if (!achOn()) return; achAdd("deaths"); if (S.escape) pgsRun(S.escBest || 0, Math.max(0, S.t - S.escT0)); if (S.escape ? (S.escBest || 0) < 20 : S.floor === 1) achMark("d_early"); if (S.escape) achAdd("escMTot", S.escBest || 0); unlockCheck(); }
 function unlockCheck() {
   if (!achOn()) return;
-  for (const id in UNLOCKS) if (RULE[id] && !META.unlocked.includes(id) && achProg(UNLOCKS[id]) >= 1) { META.unlocked.push(id); pgsUnlock(id); achDirty = true; achBanner(RULE[id].icon, RULE[id].name, UNLOCKS[id]); }
+  for (const id in UNLOCKS) if (RULE[id] && !META.unlocked.includes(id) && achProg(UNLOCKS[id]) >= 1) { META.unlocked.push(id); pgsUnlock(id); achDirty = true; if (!(ESCAPE && Array.isArray(ESC_GONE) && ESC_GONE.includes(id))) achBanner(RULE[id].icon, RULE[id].name, UNLOCKS[id]); } /* v175: blink/bean still give their Game Center feat, without announcing a modifier that is no longer in the game */
   for (const id in GOOD_UNLOCKS) if (!META.goods.includes(id) && achProg(GOOD_UNLOCKS[id]) >= 1) { META.goods.push(id); pgsUnlock(id); achDirty = true; achBanner(goodIcon(id), goodName(id), GOOD_UNLOCKS[id], String(id).startsWith("o_") ? "obj" : true); }
   if (achDirty) { achDirty = false; saveMeta(); }
 }
@@ -1156,7 +1156,7 @@ function pgsRun(meters, seconds) {
 }
 // v128 (user: the daily board didn't work): a rejected score lands in Ajustes › INFO's error log, so failures are visible
 function pgsScore(board, score) {
-  if (typeof S !== "undefined" && S && S.oldDaily && /^daily/.test(board || "")) return; // v146: a past day's challenge never posts a score
+  if (typeof S !== "undefined" && S && (S.oldDaily || S.daily && S.seed !== todayKey()) && /^daily/.test(board || "")) return; /* v175: started before 00:00 UTC = yesterday's board, already closed */ // v146: a past day's challenge never posts a score
   if (!PGS || (typeof S !== "undefined" && (S.test || S.lab))) return;
   try { const r = PGS.submitScore({ board, score }); if (r && r.then) r.then(x => { if (x && x.ok === false) try { errLog("Game Center " + board + ": " + (x.error || "not sent"), "gc"); } catch (_) {} }).catch(e => { try { errLog("Game Center " + board + ": " + (e && e.message || e), "gc"); } catch (_) {} }); } catch (_) {} }
 // 4) Botones 8-bit en el menú de Escape (junto a Records), visibles solo si PGS existe:
@@ -1773,7 +1773,17 @@ const ESC_TIER_M = 100; // v99: was 60
 const escD = () => Math.max(0, (S.t - S.escT0) / ESC_TIER_T + (S.escBest || 0) / ESC_TIER_M);
 const escTier = () => Math.min(ESC_TIERS.length - 1, Math.floor(escD()));
 const escModLife = (el = 0) => el + ESC_MOD_LAST; // v164b: every modifier lasts 20 s, at any difficulty // 60 s, +15 s per difficulty tier, so late climbs stack up to 4
-const escMaxMods = () => Math.min(S.easy ? 2 : 4, 1 + Math.floor(escD() / (S.easy ? 2.5 : 1.5))) + (trk("pacto") ? 1 : 0); // v86: Pacto en blanco // was 0 for the first ~70 s, so nothing happened
+// v175 (user 2026-11-13: "el modo fácil es muy fácil, una persona hizo 7000 m y no puede morir"): Easy starts gentle but
+// its help fades with height: camera 75% -> 100% of Normal by 1500 m, up to 2 / 3 / 4 modifiers at once (0 / 500 / 1500 m),
+// 3-skull modifiers join from 800 m (Mirror stays out of Easy).
+const VAMP_KILLS = 6;
+// v175 bot QA (accessibility): Settings > TEMBLOR Y DESTELLOS. Off = no screen shake and no full-screen colour flash.
+// Until the player chooses, it follows the system's "reduce motion" setting.
+function escCalm() { if (META.calm === 1) return true; if (META.calm === 0) return false; try { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (_) { return false; } }
+const escEasyCam = () => 0.75 + 0.25 * clamp((S.escBest || 0) / 1500, 0, 1);
+const escEasyCap = () => (S.escBest || 0) >= 1500 ? 4 : (S.escBest || 0) >= 500 ? 3 : 2;
+const escHardOk = id => id === "mirror" ? escD() >= 2 && !S.easy : RULE[id].cost < 3 || escD() >= 2 && (!S.easy || (S.escBest || 0) >= 800);
+const escMaxMods = () => Math.min(S.easy ? escEasyCap() : 4, 1 + Math.floor(escD() / (S.easy ? 2.5 : 1.5))) + (trk("pacto") ? 1 : 0); // v86: Pacto en blanco // was 0 for the first ~70 s, so nothing happened
 function escBiomeAt(t) { let z = 0; for (const b of ESC_BIOME_T) if (t >= b) z++; return Math.min(4, Math.max(z, S.testBiome || 0)); } // S.testBiome: PRUEBAS · Biomas
 function buildEscape() {
   let rows = 24; const r0 = document.getElementById("stage").getBoundingClientRect(); if (r0.width > 50 && r0.height > 50) rows = Math.round(13 * r0.height / r0.width);
@@ -1791,9 +1801,14 @@ function buildEscape() {
   S.genTop = LH - 2; S.arena = null; S.escT0 = S.t; S.escBest = 0; S.secret = null; S.doors = []; S.cracks = []; S.xpOrbs = []; S.lvlFxT = 0; S.crackHits = {}; S.loreSeen = false; S.lvl = 1; S.xp = 0; S.lvlUp = 0; S.perk = {}; S.vampK = 0; S.shieldT = 0; S.escNextMod = S.horde ? 1e9 : ESC_MOD_EVERY; S.escMods = []; S.escZoneSeen = 0; S.camZone = 0;
   floorCommon(9999);
   S.camY = (LH - S.viewRows) * TS + (typeof DEV_RISE !== "undefined" ? DEV_RISE : 0); S.camX = 0; // v68: start framed lower, the Devourer hides the strip below the floor
+  // v175 bot QA: in Clásico / Combinado the touch buttons sit over the bottom of the picture, and on a short phone (360x640)
+  // the hero started under GOLPE. Start framed a little lower there, so the floor you stand on shows above the buttons.
+  try { if (CTL !== "franja" && COARSE && innerHeight < 760) S.camY += Math.round(Math.min(200, Math.max(150, innerHeight * 0.24)) * CH / innerHeight * 0.55); } catch (_) {}
   while (S.genTop > LH - 2 - S.viewRows * 1.6) genEscSegment();
   // a safe start: nothing hostile within 5 tiles of where you appear
   { const p = S.player; S.enemies = S.enemies.filter(e => e.boss || Math.hypot(e.x + e.w / 2 - (p.x + p.w / 2), e.y + e.h / 2 - (p.y + p.h / 2)) > 5 * TS); }
+  // v175 bot QA: in the first 3 plain climbs the camera waits 6 s before it starts rising on its own (was 3 s for everyone)
+  S.camWait = (META.escIntro || 0) < 3 && S.run === "escape" && !S.daily && !S.duel && !S.friend && !S.horde && !S.descent && !S.test ? 6 : 3;
   if ((META.escIntro = (META.escIntro || 0) + 1) <= 3) toast("¡Escapa hacia arriba! La cámara solo sube: si caes, se acabó"); // v73: only on the first 3 runs
 }
 /* Boss arenas: at every biome change (and every 150 s in the last biome) the tower builds a closed room.
@@ -1989,7 +2004,7 @@ function escSecretTick(p, dt) {
     case "cursed":
       if (!o.st && near(o)) { o.st = 1;
         if (Math.random() < 0.5) { const k = escRandomPerk(); addGold(30); toast(T("Bendición:") + " " + (k ? T(k.name) : "") + " +30"); }
-        else { const pool = ESC_ROT_POOL.filter(id => RULE[id] && !has(id) && !escClash(id) && escModOk(id)); if (pool.length) escAddMod(pool[Math.floor(Math.random() * pool.length)], S.t - S.escT0); addGold(60); toast("Maldición… pero +60 de oro"); S.shake = 0.4; } updateHud(true); }
+        else { const pool = ESC_ROT_POOL.filter(id => RULE[id] && !has(id) && !escClash(id)); if (pool.length) escAddMod(pool[Math.floor(Math.random() * pool.length)], S.t - S.escT0); addGold(60); toast("Maldición… pero +60 de oro"); S.shake = 0.4; } updateHud(true); }
       break;
     case "lore":
       if (!o.st && near(o) && huOn()) { o.st = 1; huTakeEco(); } // v92: La Huida's Ecos
@@ -2210,7 +2225,7 @@ function escSegmentOk(startRow, topRow, fromMain, toMain) {
   for (const k in keep) S[k] = keep[k];
   return ok;
 }
-function escapeTick(p, dt) {
+function escapeTick(p, dt, dtR) { // dtR: real frame time (v175: the camera keeps rising while Pausa / El tiempo va arriba stop the world)
   // level up: wait for the XP orbs to land, then a short flash with "LEVEL N" and a ring around the hero
   // (game keeps running, hero safe), and only then the cards deal in
   if (S.lvlUp > 0 && S.mode === "play" && !(S.xpOrbs && S.xpOrbs.length)) {
@@ -2227,12 +2242,12 @@ function escapeTick(p, dt) {
   const locked = escArenaTick(p, dt);
   const target = p.y + p.h / 2 - CH * (CTL === "franja" ? (CH < 20 * TS ? 0.5 : 0.4) : 0.45) + DEV_RISE; // short screens: keep more of the climb in view above you. v68: framed DEV_RISE lower, since the Devourer covers the bottom
   if (!locked && target < S.camY) S.camY = target;
-  if (!locked && el > 3 && S.banner <= 0 && !S.roomTest) S.camY -= Math.min(66, 16 + escD() * 7) * (1 - 0.15 * perk("freno")) * (S.easy ? 0.7 : S.hard ? 1.15 : 1) * dt; // camera push grows with difficulty, capped
+  if (!locked && el > (S.camWait || 3) && S.banner <= 0 && !S.roomTest) S.camY -= Math.min(66, 16 + escD() * 7) * (1 - 0.15 * perk("freno")) * (S.easy ? escEasyCam() : S.hard ? 1.15 : 1) * (dtR != null ? dtR : dt); // camera push grows with difficulty, capped
   S.camY = Math.max(0, S.camY);
   // the view's height can change after the run starts (title -> play shows the control strip): keep the bottom edge
   // where it was, and in the first seconds or a test room never count it as a fall, so nobody starts the run dead
   if (S.escCH && S.escCH !== CH && el > 3) S.camY += S.escCH - CH; S.escCH = CH;
-  if (S.devBite > 0) { S.devBite -= dt; p.vx = 0; p.vy = 0; p.inv = Math.max(p.inv || 0, 0.2); if (S.devBite <= 0) { S.devBite = 0; toast(T(["Te alcanzó la lava", "Te alcanzó el ácido", "Te alcanzó el aceite", "Te alcanzó el éter", "Te alcanzó la marea"][Math.max(0, Math.min(4, S.camZone || 0))])); S.hp = 0; die(); } return true; }
+  if (S.devBite > 0) { S.devBite -= (dtR != null ? dtR : dt); /* v175 r2: real time, the bite (and the death) also happens while Pausa / El tiempo va arriba stop the world */ p.vx = 0; p.vy = 0; p.inv = Math.max(p.inv || 0, 0.2); if (S.devBite <= 0) { S.devBite = 0; toast(T(["Te alcanzó la lava", "Te alcanzó el ácido", "Te alcanzó el aceite", "Te alcanzó el éter", "Te alcanzó la marea"][Math.max(0, Math.min(4, S.camZone || 0))])); S.hp = 0; die(); } return true; }
   if (devHits(p) && (el < 2 || S.roomTest)) S.camY = p.y + p.h + 8 - CH + DEV_RISE + p.h;
   devTick(p, dt, locked);
   if (!locked && devHits(p)) { S.devBite = 0.4; S.devD = 1; omfSfx("hurt"); S.shake = Math.max(S.shake || 0, 0.5); try { navigator.vibrate && navigator.vibrate([30, 40, 60]); } catch (_) {} return true; } // v68: the Devourer bites (0.5 s), then the death screen
@@ -2252,14 +2267,14 @@ function escapeTick(p, dt) {
   for (const m of S.escMods.slice()) if (el >= m.until) { S.escMods = S.escMods.filter(x => x !== m); S.rules = S.rules.filter(r => r !== m.id); escSurvived(m.id); toast("− " + RULE[m.id].icon + " " + RULE[m.id].name); lastHud = ""; }
   if (el >= S.escNextMod) {
     S.escNextMod += ESC_MOD_EVERY;
-    const pool = ESC_ROT_POOL.filter(id => RULE[id] && !has(id) && !escClash(id) && escModOk(id) && (escD() >= 2 && !S.easy || RULE[id].cost < 3 && id !== "mirror")); // v59: Espejo and 3-skull rules wait until difficulty 2
+    const pool = ESC_ROT_POOL.filter(id => RULE[id] && !has(id) && !escClash(id) && escHardOk(id)); /* v175 (user): every modifier can come up, unlocked or not */ // v59: Espejo and 3-skull rules wait until difficulty 2
     // at the cap the oldest one leaves early, so something always changes every 30 s
     while (pool.length && S.escMods.length >= escMaxMods() && S.escMods.length) { const o = S.escMods.slice().sort((a, b) => a.until - b.until)[0]; S.escMods = S.escMods.filter(x => x !== o); S.rules = S.rules.filter(r => r !== o.id); escSurvived(o.id); toast("− " + RULE[o.id].icon + " " + RULE[o.id].name); }
     const pre = S.escNextId; S.escNextId = null;
     if (pool.length) escAddMod(pre && pool.includes(pre) ? pre : escPickMod(pool), el);
   }
   // QA batch 7: the next modifier is picked 3 s early so the countdown can name it, and the Mirror warns before it ends
-  if (!S.escNextId && S.escNextMod - el < 5.4) { const pool = ESC_ROT_POOL.filter(id => RULE[id] && !has(id) && !escClash(id) && escModOk(id) && (escD() >= 2 && !S.easy || RULE[id].cost < 3 && id !== "mirror")); if (pool.length) S.escNextId = escPickMod(pool); }
+  if (!S.escNextId && S.escNextMod - el < 5.4) { const pool = ESC_ROT_POOL.filter(id => RULE[id] && !has(id) && !escClash(id) && escHardOk(id)); /* v175 (user): every modifier can come up, unlocked or not */ if (pool.length) S.escNextId = escPickMod(pool); }
   for (const m of S.escMods) if (m.id === "mirror" && !m.warned && m.until - el < 3) { m.warned = true; toast(T("El Espejo se acaba en 3 s")); }
   return false;
 }
@@ -2602,13 +2617,13 @@ function initRuleState() {
   if (has("portals") && !S.vertical) for (const [a, b] of [[0.18, 0.45], [0.55, 0.82]]) { const A = pathAt(a), B = pathAt(b); if (A && B) { const id = S.portals.length / 2; S.portals.push({ x: A.x + 2, y: A.y - 14, w: 20, h: 36, to: S.portals.length + 1, id }, { x: B.x + 2, y: B.y - 14, w: 20, h: 36, to: S.portals.length, id }); } }
   if (has("shadow")) { const q = pathAt(0.3) || { x: p.x + 6 * TS, y: p.y }; S.shadowE = { x: q.x, y: q.y - 2, w: 14, h: 20, caught: false, ph: 0 }; }
   if (has("switch")) {
-    for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.kind = "sw"; m.h = TS / 2; }
+    for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.swFrom = m.kind; m.swH = m.h; m.kind = "sw"; m.h = TS / 2; }
     // floating runs of the grid become red and blue switch platforms too
     const g = S.grid; let n = 0;
     for (let y = 2; y < S.LH - 3; y++) for (let x = 1; x < S.LW - 1; x++) {
       if (g[y][x] !== 1 || g[y - 1][x] !== 0 || g[y + 1][x] !== 0) continue;
       let L = 0; while (x + L < S.LW - 1 && g[y][x + L] === 1 && g[y - 1][x + L] === 0 && g[y + 1][x + L] === 0) L++;
-      if (L >= 2 && R() < 0.5) { for (let k = 0; k < L; k++) g[y][x + k] = 0; S.movers.push({ kind: "sw", x: x * TS, y: y * TS, w: L * TS, h: TS / 2, solid: false }); n++; }
+      if (L >= 2 && R() < 0.5) { for (let k = 0; k < L; k++) g[y][x + k] = 0; S.movers.push({ kind: "sw", x: x * TS, y: y * TS, w: L * TS, h: TS / 2, solid: false, swGrid: true }); n++; }
       x += L;
     }
     let i = 0; for (const m of S.movers) if (m.kind === "sw") { m.col = i++ % 2; m.solid = m.col === S.swc; }
@@ -2824,7 +2839,7 @@ function drawRulesScreen(p, cx, cy) {
     ctx.strokeStyle = on ? "#f2c14e" : "rgba(242,193,78,.25)"; ctx.lineWidth = on ? 4 : 2;
     ctx.beginPath(); ctx.arc(CW / 2, CH - 30, 10 + (1 - ph) * 12, 0, Math.PI * 2); ctx.stroke();
   }
-  if (S.blackout) { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CW, CH); }
+  if (S.blackout) { ctx.save(); if (escCalm()) { const ph = S.floorT % 5 - 4; ctx.globalAlpha = clamp(Math.min(ph, 1 - ph) / 0.25, 0, 1); } /* v175: with flashes off the blackout fades in and out instead of blinking */ ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CW, CH); ctx.restore(); }
 }
 const ENEMY_SCALE = 1.4;
 // urchin: a spiky crawler glued to one platform, walking all the way around its edge (top, side, underside, side)
@@ -3587,7 +3602,7 @@ function update(dt) {
   // camera follows the player sideways on every floor (vertical shafts are wider than a phone's view), easing in
   const camTx = S.LW * TS <= CW ? (S.LW * TS - CW) / 2 : clamp(p.x + p.w / 2 - CW / 2, 0, S.LW * TS - CW);
   S.camX = Math.abs(camTx - S.camX) > CW ? camTx : S.camX + (camTx - S.camX) * Math.min(1, dt * 12);
-  if (S.escape) { if (escapeTick(p, dtW)) return; updateHud(); return; }
+  if (S.escape) { if (escapeTick(p, dtW, dt)) return; updateHud(); return; }
   if (S.vertical) {
     if (S.rising) {
       // the view can change height after the room was built (portrait/landscape refit): keep the bottom edge where it was
@@ -4069,7 +4084,7 @@ function kill(e, src) {
   }
   if (e.decoy) return;
   achKill(e, src); omfSfx(e.boss ? "roar" : "kill");
-  if (has("vamp") && src !== "spike" && S.hp < S.maxhp) { S.hp++; burst(S.player.x + 8, S.player.y + 8, "#e0566b", 6); }
+  if (has("vamp") && src !== "spike" && (S.vampMK = (S.vampMK || 0) + 1) % VAMP_KILLS === 0 && S.hp < S.maxhp) { S.hp++; /* v175 (user): heals every 6 kills, not every kill */ burst(S.player.x + 8, S.player.y + 8, "#e0566b", 6); }
   if (has("tail") && !e.boss && !e.critter && S.tail.length < 6) S.tail.push({ w: Math.min(e.w, 18), h: Math.min(e.h, 18), born: S.t, x: e.x, y: e.y });
   const v = e.boss ? 12 : src === "spike" ? 2 : 1;
   for (let i = 0; i < Math.min(v, 8); i++) S.coinsL.push({ x: e.x + e.w / 2, y: e.y, w: 10, h: 12, v: Math.ceil(v / Math.min(v, 8)), vx: rnd(-120, 120), vy: rnd(-300, -150) * S.gdir });
@@ -4303,11 +4318,11 @@ function showTitle() {
   const okCh = META.chars.includes(ch.id);
   const modes = ESCAPE
     ? `<button class="mode main" id="goBtn"><span class="mi">▲</span><span class="mt">ESCALAR</span><span class="ms">Torre sin fin: la cámara solo sube</span><span class="mv"><small>MEJOR</small>${bestOf(escDifKind())} m</span></button>
-       <button class="mode" id="dailyBtn"><span class="mi">☀</span><span class="mt">DESAFÍO DIARIO</span><span class="ms">La misma torre para todos hoy${dailyStreak() > 1 ? " · " + T("racha") + " " + dailyStreak() : ""}</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
+       <button class="mode" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e", 2)}</span><span class="mt">DESAFÍO DIARIO</span><span class="ms">La misma torre para todos hoy${dailyStreak() > 1 ? " · " + T("racha") + " " + dailyStreak() : ""}</span><span class="mv"><small>HOY</small>${db ? db + " m" : "—"}</span></button>
        <button class="mode" id="hordeBtn"><span class="mi">⚔</span><span class="mt">HORDA</span><span class="ms">Sin modificadores: solo muchos más enemigos</span><span class="mv"><small>MEJOR</small>${bestOf("escape-horde")} m</span></button>`
     : `<button class="mode main" id="goBtn"><span class="mi">⚑</span><span class="mt">HISTORIA</span><span class="ms">50 pisos · la subida de Velo · ${(META.ecos || []).length}/25 ecos</span><span class="mv"><small>MEJOR</small>${META.best || 0}</span></button>
        <button class="mode" id="endlessBtn"><span class="mi">∞</span><span class="mt">INFINITO</span><span class="ms">Sin final: compite por llegar más alto</span><span class="mv"><small>MEJOR</small>${bestOf("endless")}</span></button>
-       <button class="mode" id="dailyBtn"><span class="mi">☀</span><span class="mt">DESAFÍO DIARIO</span><span class="ms">La misma torre para todos hoy</span><span class="mv"><small>HOY</small>${db ? db : "—"}</span></button>`;
+       <button class="mode" id="dailyBtn"><span class="mi">${pxi("sun", "#f2c14e", 2)}</span><span class="mt">DESAFÍO DIARIO</span><span class="ms">La misma torre para todos hoy</span><span class="mv"><small>HOY</small>${db ? db : "—"}</span></button>`;
   ov.innerHTML = ESCAPE && ESC_TITLE_READY ? escTitleHTML(ch, db) : `<div class="menu">
     <div class="logo"><span class="l1">ONE MORE</span><span class="l2">FLOOR</span>${ESCAPE ? '<span class="l3">ESCAPE</span>' : ""}</div>
     <p class="tagline">${ESCAPE ? "Sube sin parar. Si caes por debajo de la pantalla, se acabó." : "Cada piso impone una regla nueva. ¿Hasta dónde llegas?"}</p>
@@ -4469,7 +4484,7 @@ function storyVignette(v, done, kicker) {
       ${i < v.p.length - 1 ? `<div class="vbtns"><button id="vSkip">${T("Saltar escena")}</button><button class="go" id="vNext">${T("Continuar")}</button></div>` : `<button class="go" id="vSkip">${T("Seguir")}</button>`}</div>`;
     if (v.art && typeof huArtRun === "function") { ov.querySelector(".vk").insertAdjacentHTML("afterend", `<canvas class="vart" width="160" height="90" data-i="${i}"></canvas>`); huArtRun(v); } // v93: painted vignette
     document.getElementById("vSkip").onclick = ev => { ev.stopPropagation(); finish(); };
-    { const nb = document.getElementById("vNext"); if (nb) nb.onclick = ev => { ev.stopPropagation(); next(); }; }
+    { const nb = document.getElementById("vNext"); if (nb) { nb.onclick = ev => { ev.stopPropagation(); next(); }; try { nb.focus({ preventScroll: true }); } catch (_) {} } } // v175 bot QA: the pad starts on CONTINUAR, never on SALTAR ESCENA
     ov.onclick = () => { if (i < v.p.length - 1) next(); }; /* v111 (user): the story never moves on by itself, only on SALTAR / CONTINUAR (or a tap) */
   };
   const next = () => { if (ended) return; clearTimeout(timer); if (i >= v.p.length - 1) { finish(); return; } i++; show(); };
@@ -4659,7 +4674,7 @@ const CODEX_CATS = [["rules", 0, "MODIFICADORES", "Reglas malas que entran duran
 function showCodex(cat) {
   if (!ESCAPE || cat) return codexPage(cat);
   ov.hidden = false; ov.classList.remove("dead");
-  const n = { rules: [META.unlocked.length, RULES.length], goods: ESCAPE ? [ESC_PERKS.filter(escPerkOk).length + Object.keys(TRK).filter(trkOk).length, ESC_PERKS.length + Object.keys(TRK).length] : [Object.keys(GOOD_UNLOCKS).filter(id => META.goods.includes(id)).length, Object.keys(GOOD_UNLOCKS).length], combos: [COMBOS.filter(c => META.combos.includes(c.key || c.name)).length, COMBOS.length], heroes: [CHARS.filter(c => META.chars.includes(c.id)).length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock && META.skins.includes(id)).length, CHARS.length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).length], logros: [achList().filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length, achList().length + PGS_FEATS.length] };
+  const n = { rules: [META.unlocked.filter(id => RULE[id] && RULES.includes(RULE[id])).length, RULES.length], /* v175 bot QA: removed modifiers never count */ goods: ESCAPE ? [ESC_PERKS.filter(escPerkOk).length + Object.keys(TRK).filter(trkOk).length, ESC_PERKS.length + Object.keys(TRK).length] : [Object.keys(GOOD_UNLOCKS).filter(id => META.goods.includes(id)).length, Object.keys(GOOD_UNLOCKS).length], combos: [codexCombos().filter(c => META.combos.includes(c.key || c.name)).length, codexCombos().length], heroes: [CHARS.filter(c => META.chars.includes(c.id)).length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock && META.skins.includes(id)).length, CHARS.length + Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).length], logros: [achList().filter(a => a[5]).length + PGS_FEATS.filter(f => f[3]() >= 1).length, achList().length + PGS_FEATS.length] };
   ov.innerHTML = `<div class="menu"><h2>📖 ${T("CÓDICE")}</h2><div class="cxcats">${CODEX_CATS.map(([k, , t, d]) => `<button class="mode cxb" data-cx="${k}"><span class="mi">${CODEX_IC[k]}</span><span class="mt">${T(t)}</span><span class="ms">${T(d)}</span><span class="mv"><small>${n[k][0]}/${n[k][1]}</small><span class="pbar"><u style="width:${Math.round(n[k][0] / Math.max(1, n[k][1]) * 100)}%"></u></span></span></button>`).join("")}</div>
     <div class="rowbig"><button class="go" id="backBtn">${T("Volver")}</button></div></div>`;
   ov.querySelectorAll("[data-cx]").forEach(b => b.onclick = () => showCodex(b.dataset.cx));
@@ -4690,7 +4705,7 @@ function codexPage(cat) {
   if (cat === "logros") return codexAch();
   if (cat === "goods" && ESCAPE) return codexGoods();
   if (cat === "heroes") {
-    const row = (name, ok, L, sub) => ok ? `<div><b>✓ ${name}</b>${sub || T("Desbloqueado")}</div>` : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${name}</b>${L.t}${L.n ? `<span class="prog">${L.v}/${L.n}${L.u}</span>${pxBar(L.v / L.n)}` : ""}</div>`;
+    const row = (name, ok, L, sub) => ok ? `<div><b>${pxi("check", "#7cba46", 1)} ${name}</b>${sub || T("Desbloqueado")}</div>` : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${name}</b>${L.t}${L.n ? `<span class="prog">${L.v}/${L.n}${L.u}</span>${pxBar(L.v / L.n)}` : ""}</div>`;
     ov.innerHTML = `<h2>${T("PERSONAJES")}</h2><div class="codex">${CHARS.map(c => row(c.name, META.chars.includes(c.id), lockInfo("char", c.id), T(c.desc))).join("")}</div>
       <h3>${T("ASPECTOS")}</h3><div class="codex">${Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock).map(id => row(T(HERO_SKINS[id].name) + " · " + (CHARS.find(c => c.id === HERO_SKINS[id].ch) || {}).name, META.skins.includes(id), lockInfo("skin", id))).join("")}</div>
       <button class="go" id="backBtn">${T("Volver")}</button>`;
@@ -4720,7 +4735,7 @@ function codexPage(cat) {
 }
 function showCards() {
   ov.hidden = false; ov.classList.remove("dead");
-  const pool = [...new Set(META.unlocked.concat(ESCAPE ? ESC_BASE : []))].filter(id => RULE[id] && !has(id) && (!ESCAPE || ESC_START_POOL.includes(id))).map(id => RULE[id]);
+  const pool = [...new Set(META.unlocked.concat(ESCAPE ? ESC_BASE.concat(ESC_START_POOL) : []))].filter(id => RULE[id] && !has(id) && (!ESCAPE || ESC_START_POOL.includes(id))).map(id => RULE[id]); /* v175: first card from every start modifier */
   if (ESCAPE && pool.length < 2) for (const id of ESC_START_POOL) if (RULE[id] && !has(id) && escModOk(id) && !pool.includes(RULE[id])) pool.push(RULE[id]);
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   const pick = [];
@@ -4914,7 +4929,7 @@ function updateHud(force) {
 }
 function buildLab() {
   const row = $("labrow");
-  if (row.childElementCount) return;
+  if (!row || row.childElementCount) return; // v175 (bot QA P0-4): the store build removes the lab, and the null row threw on every run start
   row.innerHTML = RULES.map(r => `<button data-id="${r.id}" aria-pressed="false">${r.icon} ${r.name}</button>`).join("")
     + `<button id="labVert" aria-pressed="false">\u21E7 Sala ascendente</button><button id="labClimb" aria-pressed="false">\u2191 Piso vertical</button><button id="labSpeed" aria-pressed="false">\u23F1 Velocidad</button><button id="labGraph" aria-pressed="false">\u25C7 Ver algoritmo</button>`;
   const spd = $("labSpeed"), SPEEDS = [0.5, 0.62, 0.75, 0.9, 1];
@@ -4978,7 +4993,7 @@ const EN_RULES = {
   broken: ["Broken screen", "You can't see your health, gold or time."],
   blackout: ["Blackout", "The screen goes black for 1 s every 5 s. The game keeps running."],
   liar: ["Liar", "One of the floor's rules is hidden for the first 15 s."],
-  vamp: ["Vampire", "You lose a heart every 10 s (Easy 15 s, Hardcore 8 s; never the last). Each enemy you defeat heals you."],
+  vamp: ["Vampire", "You lose a heart every 10 s (Easy 15 s, Hardcore 8 s; never the last). Every 6 enemies you defeat heal 1 heart."],
   ammo: ["Ammo", "Only 5 attacks. They reload when you touch the ground."],
   shields: ["Shields", "Every enemy guards its front: hit them from behind or above."],
   recoil: ["Recoil", "Every hit knocks you hard the other way."],
@@ -6636,7 +6651,7 @@ function draw() {
   }
 
   const kx = S.kick ? S.kick.x * S.kick.t / 0.12 : 0, ky = S.kick ? S.kick.y * S.kick.t / 0.12 : 0;
-  ctx.save(); ctx.translate(-cx + kx + (S.shake > 0 ? rnd(-4, 4) * S.shake : 0), -cy + ky + (S.shake > 0 ? rnd(-3, 3) * S.shake : 0));
+  ctx.save(); ctx.translate(-cx + kx + (S.shake > 0 && !escCalm() ? rnd(-4, 4) * S.shake : 0), -cy + ky + (S.shake > 0 && !escCalm() ? rnd(-3, 3) * S.shake : 0));
   for (const d of S.decor || []) {
     if (d.x < cx - 40 || d.x > cx + CW + 40) continue;
     if (d.kind === "pillar") { ctx.fillStyle = "rgba(255,255,255,.035)"; ctx.fillRect(d.x, d.top, 22, d.bot - d.top); ctx.fillStyle = "rgba(255,255,255,.05)"; ctx.fillRect(d.x - 4, d.top, 30, 8); ctx.fillRect(d.x - 4, d.bot - 8, 30, 8); }
@@ -6998,7 +7013,7 @@ function draw() {
   ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace";
   let hy = S.escape ? Math.max(40, escHudY + 14) : 18;
   if (S.escape && S.lvlFxT > 0) { const k = Math.min(1, S.lvlFxT / 0.2), a = S.lvlFxT > 0.6 ? Math.max(0, (0.8 - S.lvlFxT) / 0.2) : 1;
-    ctx.save(); ctx.globalAlpha = 0.25 * a; ctx.fillStyle = "#5fd1c4"; ctx.fillRect(0, 0, CW, CH); ctx.globalAlpha = a; ctx.textAlign = "center";
+    ctx.save(); ctx.globalAlpha = (escCalm() ? 0 : 0.25) * a; ctx.fillStyle = "#5fd1c4"; ctx.fillRect(0, 0, CW, CH); ctx.globalAlpha = a; ctx.textAlign = "center";
     ctx.font = `${Math.round(20 + 14 * (1 - k) + 6 * k)}px Silkscreen, monospace`; ctx.fillStyle = "#0a0812"; ctx.fillText(T("¡NIVEL") + " " + S.lvl + "!", CW / 2 + 2, CH * 0.4 + 2);
     ctx.fillStyle = "#e6fffb"; ctx.fillText(T("¡NIVEL") + " " + S.lvl + "!", CW / 2, CH * 0.4); ctx.restore(); ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace"; }
   if (S.escape && !has("broken")) { const el = Math.max(0, S.t - S.escT0); // time, height, difficulty and level live in the html HUD
@@ -7013,7 +7028,10 @@ function draw() {
   if (has("midnight")) { ctx.fillStyle = S.floorT < 30 ? "#f2c14e" : "#5d5a78"; ctx.fillText(S.floorT < 30 ? "MEDIANOCHE EN " + Math.ceil(30 - S.floorT) + "s · DAÑO x2" : "PASADA LA MEDIANOCHE · DAÑO ½", 34, hy); hy += 16; }
   if (S.siren > 0) { ctx.fillStyle = "#ff8ad8"; ctx.fillText(input.attack ? "OÍDOS TAPADOS" : "SIRENAS · MANTÉN ATACAR PARA TAPARTE LOS OÍDOS", 34, hy); hy += 16; }
   if (has("quake") && S.quakeT < 2) { ctx.fillStyle = "#c9a36a"; ctx.fillText("TERREMOTO EN " + Math.ceil(S.quakeT), 34, hy); hy += 16; }
-  if (has("sweep") && !S.sweep && S.sweepT < 3) { ctx.fillStyle = "#ff5a78"; ctx.fillText(S.escape ? "BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE BAJO UNA PLATAFORMA" : "BARRIDO EN " + Math.ceil(S.sweepT) + " · CÚBRETE TRAS UNA PARED", 34, hy); hy += 16; }
+  if (has("sweep") && !S.sweep && S.sweepT < 3) { // v175 bot QA: two lines with a dark outline, so it fits a 360 px phone and reads with colour blindness
+    const mw = Math.max(120, CW - 124); ctx.save(); ctx.lineWidth = 3; ctx.strokeStyle = "#0a0812"; ctx.lineJoin = "round"; ctx.fillStyle = "#ff5a78";
+    for (const ln of [Lx("¡BARRIDO EN ", "SWEEP IN ") + Math.ceil(S.sweepT) + "!", S.escape ? Lx("CÚBRETE BAJO UNA PLATAFORMA", "TAKE COVER UNDER A PLATFORM") : Lx("CÚBRETE TRAS UNA PARED", "TAKE COVER BEHIND A WALL")]) { ctx.strokeText(ln, 34, hy, mw); ctx.fillText(ln, 34, hy, mw); hy += 15; }
+    ctx.restore(); hy += 2; }
   if (has("wax") && (p.burn || 0) > 0.05) { ctx.fillStyle = "#ff7a3a"; ctx.fillText("CERA", 34, hy); ctx.fillRect(80, hy - 9, 70 * Math.min(1, p.burn / WAX_HEAT), 8); hy += 16; }
   if (S.shadowE && !S.shadowE.caught) { ctx.fillStyle = "#9a94b8"; ctx.fillText("ATRAPA TU SOMBRA", 34, hy); hy += 16; }
   if (has("grav") && S.mode === "play") {
@@ -9738,7 +9756,7 @@ function runGains() {
   const tiles = [];
   const h = S.escape ? (S.escBest || 0) : S.floor, el = Math.max(0, S.t - (S.escT0 || 0));
   if (h > 0 && h > sn.best) tiles.push({ ic: "🏆", k: T("NUEVO RÉCORD"), n: S.escape ? h + " m" : T("Piso") + " " + h, c: "rec" });
-  for (const id of META.unlocked) if (!sn.u.includes(id) && RULE[id]) tiles.push({ ic: RULE[id].icon, k: S.escape ? T("MODIFICADOR") : T("REGLA"), n: RULE[id].name, c: "bad", ik: "rule", id });
+  for (const id of META.unlocked) if (!sn.u.includes(id) && RULE[id] && !(Array.isArray(ESC_GONE) && ESC_GONE.includes(id))) tiles.push({ ic: RULE[id].icon, k: S.escape ? T("MODIFICADOR") : T("REGLA"), n: RULE[id].name, c: "bad", ik: "rule", id });
   for (const id of META.goods || []) if (!sn.g.includes(id)) tiles.push({ ic: goodIcon(id), k: String(id).startsWith("o_") ? T("OBJETO") : T("MEJORA"), n: goodName(id), c: "good", ik: "good", id });
   for (const id of META.chars) if (!sn.ch.includes(id)) { const c = CHARS.find(x => x.id === id); tiles.push({ ic: "★", k: T("PERSONAJE"), n: c ? c.name : id, c: "char", ik: "char", id }); }
   for (const id of META.skins || []) if (!sn.sk.includes(id)) tiles.push({ ic: "✦", k: T("ASPECTO"), n: (typeof HERO_SKINS !== "undefined" && HERO_SKINS[id]) ? T(HERO_SKINS[id].name) : id, c: "skin", ik: "skin", id });
@@ -9772,7 +9790,7 @@ if (ESCAPE) {
 function showHow() {
   ov.hidden = false; ov.classList.remove("dead");
   const rows = [["▲", "Sube sin parar", "La torre se genera hacia arriba sin fin y la cámara solo sube. Si caes por debajo de la pantalla, se acabó."],
-    ["⚔", "Golpea", "Ataca con GOLPE (combo de 3). Saltar sobre un enemigo también le hace daño."],
+    ["⚔", "Golpea", "Salta con SALTO y ataca con GOLPE (combo de 3). Caer sobre un enemigo también le hace daño. En las escaleras mantén ARRIBA para subir."],
     ["◐", "Modificadores", "Cada 20 segundos entra una regla nueva y la más antigua se va. Cada bioma trae la suya. Las calaveras dicen lo difícil que es cada una."],
     ["★", "Sube de nivel", "Los enemigos dan experiencia. Al subir de nivel eliges una mejora o quitas un modificador."],
     ["▣", "Salas secretas", "Golpea dos veces las paredes agrietadas: dentro el tiempo se para y hay tesoros, tiendas y pactos."],
@@ -9813,7 +9831,7 @@ function dailyStreak() { const d = META.dailyStreak || { last: 0, n: 0 }, t = to
 function dailyRecord() {
   if (!S || !S.daily || !S.escape || S.test) return;
   const k = String(S.seed) + (S.easy ? "e" : S.hard ? "h" : ""); META.daily[k] = Math.max(META.daily[k] || 0, S.escBest || 0);
-  const d = META.dailyStreak || { last: 0, n: 0 }, t = todayKey();
+  const d = META.dailyStreak || { last: 0, n: 0 }, t = S.seed || todayKey();
   if (d.last !== t) { META.dailyStreak = { last: t, n: dailyStreak() + 1 }; } saveMeta();
 }
 
@@ -9918,7 +9936,7 @@ function infoPop(ik, id) {
   else if (ik === "skin" && HERO_SKINS[id]) { ic = "✦"; name = T(HERO_SKINS[id].name); what = T("Aspecto de") + " " + ((CHARS.find(c => c.id === HERO_SKINS[id].ch) || {}).name || ""); done = META.skins.includes(id); if (!done) { const L = lockInfo("skin", id); how = L.t; if (L.n) v = L.v / L.n; } }
   else if (ik === "feat") { const P = PGS_FEATS.find(f => f[0] === id); if (P) { ic = "🏆"; name = T(P[1]); what = T(P[2]); v = Math.min(1, P[3]() ); done = v >= 1; if (done) v = null; } }
   const el = document.createElement("div"); el.className = "infopop";
-  el.innerHTML = `<div class="ipc${done ? "" : " lock"}"><span class="gi">${ic}</span><b>${name}</b>${what ? `<p>${what}</p>` : ""}${how ? `<p class="how2">${done ? "" : pxi("lock", "#f2c14e", 1) + " "}${how}${v != null ? pxBar(v) : ""}</p>` : done ? `<p class="how2 ok">✓ ${T("Desbloqueado")}</p>` : ""}<small>${T("Toca para cerrar")}</small></div>`;
+  el.innerHTML = `<div class="ipc${done ? "" : " lock"}"><span class="gi">${ic}</span><b>${name}</b>${what ? `<p>${what}</p>` : ""}${how ? `<p class="how2">${done ? "" : pxi("lock", "#f2c14e", 1) + " "}${how}${v != null ? pxBar(v) : ""}</p>` : done ? `<p class="how2 ok">${pxi("check", "#7cba46", 1)} ${T("Desbloqueado")}</p>` : ""}<small>${T("Toca para cerrar")}</small></div>`;
   el.onclick = () => el.remove(); document.body.appendChild(el); omfSfx("click");
 }
 document.addEventListener("click", e => { const t = e.target.closest && e.target.closest("[data-ik]"); if (t) { e.stopPropagation(); infoPop(t.dataset.ik, t.dataset.id); } });
@@ -10036,9 +10054,10 @@ function drawEchoHero(g) {
   sprBlit(echoTint(cv), g.x + g.w / 2, g.y + g.h, g.w / 16, (g.face || 1) < 0, false); ctx.restore(); SQX = SQY = 1; return true;
 }
 // v67: the Codex only lists combos that can actually happen in this mode (Escape: both rules in its rotation)
+function escInPool(id) { return ESC_ROT_POOL.includes(id) || ESC_START_POOL.includes(id) || ESC_BIOME_MOD.includes(id) || ESC_BASE.includes(id); }
 function escComboOk(c) { const P = new Set(ESC_ROT_POOL.concat(ESC_START_POOL, ESC_BIOME_MOD.filter(Boolean), ESC_BASE)); return P.has(c.a) && P.has(c.b); }
 // v84 (user): the Codex lists all 25 combos; in Escape the ones you can find come first
-function codexCombos() { return ESCAPE ? COMBOS.filter(escComboOk).concat(COMBOS.filter(c => !escComboOk(c))) : COMBOS; }
+function codexCombos() { return ESCAPE ? COMBOS.filter(escComboOk) : COMBOS; } // v175 bot QA: combos that can never come up in Escape (Discoteca) are not listed or counted, so 100% is reachable
 // ===================================================================
 // HERO SKINS v3 · add-on (original art). Paste AFTER the HEROES v2 block.
 // 8 new looks, same 16x26 frames and 6 animations as HEROES v2 (idle 4, run 6,
@@ -11098,7 +11117,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v174";
+var OMF_VER = "Escape v175";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -11351,7 +11370,7 @@ function retoEv(k, x, v) {
     const np = t.one ? Math.max(it.p || 0, v) : (it.p || 0) + v; if (np === it.p) continue;
     it.p = Math.min(it.n, np);
     if (it.p >= it.n) { it.done = true; hit = true; R.total = (R.total || 0) + 1; bankAdd(RETO_COINS[it.d] || 5, Lx("Reto", "Challenge")); /* v109 (user): 5 / 10 / 15 coins by difficulty */ achAdd("retos"); { const c = (META.cnt && META.cnt.retos) || 0; if (c >= 10) pgsUnlock("r10"); if (c >= 50) pgsUnlock("r50"); }
-      toast("✓ " + Lx("Reto", "Challenge") + ": " + retoText(it)); omfSfx("reto");
+      toast(Lx("Reto", "Challenge") + ": " + retoText(it)); omfSfx("reto");
       if (R.list.every(q => q.done)) { R.full = (R.full || 0) + 1; achAdd("retoDays"); const d = META.dailyStreak || { last: 0, n: 0 }, td = todayKey(); if (d.last !== td) META.dailyStreak = { last: td, n: dailyStreak() + 1 }; }
       const fr = RETO_FRAMES.find(f => f[0] === R.total); if (fr) toast("✦ " + fr[2][LANG === "en" ? 1 : 0]); }
   }
@@ -11935,8 +11954,15 @@ function huElapsed() { return Math.max(0, S.t - S.escT0) + (S.hu && S.hu.t0off |
 var huArena0 = escArenaTick; escArenaTick = function (p, dt) { const A = S.arena, st = A && A.state; const r = huArena0(p, dt);
   if (huOn() && A && A.huZ != null) { const B = HU_B[A.huZ];
     if (st === "wait" && A.state === "fight") storySay0(B.n, B.i, "#e0566b", 3.6);
-    if (st === "fight" && A.state === "done" && !A.huDone) { A.huDone = true; storySay0(B.n, B.o, "#e0566b", 3.2); const run = S; setTimeout(() => { if (S === run && S.mode === "play") huReward(A.huZ); }, 2600); } }
+    if (st === "fight" && A.state === "done" && !A.huDone) { A.huDone = true; storySay0(B.n, B.o, "#e0566b", 3.2); const run = S, z = A.huZ; huBossSave(z);
+      // v175 bot QA P0: the reward used to open only if the game was in "play" exactly 2.6 s later, so pausing, leaving the
+      // app or a level card in that window lost the memory, the checkpoint and (last boss) the ending. Now the memory and a
+      // checkpoint are saved at once, and the reward waits for the next moment you are back in play.
+      const go = () => { if (S !== run || !huOn() || S.mode === "dead" || S.mode === "title") return; if (S.mode === "play") huReward(z); else setTimeout(go, 250); }; setTimeout(go, 2600); } }
   return r; };
+function huBossSave(z) { if (S.test) return; const M = huM(); if (!M.mem.includes(z)) M.mem.push(z); if (!M.boss.includes(z)) M.boss.push(z);
+  if (!S.hard && z < 4) M.cp[huDk()] = { z: z + 1, ch: S.char.id, lvl: S.lvl || 1, xp: S.xp || 0, perk: Object.assign({}, S.perk || {}), trk: (S.trk || []).slice(), maxhp: S.maxhp, coins: S.coins, t: Math.round(huElapsed()) };
+  saveMeta(); }
 function huReward(z) {
   const M = huM(); if (!S.test) { if (!M.mem.includes(z)) M.mem.push(z); if (!M.boss.includes(z)) M.boss.push(z); saveMeta(); }
   huPause(); omfSfx("levelup");
@@ -12137,7 +12163,7 @@ function huCodex() {
     : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${T("RECUERDO")} ${z + 1}</b>${T("Vence a")} ${T(B.n)} ${T("en La Huida.")}</div>`).join("");
   const ecos = HU_B.map((B, z) => `<h3 style="color:${B.c}">${T(HU_BIOME[z]).toUpperCase()} · ${[0, 1, 2].filter(i => M.ecos.includes(z + "-" + i)).length}/3</h3><div class="codex">${[0, 1, 2].map(i => M.ecos.includes(z + "-" + i)
     ? `<div><b>${T("Nota")} ${z * 3 + i + 1}</b>${huQ(T(B.e[i]))}</div>` : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${T("Nota")} ${z * 3 + i + 1}</b>${T("Sala secreta (Nota perdida) en")} ${T(HU_BIOME[z])}, ${T("en La Huida.")}</div>`).join("")}</div>`).join("");
-  const ends = ["piso", "bajar"].map(k => M.end.includes(k) ? `<div><b>✓ ${T(HU_END[k].t)}</b>${T(HU_END[k].p[0])}</div>`
+  const ends = ["piso", "bajar"].map(k => M.end.includes(k) ? `<div><b>${pxi("check", "#7cba46", 1)} ${T(HU_END[k].t)}</b>${T(HU_END[k].p[0])}</div>`
     : `<div class="lk"><b>${pxi("lock", "#9a94b8", 1)} ${k === "piso" ? T("FINAL") + " 1" : "???"}</b>${T(k === "piso" ? "Vence a El Sello." : "Vence a El Sello con las 15 notas.")}</div>`).join("");
   ov.innerHTML = `<h2>${T("RECUERDOS")}</h2><h3>${T("RECUERDOS")} ${M.mem.length}/5 · ${T("uno por jefe")}</h3><div class="codex">${mem}</div>
     <h3>${T("NOTAS")} ${M.ecos.length}/15 · ${T("3 por bioma, en salas secretas")}</h3>${ecos}
@@ -12230,7 +12256,7 @@ function dailyIntro() {
     <p class="dlygoal">${T("Llega a")} <b>${DAILY_GOAL} m</b> ${T("con estos modificadores. No cambian en toda la subida.")}</p>
     <div class="dlycards">${ids.map(id => { const r = RULE[id]; return `<div class="card"><span class="ic">${r.icon}</span><span class="nm">${T(r.name)}</span><span class="tag">${T(CATS[r.cat])}</span>${skullsHTML(r.cost, true)}<span class="ds">${T(r.desc)}</span></div>`; }).join("")}</div>
     <p class="dlyprize"><i class="cn"></i>${dailyDone(k) ? Lx("Premio de hoy cobrado: 100 monedas", "Today's prize collected: 100 coins") : Lx("Premio al completarlo: 100 monedas", "Prize for completing it: 100 coins")}</p>
-    <p class="hust">${T("Hoy")}: ${(META.daily[k] || 0)} m${dailyDone(k) ? " · ✓ " + T("superado") : ""} · ${T("Mañana, otro reto")}</p>
+    <p class="hust">${T("Hoy")}: ${(META.daily[k] || 0)} m${dailyDone(k) ? " · " + pxi("check", "#7cba46", 1) + " " + T("superado") : ""} · ${T("Mañana, otro reto")}</p>
     <div class="rowbig"><button class="go" id="dlyGo">${S.oldDaily ? Lx("EMPEZAR DESAFÍO PASADO", "START PAST CHALLENGE") : Lx("EMPEZAR DESAFÍO ELEGIDO", "START SELECTED CHALLENGE")}</button></div><div class="tools"><button id="backBtn">${T("Volver")}</button></div></div>`;
   paintPxi(ov);
   document.getElementById("backBtn").onclick = () => { omfSfx("click"); showTitle(); };
@@ -12242,19 +12268,19 @@ var dlyNext0 = nextRuleStep; nextRuleStep = function () { if (ESCAPE && S && S.d
 var dlyAdd0 = escAddMod; escAddMod = function (id, el) { if (S && S.dailyFix) return; return dlyAdd0(id, el); };
 var dlyTick0 = escapeTick; escapeTick = function (p, dt) {
   if (S.dailyFix) { S.escNextMod = 1e9; S.escNextId = null; for (const id of S.dailyFix) { if (!S.rules.includes(id)) S.rules.push(id); const m = S.escMods.find(x => x.id === id); if (m) m.until = 1e9; else S.escMods.push({ id, until: 1e9 }); } }
-  const r = dlyTick0(p, dt);
+  const r = dlyTick0.apply(this, arguments);
   if (S.dailyFix && !S.test && !S.dailyWin && (S.escBest || 0) >= DAILY_GOAL) { S.dailyWin = true; const k = dailyKey(); META.dailyDone = META.dailyDone || {}; const first = !META.dailyDone[k]; META.dailyDone[k] = 1; achAdd && first && achAdd("dailyWins"); if (first) bankAdd(100, Lx("Desafío diario", "Daily challenge")); /* v109 (user): 100 coins, once per day */ saveMeta();
-    omfSfx("levelup"); S.shake = Math.max(S.shake || 0, 0.3); toast("☀ " + T("¡DESAFÍO SUPERADO!") + " " + DAILY_GOAL + " m"); }
+    omfSfx("levelup"); S.shake = Math.max(S.shake || 0, 0.3); toast(T("¡DESAFÍO SUPERADO!") + " " + DAILY_GOAL + " m"); }
   return r; };
 var dlyLvl0 = escLevelCards; escLevelCards = function () { dlyLvl0.apply(this, arguments); if (!S.dailyFix) return;
   const cs = [...ov.querySelectorAll(".card")], rm = cs.filter(c => { const n = c.querySelector(".nm"); return n && /^(✖|)/.test(n.textContent) && (n.textContent.startsWith(T("Quitar")) || n.textContent.startsWith(T("TACHAR:"))); });
   if (rm.length && cs.length > rm.length) rm.forEach(c => c.remove()); };
 // the death screen says whether today's challenge is done
 var dlyDead0 = showDead; showDead = function () { const r = dlyDead0.apply(this, arguments); if (!S.dailyFix) return r;
-  const st = ov.querySelector(".stats"); if (st) st.insertAdjacentHTML("beforebegin", `<p class="dlygoal">${dailyDone(dailyKey()) ? "☀ " + T("¡DESAFÍO SUPERADO!") : T("Desafío") + ": " + (S.escBest || 0) + " / " + DAILY_GOAL + " m"}</p>`); return r; };
+  const st = ov.querySelector(".stats"); if (st) st.insertAdjacentHTML("beforebegin", `<p class="dlygoal">${dailyDone(dailyKey()) ? pxi("sun", "#f2c14e", 1) + " " + T("¡DESAFÍO SUPERADO!") : T("Desafío") + ": " + (S.escBest || 0) + " / " + DAILY_GOAL + " m"}</p>`); return r; };
 // title button: ✓ when today's challenge is done
 var dlyTH0 = escTitleHTML; escTitleHTML = function () { let h = dlyTH0.apply(this, arguments); try { const k = String(todayKey()) + (META.easy ? "e" : META.hard ? "h" : "");
-  if (dailyDone(k)) h = h.replace(/(<button class="mode half" id="dailyBtn"[\s\S]*?<small>)([^<]*)(<\/small>)/, "$1✓ $2$3"); } catch (_) {} return h; };
+  if (dailyDone(k)) h = h.replace(/(<button class="mode half" id="dailyBtn"[\s\S]*?<small>)([^<]*)(<\/small>)/, "$1" + pxi("check", "#7cba46", 1) + " $2$3"); } catch (_) {} return h; };
 Object.assign(EN_TEXT, { "DESAFÍO DIARIO": "DAILY CHALLENGE", "Llega a": "Reach", "con estos modificadores. No cambian en toda la subida.": "with these modifiers. They stay the whole climb.",
   "Hoy": "Today", "superado": "done", "Mañana, otro reto": "A new one tomorrow", "EMPEZAR": "START", "¡DESAFÍO SUPERADO!": "CHALLENGE DONE!", "Desafío": "Challenge" });
 
@@ -12402,7 +12428,7 @@ function gcAchState(id) {
 function codexAchGC() {
   ov.hidden = false; ov.classList.remove("dead");
   const rows = GC_ACH.map(a => Object.assign({ a }, gcAchState(a[0]))), done = rows.filter(r => r.done).length;
-  const tile = r => { const v = Math.max(0, Math.min(1, r.v || 0)); return `<div class="gcach${r.done ? " ok" : ""}"><span class="gi">${pxi(r.done ? "trophy" : "lock", r.done ? "#f2c14e" : "#6b6488", 2)}</span><span class="gt"><b>${Lx(r.a[1], r.a[2])}</b><small>${Lx(r.a[3], r.a[4])}</small>${r.done ? "" : pxBar(v, 8)}</span><span class="gp">${r.done ? "✓" : Math.floor(v * 100) + "%"}</span></div>`; };
+  const tile = r => { const v = Math.max(0, Math.min(1, r.v || 0)); return `<div class="gcach${r.done ? " ok" : ""}"><span class="gi">${pxi(r.done ? "trophy" : "lock", r.done ? "#f2c14e" : "#6b6488", 2)}</span><span class="gt"><b>${Lx(r.a[1], r.a[2])}</b><small>${Lx(r.a[3], r.a[4])}</small>${r.done ? "" : pxBar(v, 8)}</span><span class="gp">${r.done ? pxi("check", "#7cba46", 1) : Math.floor(v * 100) + "%"}</span></div>`; };
   const list = rows.slice().sort((x, y) => (y.done ? 1 : 0) - (x.done ? 1 : 0) || (y.v || 0) - (x.v || 0));
   ov.innerHTML = `<div class="menu achgrp gcpage"><h2>🏆 ${T("LOGROS")}</h2><p class="tagline">${done}/${GC_ACH.length}${typeof PGS !== "undefined" && PGS ? " · Game Center" : ""}</p>${pxBar(done / GC_ACH.length, 16)}
     <div class="gclist">${list.map(tile).join("")}</div>
@@ -12543,7 +12569,7 @@ function showCoinShop(from) {
   const eqb = $s("shopEq"); if (eqb) eqb.onclick = () => { if (!charOk(k.ch)) { omfSfx("hurt"); msg.textContent = Lx("Necesitas a ", "You need ") + SHOP_HERO[k.ch] + "."; return; } META.skin[k.ch] = s; saveMeta(); omfSfx("pick"); showCoinShop(); };
   const bb = $s("shopBuy"); if (bb) bb.onclick = () => { omfSfx("click"); $s("shopAsk").hidden = false; $s("shopYes").focus(); };
   if ($s("shopNo")) $s("shopNo").onclick = () => { omfSfx("click"); $s("shopAsk").hidden = true; };
-  if ($s("shopYes")) $s("shopYes").onclick = () => { if ((META.bank || 0) < cost || skinOwned(s)) return; META.bank -= cost; META.shop = (META.shop || []).concat(s); if (k.tier !== "heroe" && charOk(k.ch)) META.skin[k.ch] = s; saveMeta(); omfSfx("buy"); toast("✓ " + nm(s)); showCoinShop(); };
+  if ($s("shopYes")) $s("shopYes").onclick = () => { if ((META.bank || 0) < cost || skinOwned(s)) return; META.bank -= cost; META.shop = (META.shop || []).concat(s); if (k.tier !== "heroe" && charOk(k.ch)) META.skin[k.ch] = s; saveMeta(); omfSfx("buy"); toast(nm(s)); showCoinShop(); };
   cancelAnimationFrame(CSHOP.raf); const t0 = performance.now();
   const tick = () => { const cvs = ov.querySelectorAll("canvas.spv"); if (!cvs.length || !ov.querySelector(".shoppg")) return; const t = (performance.now() - t0) / 1000;
     cvs.forEach(c => { const g = c.getContext("2d"), id = c.dataset.skin, a = c.dataset.a, big = c.classList.contains("big"), sc = big ? 3 : 2, n = a === "run" ? Math.floor(t * 10) : Math.floor(t * 4);
@@ -12640,7 +12666,7 @@ function a3Btn(src, cls, inner) { if (!src) return ""; const b = src.cloneNode(f
       const dk = String(todayKey()) + (META.easy ? "e" : META.hard ? "h" : ""), dDone = (() => { try { return dailyDone(dk); } catch (_) { return false; } })();
       const hOk = hordeOk();
       const tiles = `<div class="a3tiles">${a3Btn($("#storyBtn"), "a3tile", `${M && !(M.end && M.end.length) ? `<span class="new">${T("NUEVO")}</span>` : ""}${pxi("book", "#5fd1c4", 3)}<span class="tl">${T("HISTORIA")}</span><span class="ts">${Lx("La Huida", "The Escape")}</span>`).replace('class="a3tile"', 'class="a3tile" style="--c:#5fd1c4"')}
-        ${a3Btn($("#dailyBtn"), "a3tile", `${pxi("sun", "#f2c14e", 3)}<span class="tl">${T("DIARIO")}</span><span class="ts">${dDone ? "✓ " + Lx("Hecho", "Done") : Lx("Quedan ", "") + a3HoursLeft() + Lx(" h", " h left")}</span>`).replace('class="a3tile"', 'class="a3tile" style="--c:#f2c14e"')}
+        ${a3Btn($("#dailyBtn"), "a3tile", `${pxi("sun", "#f2c14e", 3)}<span class="tl">${T("DIARIO")}</span><span class="ts">${dDone ? pxi("check", "#7cba46", 1) + " " + Lx("Hecho", "Done") : Lx("Quedan ", "") + a3HoursLeft() + Lx(" h", " h left")}</span>`).replace('class="a3tile"', 'class="a3tile" style="--c:#f2c14e"')}
         ${a3Btn($("#hordeBtn"), "a3tile" + (hOk ? "" : " lk"), `${pxi(hOk ? "swords" : "lock", hOk ? "#e0566b" : "#f2c14e", 3)}<span class="tl">${T("HORDA")}</span><span class="ts">${hOk ? Lx("Mejor ", "Best ") + bestOf("escape-horde") + " m" : Lx("Bloqueada", "Locked")}</span>`).replace(/class="a3tile( lk)?"/, m => m + ' style="--c:#e0566b"')}</div>`;
       // tab bar
       const shop = $("#shopBtn"), canBuy = shop && /shopblink/.test(shop.className);
@@ -12740,7 +12766,7 @@ escWardrobe = function (ch) {
   const el = document.createElement("div"); el.className = "wardrobe a3ward"; el.id = "wardrobe";
   const nm = id => T(HERO_SKINS[id].name);
   const tile = (id, i) => { const mine = skinOwned(id), k = HERO_SKINS[id], sh = !mine && k.shop, cost = sh ? shopCost(id) : 0;
-    return `<button class="wtile${mine ? " own" : sh ? " shop" : " lockd"}${id === cur ? " sel" : ""}" data-w="${id}"><canvas class="pv" width="32" height="52" data-cid="${ch.id}" data-skin="${id}" data-lock="${mine || sh ? 0 : 1}" data-off="${i * 0.6}"></canvas>${id === cur ? `<i class="wchk">✓</i>` : ""}${sh && id === off ? `<i class="sale">-25%</i>` : ""}${!mine && !sh ? (typeof PAY_ON !== "undefined" && PAY_ON && !fullOwned() ? `<i class="wstore">${pxi("bag", "#f2c14e", 1)}</i>` : pxi("lock", "#9a94b8", 1)) : ""}<span>${mine || sh ? nm(id).slice(0, 10) : "???"}</span>${sh ? `<b class="wpr${(META.bank || 0) < cost ? " poor" : ""}"><i class="cn"></i>${fmtDot(cost)}</b>` : ""}</button>`; };
+    return `<button class="wtile${mine ? " own" : sh ? " shop" : " lockd"}${id === cur ? " sel" : ""}" data-w="${id}"><canvas class="pv" width="32" height="52" data-cid="${ch.id}" data-skin="${id}" data-lock="${mine || sh ? 0 : 1}" data-off="${i * 0.6}"></canvas>${id === cur ? `<i class="wchk">${pxi("check", "#7cba46", 1)}</i>` : ""}${sh && id === off ? `<i class="sale">-25%</i>` : ""}${!mine && !sh ? (typeof PAY_ON !== "undefined" && PAY_ON && !fullOwned() ? `<i class="wstore">${pxi("bag", "#f2c14e", 1)}</i>` : pxi("lock", "#9a94b8", 1)) : ""}<span>${mine || sh ? nm(id).slice(0, 10) : "???"}</span>${sh ? `<b class="wpr${(META.bank || 0) < cost ? " poor" : ""}"><i class="cn"></i>${fmtDot(cost)}</b>` : ""}</button>`; };
   el.innerHTML = `<h2>${pxi("hanger", "#5fd1c4")} ${ch.name.toUpperCase()} · ${T("ASPECTOS")} <span class="a3coin"><i class="cn"></i>${fmtDot(META.bank || 0)}</span></h2>
     <p class="wleg"><i class="lo"></i>${Lx("TUYOS", "YOURS")} <i class="ls"></i>${Lx("TIENDA", "SHOP")} <i class="lf"></i>${Lx("DE RETO", "CHALLENGE")}</p>
     <div class="wgrid a3grid">${owned.concat(shop, feat).map(tile).join("")}</div>
@@ -12756,7 +12782,7 @@ escWardrobe = function (ch) {
       if (!charOk(ch.id)) { omfSfx("hurt"); info.textContent = Lx("Necesitas a ", "You need ") + ch.name + "."; return; }
       omfSfx("click"); info.innerHTML = `${Lx("¿COMPRAR", "BUY")} ${nm(id).toUpperCase()} ${Lx("POR", "FOR")} <i class="cn"></i>${fmtDot(cost)}?<div class="ctlsel"><button id="wYes">${Lx("SÍ", "YES")}</button><button id="wNo">NO</button></div>`;
       info.querySelector("#wNo").onclick = () => { omfSfx("click"); info.textContent = T("Listo para usar") + ": " + nm(cur); };
-      info.querySelector("#wYes").onclick = () => { if ((META.bank || 0) < cost || skinOwned(id)) return; META.bank -= cost; META.shop = (META.shop || []).concat(id); META.skin[ch.id] = id; saveMeta(); omfSfx("buy"); toast("✓ " + nm(id)); escWardrobe(ch); };
+      info.querySelector("#wYes").onclick = () => { if ((META.bank || 0) < cost || skinOwned(id)) return; META.bank -= cost; META.shop = (META.shop || []).concat(id); META.skin[ch.id] = id; saveMeta(); omfSfx("buy"); toast(nm(id)); escWardrobe(ch); };
       return; }
     omfSfx("click"); info.innerHTML = lockHTML(nm(id), lockInfo("skin", id)); { const fb = el.querySelector("#wFull"); if (fb) fb.hidden = false; } });
   el.querySelector("#backBtn").onclick = () => { el.remove(); omfSfx("click"); showTitle(); };
@@ -12855,8 +12881,8 @@ escWardrobe = function (ch) {
 { const gs0 = genEscSegment; genEscSegment = function () {
     if (!(S && S.escape && S.daily && S.dailyFix && !S.test && !(typeof huOn === "function" && huOn()))) return gs0.apply(this, arguments);
     const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, h = Math.max(0, (S.LH - 2) - (S.eg ? S.eg.row : 0)), r = mulberry((S.seed | 0) * 7919 + (S.eg ? S.eg.row : 0) * 31 + (S.easy ? 1 : S.hard ? 2 : 0));
-    Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h;
-    try { return gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; } }; }
+    const fl = S.floor; Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.floor = 1 + Math.floor(Math.min(escD(), 9) * 1.6); /* v175 (bot QA P0-2): S.floor followed real time, so the daily tower changed after ~60 m */
+    try { return gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.floor = fl; } }; }
 
 // v116 (user): the death title depends on what killed you. Lava / the camera / the tide = CAÍSTE (YOU FELL), an enemy = MORISTE
 // (YOU DIED), plus spikes, bosses and drowning. hurt() guesses the cause from what is touching the hero at that moment.
@@ -13165,7 +13191,7 @@ function cx2Feat(u) { if (!u) return { t: "" }; const v = achProg(u), raw = Math
 // every entry: { id, ok, art (html), name, desc, rar, cost, rows [[label, value]], lock {t, v, n, u}, sub }
 function cx2Entries(cat) {
   const L = [];
-  if (cat === "mod") for (const r of RULES) { const ok = META.unlocked.includes(r.id), u = UNLOCKS[r.id]; if (!((u || ok) && !(ESCAPE && !ok && u && u.m === "H"))) continue;
+  if (cat === "mod") for (const r of RULES) { const u = UNLOCKS[r.id], ok = META.unlocked.includes(r.id) || (ESCAPE && !u && escInPool(r.id)); if (ESCAPE && !u && !escInPool(r.id)) continue; /* v175 bot QA: base modifiers (no feat) always count, so the total no longer grows when you get one */ if (!((u || ok) && !(ESCAPE && !ok && u && u.m === "H"))) continue;
     const with_ = COMBOS.filter(c => (c.a === r.id || c.b === r.id) && escComboOk(c)).map(c => RULE[c.a === r.id ? c.b : c.a]).filter(Boolean);
     L.push({ id: "mod:" + r.id, ok, art: `<span>${r.icon}</span>`, name: T(r.name), desc: T(r.desc), cost: r.cost, sub: T(CATS[r.cat] || ""),
       rows: [[T("Superado"), (META.survive[r.id] || 0) + " " + T("veces")]].concat(with_.length ? [[T("Combina con"), with_.map(x => x.icon + " " + T(x.name)).join(", ")]] : []), lock: cx2Feat(u) }); }
@@ -13183,7 +13209,10 @@ function cx2Entries(cat) {
       L.push({ id: "her:" + c.id, ok, art: cx2Hero(c.id), big: cx2Hero(c.id, true), name: c.name, desc: T(c.desc || ""), sub: T("Personaje"),
         rows: runs.length ? [[T("Mejor altura"), Math.max(...runs.map(x => x.floor || 0)) + " m"], [T("Partidas"), runs.length]] : [], lock: lockInfo("char", c.id) }); }
     // v140 (user: "en FALTAN de héroes no me muestra los que se pueden comprar"): the coin-shop skins are listed too, with their price
-    for (const id of Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock || (HERO_SKINS[id].shop && HERO_SKINS[id].tier !== "heroe"))) { const k = HERO_SKINS[id], ch = CHARS.find(c => c.id === k.ch) || {}, shop = !k.unlock;
+    for (const id of Object.keys(HERO_SKINS).filter(id => HERO_SKINS[id].unlock || (HERO_SKINS[id].shop && HERO_SKINS[id].tier !== "heroe") || (HERO_SKINS[id].col && typeof colPackName === "function") || HERO_SKINS[id].tester)) { const k = HERO_SKINS[id], ch = CHARS.find(c => c.id === k.ch) || {}, shop = !k.unlock && !k.col && !k.tester;
+      if (k.col) { const pn = colPackName(k.col); /* v175 bot QA: the 16 paid collection skins are in the Codex too, with their collection */
+        L.push({ id: "skn:" + id, ok: skinOwned(id) || colOwned(k.col), art: cx2Hero(id), big: cx2Hero(id, true), name: T(k.name), desc: T("Aspecto de") + " " + (ch.name || ""), sub: T("Aspecto") + " · " + (ch.name || "") + " · " + Lx("Colección", "Collection"),
+          rows: [[Lx("Colección", "Collection"), pn]], lock: { t: Lx("Parte de la colección ", "Part of the collection ") + pn + Lx(". Está en TIENDA > COLECCIONES.", ". Find it in SHOP > COLLECTIONS.") } }); continue; }
       const rar = { comun: "comun", raro: "rara", legendario: "reliquia" }[k.tier];
       L.push({ id: "skn:" + id, shopId: shop ? id : null, ok: skinOwned(id), art: cx2Hero(id), big: cx2Hero(id, true), name: T(k.name), desc: T("Aspecto de") + " " + (ch.name || ""), sub: T("Aspecto") + " · " + (ch.name || "") + (shop ? " · " + Lx("Tienda", "Shop") : ""), rar: shop ? rar : undefined,
         rows: shop ? [[Lx("Precio", "Price"), shopCost(id) + " " + Lx("monedas", "coins")]] : [], lock: shop ? { t: Lx("Cómpralo en la TIENDA por ", "Buy it in the SHOP for ") + shopCost(id) + Lx(" monedas.", " coins."), v: Math.min(META.bank || 0, shopCost(id)), n: shopCost(id) } : lockInfo("skin", id) }); }
@@ -13288,7 +13317,7 @@ function ddKey(d) { return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 
 function ddList() { const s = new Set((META.dailyDays || []).map(Number));
   for (const k of Object.keys(META.daily || {})) { const m = /^(\d{8})/.exec(k); if (m) s.add(+m[1]); } // days started before v132 also count
   return s; }
-function ddMark() { const t = todayKey(); META.dailyDays = META.dailyDays || []; if (!META.dailyDays.includes(t)) { META.dailyDays.push(t); if (META.dailyDays.length > 400) META.dailyDays = META.dailyDays.slice(-400); try { saveMeta(); } catch (_) {} } }
+function ddMark() { const t = S && S.daily && S.seed ? S.seed : todayKey(); /* v175: the day of the tower you played, even if you die after 00:00 UTC */ META.dailyDays = META.dailyDays || []; if (!META.dailyDays.includes(t)) { META.dailyDays.push(t); if (META.dailyDays.length > 400) META.dailyDays = META.dailyDays.slice(-400); try { saveMeta(); } catch (_) {} } }
 function ddStreak() { const s = ddList(), now = Date.now(); let i = s.has(todayKey()) ? 0 : 1, n = 0; while (s.has(ddKey(new Date(now - i * 864e5)))) { n++; i++; } return n; }
 function ddLeft() { const n = new Date(), ms = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - n.getTime(), s = Math.max(0, Math.floor(ms / 1000));
   return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, "0")).join(":"); }
@@ -13302,7 +13331,7 @@ function ddHTML() {
 }
 var ddTimer = 0;
 function ddTick() { clearInterval(ddTimer); ddTimer = setInterval(() => { const el = document.querySelector(".ddcd"); if (!el) { clearInterval(ddTimer); return; } el.textContent = ddLeft(); }, 1000); }
-var dd0 = dailyIntro; dailyIntro = function () { const r = dd0.apply(this, arguments); ddMark();
+var dd0 = dailyIntro; dailyIntro = function () { const r = dd0.apply(this, arguments); /* v175 bot QA: opening the screen no longer counts for the streak, only playing (dailyRecord) */
   const g = ov.querySelector(".dlyintro .hust"); if (g) { g.insertAdjacentHTML("beforebegin", ddHTML()); g.remove(); ddTick(); }
   prlLoad(S.easy ? null : S.hard ? "daily_hard" : "daily", () => { const el = ov.querySelector(".dstk"); if (el) { el.outerHTML = ddHTML(); ddTick(); } });
   return r; };
@@ -13314,6 +13343,7 @@ function ddTile() { try { const n = ddStreak(), b = document.getElementById("dai
 var ddT0 = showTitle; showTitle = function () { const r = ddT0.apply(this, arguments); ddTile(); setTimeout(ddTile, 50); return r; };
 (() => { const st = document.createElement("style"); st.textContent = '#dailyBtn .ddt{font-style:normal;color:#ff8c50;font-size:10px;margin-left:6px;display:inline-flex;align-items:center;gap:2px;vertical-align:middle}'; document.head.appendChild(st); })();
 
+Object.assign(EN_TEXT, { "Salta con SALTO y ataca con GOLPE (combo de 3). Caer sobre un enemigo también le hace daño. En las escaleras mantén ARRIBA para subir.": "Jump with JUMP and attack with HIT (3-hit combo). Landing on an enemy hurts it too. On ladders hold UP to climb." });
 Object.assign(EN_TEXT, { "MODIF.": "MODS", "OBJETOS": "ITEMS", "COMBOS": "COMBOS", "HÉROES": "HEROES", "LOGROS": "ACHIEVEMENTS", "RECUERDOS": "MEMORIES", "CÓDICE": "CODEX",
   "TODO": "ALL", "TENGO": "OWNED", "FALTAN": "MISSING", "¡Lo tienes todo aquí!": "You have everything here!", "Aún no tienes nada aquí.": "Nothing here yet.",
   "COMÚN": "COMMON", "RARA": "RARE", "RELIQUIA": "RELIC", "MALDITO": "CURSED", "CÓMO CONSEGUIRLO": "HOW TO GET IT", "CERRAR": "CLOSE", "Sigue jugando para descubrirlo.": "Keep playing to find out.",
@@ -13377,8 +13407,13 @@ function duReconnect() {
   ws.onclose = ws.onerror = () => { if (DU.ws !== ws) return; DU.ws = null; DU.net = false; DU.peer = false; DU.re = 0; if (DU.reOK) DU.reTimer = setTimeout(duReconnect, 1500); };
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && DU.reOK && DU.code && !DU.ws) { DU.reT0 = duNow(); duReconnect(); } });
-setInterval(() => { if (DU.ws && DU.ws.readyState === 1 && DU.net) duTx({ t: "ping" }); }, 15000);
-function duRx(m) {
+setInterval(() => { if (DU.ws && DU.ws.readyState === 1 && DU.net && (DU.on || (DU.pingN = (DU.pingN || 0) + 1) % 3 === 0)) duTx({ t: "ping" }); }, 5000);
+// v175 bot QA P0: with no network for 25 s BOTH players used to see "GANAS LA RONDA" (each only knew the other was silent)
+// and the guest then waited for a host that would never come back. Now a side only wins by disconnection when ITS OWN link
+// is alive (socket open, browser online and, with the v2 relay, a "pong" in the last 12 s); otherwise the round ends as
+// CONEXIÓN PERDIDA with no winner, and nobody is left waiting.
+function duLinkOk() { return navigator.onLine !== false && !!DU.ws && DU.ws.readyState === 1 && DU.net && !DU.re && (!DU.pong || duNow() - DU.srvRx < 12); }
+function duRx(m) { DU.srvRx = duNow(); if (m.t === "pong") { DU.pong = true; return; }
   if (DU.re) { // the answer to a reconnect: keep the duel as it was
     if (m.t === "joined") { DU.re = 0; DU.net = true; DU.reT0 = 0; if (!DU.on && DU.scr) duNote(""); DU.lastRx = Math.max(DU.lastRx, duNow() - 5); duHello(); if (DU.on) duSendNow(); return; }
     if (m.t === "err") { const w = DU.ws; DU.ws = null; DU.re = 0; try { w && w.close(); } catch (_) {} DU.reTimer = setTimeout(duReconnect, 1500); return; }
@@ -13471,14 +13506,14 @@ function duTick(p, dt) {
   if (ov.querySelector(".cards")) p.inv = Math.max(p.inv, 0.3); // a level-up doesn't stop the duel: safe while you pick
   while (Math.floor((S.escBest || 0) / 25) > DU.cs) duCurseOut();
   if (DU.bot) duBotTick(dt);
-  else if (duNow() - DU.lastRx > DU_RE_MAX) return duEnd(0, duWhy("gone", DU.rvName));
+  else if (duNow() - DU.lastRx > DU_RE_MAX) return duLinkOk() ? duEnd(0, duWhy("gone", DU.rvName), true) : duEnd(-1, Lx("No se pudo hablar con tu rival durante 25 s. Esta ronda no cuenta.", "Couldn't reach your rival for 25 s. This round doesn't count."));
   if (!DU.bot && (!DU.net || duNow() - DU.lastRx > 3) && !S.duBan) S.duBan = { s: Lx("RECONECTANDO...", "RECONNECTING..."), t: 0.5 };
   DU.low = Math.min(DU.low, (S.escBest || 0) - DU.rv.best);
   if (duEl() >= DU_LIMIT) { const a = S.escBest || 0, b = DU.rv.best; return duEnd(a >= b ? 0 : 1, Lx("SE ACABÓ EL TIEMPO: ", "TIME'S UP: ") + (a >= b ? Lx("HAS LLEGADO MÁS ALTO", "YOU CLIMBED HIGHER") : Lx(DU.rvName + " LLEGÓ MÁS ALTO", DU.rvName + " CLIMBED HIGHER"))); }
   duHud();
 }
-function duEnd(w, why) {
-  if (DU.over || !DU.on) return; DU.over = { w, why }; DU.wins[w]++; const fin = DU.wins[w] >= DU_GOAL; duSendNow();
+function duEnd(w, why, gone) {
+  if (DU.over || !DU.on) return; DU.over = { w, why, gone: gone || w < 0 }; if (w < 0) { omfSfx("death"); const run = S; setTimeout(() => { if (S === run && DU.on) duResult(false); }, 1200); return; } DU.wins[w]++; const fin = DU.wins[w] >= DU_GOAL; duSendNow();
   omfSfx(w === 0 ? "levelup" : "death"); if (fin) duVsSave(w === 0);
   if (fin && w === 0 && !DU.bot) { META.duel = META.duel || {}; META.duel.wins = (META.duel.wins || 0) + 1; duAch("win"); if (META.duel.wins >= 3) duAch("3"); if (DU.low <= -20) duAch("comeback"); try { saveMeta(); } catch (_) {} }
   const run = S; setTimeout(() => { if (S === run && DU.on) duResult(fin); }, w === 0 ? 1400 : 1800); // v164 (user): not instant, so the end of the round can be seen
@@ -13487,13 +13522,13 @@ function duAch(k) { META.duel = META.duel || {}; META.duel["a_" + k] = 1; try { 
 function duPips(n, c) { return [0, 1].map(i => `<i class="${i < n ? c : ""}"></i>`).join(""); }
 function duResult(fin) {
   const o = DU.over; if (!o) return; if (S.mode === "play") S.mode = "menu"; duHudOn(false); DU.scr = "end";
-  const me = o.w === 0, guest = DU.net && DU.role === "guest";
+  const me = o.w === 0, lost = o.w < 0, guest = DU.net && DU.role === "guest" && !o.gone;
   ov.hidden = false; ov.classList.remove("dead");
-  ov.innerHTML = `<div class="menu duend"><h1 class="${me ? "dw" : "dl"}">${fin ? (me ? Lx("¡GANAS EL DUELO!", "YOU WIN THE DUEL!") : Lx(DU.rvName + " GANA EL DUELO", DU.rvName + " WINS THE DUEL")) : (me ? Lx("GANAS LA RONDA", "YOU WIN THE ROUND") : Lx(DU.rvName + " GANA LA RONDA", DU.rvName + " WINS THE ROUND"))}</h1>
+  ov.innerHTML = `<div class="menu duend"><h1 class="${me ? "dw" : "dl"}">${lost ? Lx("CONEXIÓN PERDIDA", "CONNECTION LOST") : fin ? (me ? Lx("¡GANAS EL DUELO!", "YOU WIN THE DUEL!") : Lx(DU.rvName + " GANA EL DUELO", DU.rvName + " WINS THE DUEL")) : (me ? Lx("GANAS LA RONDA", "YOU WIN THE ROUND") : Lx(DU.rvName + " GANA LA RONDA", DU.rvName + " WINS THE ROUND"))}</h1>
     <p class="tagline">${o.why}</p>
     <div class="duvs"><div class="me"><b>${S.escBest || 0} m</b><span>${T("TÚ")}</span><span class="pips">${duPips(DU.wins[0], "w0")}</span></div><div class="vs">VS</div><div class="rv"><b>${DU.rv.best} m</b><span>${DU.rvName}</span><span class="pips">${duPips(DU.wins[1], "w1")}</span></div></div>
     ${duVsLine()}<p class="dusub">${Lx("Maldiciones: mandaste " + DU.cs + ", recibiste " + DU.cRx + ".", "Curses: you sent " + DU.cs + ", you got " + DU.cRx + ".")}</p>
-    <p class="duask">${guest ? "" : fin ? Lx("¿Jugáis la revancha?", "Play a rematch?") : Lx("¿Seguimos con la siguiente ronda?", "On to the next round?")}</p>
+    <p class="duask">${o.gone ? Lx("La sala se ha cerrado.", "The room has closed.") : guest ? "" : fin ? Lx("¿Jugáis la revancha?", "Play a rematch?") : Lx("¿Seguimos con la siguiente ronda?", "On to the next round?")}</p>
     <div class="rowbig"><button class="go" id="duNext" disabled>${guest ? Lx("ESPERANDO AL ANFITRIÓN", "WAITING FOR THE HOST") : fin ? Lx("REVANCHA", "REMATCH") : Lx("SIGUIENTE RONDA", "NEXT ROUND")}</button></div>
     <div class="tools"><button id="duQuit">${Lx("SALIR", "LEAVE")}</button></div></div>`;
   // v164 (user): a jump or attack still held when the round ends must not press REMATCH by itself: the buttons wake up after 1.2 s
@@ -13501,6 +13536,7 @@ function duResult(fin) {
   const nb = document.getElementById("duNext"), qb = document.getElementById("duQuit"), at = performance.now() + 1200, scr = ov.firstElementChild; qb.disabled = true;
   setTimeout(() => { if (ov.firstElementChild !== scr) return; qb.disabled = false; if (!guest) nb.disabled = false; }, 1200);
   nb.onclick = () => { if (guest || nb.disabled || performance.now() < at) return; nb.disabled = true; omfSfx("click"); duHostStart(fin); };
+  if (o.gone) nb.parentElement.hidden = true;
   qb.onclick = () => { if (qb.disabled || performance.now() < at) return; omfSfx("click"); duLeave(); };
 }
 function duLeave() { duClose(); DU.on = false; DU.bot = null; DU.over = null; DU.scr = ""; duHudOn(false); if (S) S.duel = false; showTitle(); }
@@ -13611,8 +13647,8 @@ var du_be0 = buildEscape; buildEscape = function () { if (!(S && S.duel) || S.fr
   try { return du_be0.apply(this, arguments); } finally { Math.random = mr; } };
 var du_gs0 = genEscSegment; genEscSegment = function () { if (!(S && S.duel && S.eg) || S.frDuel) return du_gs0.apply(this, arguments);
   const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, rules = S.rules, h = Math.max(0, (S.LH - 2) - S.eg.row), r = mulberry((S.seed | 0) * 7919 + S.eg.row * 31 + DU.diff);
-  Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.rules = [];
-  try { return du_gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.rules = rules; } };
+  const fl = S.floor; Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.floor = 1 + Math.floor(Math.min(escD(), 9) * 1.6); S.rules = []; /* v175: S.floor frozen by height too */
+  try { return du_gs0.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.floor = fl; S.rules = rules; } };
 var du_pm0 = escPickMod; escPickMod = function (pool) { if (!(S && S.duel)) return du_pm0.apply(this, arguments); const rng = S.rng; S.rng = mulberry((S.seed | 0) * 13 + Math.round(S.escNextMod || 0) * 101);
   try { return du_pm0.apply(this, arguments); } finally { S.rng = rng; } };
 var du_room0 = escEnterRoom; escEnterRoom = function () { if (S && S.duel) { toast(Lx("En el duelo no hay salas secretas", "No secret rooms in a duel")); return; } return du_room0.apply(this, arguments); };
@@ -13862,7 +13898,7 @@ function duRdyCheck() { if (DU.net && DU.peer && DU.role === "host" && DU.rdy &&
 { const r0 = duStartRound; duStartRound = function () { duRdyReset(); return r0.apply(this, arguments); }; }
 { const v0 = duVs; duVs = function () { const r = v0.apply(this, arguments); if (!DU.net || DU.bot) return r;
     const go = document.getElementById("duGo"); if (!go) return r;
-    const paint = () => { go.disabled = false; go.classList.toggle("rdy", DU.rdy); go.textContent = DU.rdy ? Lx("✓ LISTO", "✓ READY") : Lx("¡LISTO!", "READY!");
+    const paint = () => { go.disabled = false; go.classList.toggle("rdy", DU.rdy); go.textContent = DU.rdy ? Lx("LISTO", "READY") : Lx("¡LISTO!", "READY!");
       let st = document.getElementById("duRdy"); if (!st) { go.parentNode.insertAdjacentHTML("afterend", '<div class="durdy" id="duRdy"></div>'); st = document.getElementById("duRdy"); }
       st.innerHTML = `<span class="${DU.rdy ? "on" : ""}">${T("TÚ")}: ${DU.rdy ? Lx("LISTO", "READY") : Lx("ESPERANDO", "NOT READY")}</span><span class="${DU.rvRdy ? "on" : ""}">${DU.rvName}: ${DU.peer ? (DU.rvRdy ? Lx("LISTO", "READY") : Lx("ESPERANDO", "NOT READY")) : Lx("FUERA", "AWAY")}</span>`;
       const sub = ov.querySelector(".duel .dusub"); if (sub) sub.textContent = DU.rdy && DU.rvRdy ? Lx("¡Empieza!", "Starting!") : Lx("El duelo empieza cuando los dos pulsáis LISTO. En vivo y sin pausa.", "The duel starts when both of you press READY. Live, no pause."); };
@@ -14050,6 +14086,13 @@ function ddGoSync() { const g = document.getElementById("dlyGo"); if (!g || S.ol
     try { const g = document.getElementById("dlyGo"); if (g && !ov.querySelector(".dddisc")) { const row = g.closest(".rowbig") || g; row.insertAdjacentHTML("beforebegin", `<p class="dddisc">${Lx("Jugar el desafío de un día anterior no da ninguna recompensa.", "Playing a challenge from a previous day gives no reward.")}</p>`); } } catch (_) {}
     return r; }; }
 { const r0 = ddRedraw; ddRedraw = function () { const r = r0.apply(this, arguments); ddGoSync(); return r; }; }
+// v175 bot QA: with a past day picked in the streak strip, the header date and the modifier cards show THAT day (they showed today)
+function ddDaySync() { try { const box = ov.querySelector(".dlyintro .dlycards"), tg = ov.querySelector(".dlyintro .tagline"); if (!box || !tg) return;
+    const key = DD_SEL && DD_SEL < todayKey() ? DD_SEL : S.seed, kk = String(key); if (box.dataset.day === kk) return; box.dataset.day = kk;
+    const ids = dailyMods(key, S.easy, S.hard), day = kk.slice(6, 8) + "/" + kk.slice(4, 6);
+    tg.innerHTML = `${day} · ${T(S.easy ? "Fácil" : S.hard ? "Hardcore" : "Normal")}`;
+    box.innerHTML = ids.map(id => { const r = RULE[id]; return `<div class="card"><span class="ic">${r.icon}</span><span class="nm">${T(r.name)}</span><span class="tag">${T(CATS[r.cat])}</span>${skullsHTML(r.cost, true)}<span class="ds">${T(r.desc)}</span></div>`; }).join(""); } catch (_) {} }
+{ const r1 = ddRedraw; ddRedraw = function () { const r = r1.apply(this, arguments); ddDaySync(); return r; }; }
 ov.addEventListener("click", e => { const g = e.target.closest && e.target.closest("#dlyGo"); if (!g || S.oldDaily || !(DD_SEL && DD_SEL < todayKey())) return;
   e.preventDefault(); e.stopPropagation(); try { omfSfx("click"); } catch (_) {} DD_REPLAY = DD_SEL; newRun({ char: S.char.id, kind: "daily" }); nextRuleStep(); }, true);
 // v157 (user: "the mods in the codex still have emojis"): every symbol glyph (arrows, dingbats, misc symbols, emoji) shown in
@@ -15136,7 +15179,8 @@ function frStart(d) {
   if (!d) return; try { omfSfx("click"); } catch (_) {}
   const e = META.easy, h = META.hard; META.easy = d.diff === 0; META.hard = d.diff === 2;
   try { newRun({ char: S.char.id, kind: "escape" }); } finally { META.easy = e; META.hard = h; }
-  S.friend = d; S.run = "friend"; if (S.snap) { S.snap.best = 1e9; S.snap.bestT = 1e9; } // the climb record tile never shows for a code S.seed = d.seed; S.rng = mulberry(d.seed);
+  S.friend = d; S.run = "friend"; if (S.snap) { S.snap.best = 1e9; S.snap.bestT = 1e9; } // the climb record tile never shows for a code
+  S.seed = d.seed; S.rng = mulberry(d.seed); // v175 (bot QA P0-1): this line had slipped into the comment above, so every phone got its own tower
   S.rules = d.mods.filter(id => !(S.easy && id === "mirror"));
   startFloor();
   S.escMods = S.rules.map(id => ({ id, until: 1e12 })); S.escNextMod = 1e12; S.escNextId = null; lastHud = ""; updateHud(true);
@@ -15148,8 +15192,8 @@ function frStart(d) {
     try { return be.apply(this, arguments); } finally { Math.random = mr; } }; }
 { const gs = genEscSegment; genEscSegment = function () { const FT = S && (S.friend || S.frDuel); if (!(FT && S.eg)) return gs.apply(this, arguments);
     const mr = Math.random, rng = S.rng, t = S.t, best = S.escBest, rules = S.rules, h = Math.max(0, (S.LH - 2) - S.eg.row), r = mulberry(((S.seed | 0) + 1) * 7919 + S.eg.row * 31 + FT.diff * 104729);
-    Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.rules = FT.mods.filter(id => !(S.easy && id === "mirror"));
-    try { return gs.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.rules = rules; } }; }
+    const fl = S.floor; Math.random = r; S.rng = r; S.t = S.escT0 + h; S.escBest = h; S.floor = 1 + Math.floor(Math.min(escD(), 9) * 1.6); S.rules = FT.mods.filter(id => !(S.easy && id === "mirror"));
+    try { return gs.apply(this, arguments); } finally { Math.random = mr; S.rng = rng; S.t = t; S.escBest = best; S.floor = fl; S.rules = rules; } }; }
 // fixed modifiers: a level-up never offers to remove them
 { const lc = escLevelCards; escLevelCards = function () { if (!(S && S.friend)) return lc.apply(this, arguments);
     const r0 = S.rules, m0 = S.escMods; S.rules = []; S.escMods = []; try { return lc.apply(this, arguments); } finally { S.rules = r0; S.escMods = m0; } }; }
@@ -15818,7 +15862,7 @@ function descTick(p, dt) {
   S.camZone = S.rowZone[clamp(Math.floor((S.camY + CH / 2) / TS), 0, S.LH - 1)] || 0;
   if (S.dLastZ !== S.camZone) { const first = S.dLastZ < 0; S.dLastZ = S.camZone; S.escZoneSeen = S.camZone; if (!first) { S.trkFog = trk("niebla"); toast(T("Nuevo bioma: ") + BIOMES[S.camZone].name); } }
   // timed modifiers, as in the climb, minus the ones that make no sense going down
-  const okMod = id => RULE[id] && !has(id) && escModOk(id) && !DESC_NO.includes(id) && (D >= 2 && !S.easy || RULE[id].cost < 3 && id !== "mirror");
+  const okMod = id => RULE[id] && !has(id) && !DESC_NO.includes(id) && (D >= 2 && !S.easy || RULE[id].cost < 3 && id !== "mirror");
   for (const m of S.escMods.slice()) if (el >= m.until) { S.escMods = S.escMods.filter(x => x !== m); S.rules = S.rules.filter(r => r !== m.id); escSurvived(m.id); toast("− " + RULE[m.id].icon + " " + RULE[m.id].name); lastHud = ""; }
   if (el >= S.escNextMod) {
     S.escNextMod += ESC_MOD_EVERY;
@@ -15928,7 +15972,7 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
   const held = {}, warned = {};
   const splashOn = () => { const sp = document.getElementById("splash"); return !!(sp && !sp.hidden && getComputedStyle(sp).display !== "none" && getComputedStyle(sp).opacity !== "0"); };
   // pop-ups over everything (wardrobe, info card, share card) and the pad keyboard take the focus first, as on PC
-  const MODALS = ".infopop, .sharepop, .wardrobe, .cxsheet, .pckb"; // v164: the Codex sheet is a modal too (spec 34)
+  const MODALS = ".infopop, .sharepop, .wardrobe, .cxsheet, .pckb, .ctledl"; // v175: MOVER BOTONES too (bot QA P0-3) // v164: the Codex sheet is a modal too (spec 34)
   const modal = () => { const m = [...document.querySelectorAll(MODALS)].filter(el => el.isConnected && el.getClientRects().length); return m[m.length - 1] || null; };
   const scope = () => modal() || ov;
   const inMenu = () => !!modal() || (ov && !ov.hidden && (!(S && S.mode === "play") || !!ov.querySelector(".cards, .dupause")) && !splashOn()); // v164: the duel panel (no pause) is a menu (spec 1)
@@ -15949,13 +15993,17 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
     const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2; let best = null, bs = Infinity;
     for (const el of f) { if (el === cur) continue; const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, ddx = x - ax, ddy = y - ay;
       const main = dx ? ddx * dx : ddy * dy, cross = dx ? Math.abs(ddy) : Math.abs(ddx); if (main <= 2) continue; const s = main + cross * 2.2; if (s < bs) { bs = s; best = el; } }
+    // v175 bot QA r2 (same as the PC layer): up / down go to the nearest ROW first, then the closest button in it, so a big
+    // button further down (the pause panel tabs) never wins over the OTRA VEZ / MENÚ row in between
+    if (dy) { const rows = f.filter(el => el !== cur).map(el => { const r = el.getBoundingClientRect(); return { el, gap: dy > 0 ? r.top - a.bottom : a.top - r.bottom, mid: dy > 0 ? r.top + r.height / 2 - ay : ay - (r.top + r.height / 2), cross: Math.abs(r.left + r.width / 2 - ax) }; }).filter(o => o.mid > 2 && o.gap > -a.height / 2);
+      if (rows.length) { const g0 = Math.min(...rows.map(o => Math.max(0, o.gap))); const near = rows.filter(o => Math.max(0, o.gap) <= g0 + 14); near.sort((p, q) => p.cross - q.cross); best = near[0].el; } }
     if (best) { try { best.focus({ preventScroll: true }); } catch (_) {} best.scrollIntoView({ block: "nearest" }); mark(best); try { omfSfx("click"); } catch (_) {} } }
   function back() { const m = modal();
-    if (m) { if (m.classList.contains("pckb")) { kbClose(); return; } if (m.classList.contains("cxsheet")) { if (typeof cx2Close === "function") cx2Close(); else m.remove(); fEl = null; ensureFocus(); return; } if (m.classList.contains("infopop")) { m.click(); return; } const c = m.querySelector("#backBtn, #shClose, .wok, .sh-close"); if (c) c.click(); else m.remove(); return; }
+    if (m) { if (m.classList.contains("pckb")) { kbClose(); return; } if (m.classList.contains("cxsheet")) { if (typeof cx2Close === "function") cx2Close(); else m.remove(); fEl = null; ensureFocus(); return; } if (m.classList.contains("infopop")) { m.click(); return; } const c = m.querySelector("#backBtn, #shClose, .wok, .sh-close, #ceDone"); if (c) c.click(); else m.remove(); return; }
     const dr = ov && ov.querySelector(".dupause #duRes"); if (dr) { dr.click(); return; }
     if (typeof navBack === "function") navBack(); else { const b = document.getElementById("backBtn"); if (b) b.click(); } }
   // LB / RB in menus: previous / next tab of the screen's tab row (codex chips, records boards, settings tabs, difficulty)
-  function tabStep(dir) { const sc = scope(); if (!sc) return;
+  function tabStep(dir) { const sc = scope(); if (!sc || sc.querySelector("#ctlDesc")) return; /* v175 bot QA: Settings has option rows, not tabs (RB was flipping 60/120 FPS) */
     for (const r of [...sc.querySelectorAll(".chips, .seg, .pcstabs, .lbtabs, .tabs, .stabs, .rtabs, [role=tablist], .difsel")].filter(vis)) { const bs = [...r.querySelectorAll(":scope > button, :scope > [role=tab]")].filter(vis); if (bs.length < 2) continue;
       const i = bs.findIndex(b => /(^|\s)(on|sel|act|active)(\s|$)/.test(b.className) || b.getAttribute("aria-selected") === "true" || b.getAttribute("aria-pressed") === "true"); if (i < 0) continue; const nb = bs[(i + dir + bs.length) % bs.length]; lastKey = keyOf(nb); lastSig = sig(); nb.click(); mark(nb); try { omfSfx("click"); } catch (_) {} return; } }
   // on-screen pixel keyboard: a pad can't open the phone keyboard, so A on a text box opens this (friend's tower code, duel code)
@@ -16047,7 +16095,7 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
   const bar = document.createElement("div"); bar.id = "padBar"; bar.setAttribute("aria-hidden", "true"); document.body.appendChild(bar);
   let barKey = "";
   // v164 (spec 4): the bar only shows what works on this screen
-  const hasTabs = () => { const sc = scope(); return !!(sc && [...sc.querySelectorAll(".chips, .seg, .pcstabs, .lbtabs, .tabs, .stabs, .rtabs, [role=tablist], .difsel")].some(r => r.getClientRects().length && r.querySelectorAll(":scope > button, :scope > [role=tab]").length > 1)); };
+  const hasTabs = () => { const sc = scope(); return !!(sc && !sc.querySelector("#ctlDesc") && [...sc.querySelectorAll(".chips, .seg, .pcstabs, .lbtabs, .tabs, .stabs, .rtabs, [role=tablist], .difsel")].some(r => r.getClientRects().length && r.querySelectorAll(":scope > button, :scope > [role=tab]").length > 1)); };
   setInterval(() => { const kbo = !!document.querySelector(".pckb"), on = padOn && !window.__omfPcPad && (kbo || (ov && !ov.hidden && !splashOn()) || !!modal());
     const pause = on && !kbo && !!(document.getElementById("resBtn") || ov.querySelector(".dupause")), cards = on && !kbo && !!ov.querySelector(".cards"), title = on && !!(ov.querySelector(".etitle")) && !modal(), tabs = on && !kbo && !cards && hasTabs();
     const key = on ? padFam + (kbo ? "k" : pause ? "p" : cards ? "c" : title ? "t" : "m") + (tabs ? "T" : "") + LANG : ""; if (key === barKey) return; barKey = key; bar.classList.toggle("on", on);
@@ -16097,7 +16145,7 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
 .pckb .pckbr{display:flex;gap:4px;justify-content:center;margin-bottom:4px}
 .pckb button{width:30px;height:34px;border:0;padding:0;background:#2c2842;color:#ece8f5;font:700 13px Silkscreen,monospace;box-shadow:inset 0 -4px 0 #231f37}
 .pckb button.w{width:110px;font-size:11px;letter-spacing:1px}.pckb button.ok{background:#f2c14e;color:#1b1829;box-shadow:inset 0 -4px 0 #c98a2a}
-.padfocus{outline:3px solid #5fd1c4!important;outline-offset:3px;animation:padring 1s steps(2) infinite}#ov .padfocus,.wardrobe .padfocus,.cxsheet .padfocus{box-shadow:0 0 0 3px #000!important}
+.padfocus{outline:3px solid #5fd1c4!important;outline-offset:3px;animation:padring 1s steps(2) infinite}#ov .padfocus,.wardrobe .padfocus,.cxsheet .padfocus{box-shadow:inset 0 0 0 3px #5fd1c4,0 0 0 3px #000!important}
 @keyframes padring{50%{outline-color:#e8fffb}}
 #ov .padfocus_unused{outline:3px solid #f2c14e!important;outline-offset:2px;box-shadow:0 0 0 5px #000!important}
 .padset .padlbl{margin:8px 0 4px;text-align:center;font-size:11px;color:#9a94b8;letter-spacing:.06em}.padset .padrow{display:grid!important;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}.padset .padrow button{height:36px;min-width:0;padding:0 2px;white-space:nowrap}
@@ -16208,7 +16256,7 @@ for (const k of ["kai_golem", "nyx_estelar"]) { const f = SKIN_RULES[k]; if (typ
 /* v164 (user): only the focused button is highlighted. At rest every menu button has the neutral border;
    yellow only on the focused one (pad ring, keyboard focus, mouse hover on PC) */
 .overlay .go,#ov > .pg #backBtn{border-color:#3e3960 !important}
-.overlay button.padfocus,.overlay .go:focus-visible,#ov > .pg #backBtn.padfocus,#ov > .pg #backBtn:focus-visible{border-color:#f2c14e !important}
+.overlay .go:focus-visible,#ov > .pg #backBtn:focus-visible{border-color:#f2c14e !important}.overlay button.padfocus,#ov > .pg #backBtn.padfocus{border-color:#5fd1c4 !important} /* v175 bot QA: the pad ring is cyan everywhere (amber read as "selected") */
 @media (hover:hover){.overlay .go:hover:not(:disabled),#ov > .pg #backBtn:hover{border-color:#f2c14e !important}}
 #ov > .pg > .pgback > button:not(#backBtn){flex:1 1 0;height:45px;min-height:45px;box-sizing:border-box}
 /* option groups: every button of a group gets the same width and height */
@@ -16691,6 +16739,12 @@ function nbApply(a) {
 function nbSync() { const w = nbWant(); if (w !== NB_ALT) { nbApply(w);
   if (w && S && S._nbToast !== S.seed) { S._nbToast = S.seed; toast(T("Bioma") + ": " + nbName(w)); } } }
 { const bd0 = sprDrawBackdrop; sprDrawBackdrop = function (cx, cy) { try { nbSync(); } catch (_) {} return bd0.apply(this, arguments); }; }
+// v175 bot QA r2: the look was only applied when the backdrop was drawn, so the first segments of a run were generated with
+// the PREVIOUS run's look (a friend code gave one tower on the first run and another on OTRA VEZ). Apply it before generating.
+{ const ge = genEscSegment; genEscSegment = function () {
+    try { if (typeof S !== "undefined" && S && S.escape && !S.hu && S.run !== "story") { const w = S.nbForce != null ? S.nbForce : nbRoll(S.seed);
+      if (w !== NB_ALT) { nbApply(w); if (w && S._nbToast !== S.seed) { S._nbToast = S.seed; toast(T("Bioma") + ": " + nbName(w)); } } } } catch (_) {}
+    return ge.apply(this, arguments); }; }
 // ---- the look's block textures, hangs and backdrop bands, inside the original renderer ----
 { const p0 = sprvPix; sprvPix = function (zi, mi, X, Y, v, h, r) { if (zi === 0 && NB_ALT) { const c = nb3Pix(NB_ALT, mi === 2 ? (v & 1) : mi, X, Y, v, h); if (c !== null) return c; } return p0.apply(this, arguments); }; }
 { const h0 = sprvHang; sprvHang = function (zi, px, py, A, h) { if (zi === 0 && NB_ALT) return nb3Hang(NB_ALT, px, py, A, h); return h0.apply(this, arguments); }; }
@@ -17093,9 +17147,15 @@ function escFixTick(dt) {
   else S.shadowE = null;
   if (!has("maze")) S.beast = null;
   // Switch: the platforms of new tower segments turn red and blue too
-  if (has("switch")) for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.kind = "sw"; m.h = TS / 2; }
+  // v175 (user report via QA thread): new segments' platforms got kind "sw" with no colour, so they were never solid (red
+  // dashed outline, GOLPE did nothing); and when Interruptor left, the red/blue platforms stayed half solid for the rest of
+  // the run. Now they get a colour like the rest, and when the modifier goes they all turn back into what they were.
+  if (has("switch")) { for (const m of S.movers) if (m.kind === "blink" || m.kind === "flip") { m.swFrom = m.kind; m.swH = m.h; m.kind = "sw"; m.h = TS / 2; m.col = (S.swN = (S.swN || 0) + 1) % 2; m.solid = m.col === S.swc; } }
+  else if (S.movers.some(m => m.kind === "sw")) S.movers = S.movers.filter(m => { if (m.kind !== "sw") return true;
+    if (m.swGrid) { const ty = Math.round(m.y / TS); for (let k = 0; k < Math.round(m.w / TS); k++) { const tx = Math.round(m.x / TS) + k; if (S.grid[ty] && tx > 0 && tx < S.LW - 1) S.grid[ty][tx] = 1; } return false; }
+    m.kind = m.swFrom || "blink"; m.h = m.swH || TS; m.st = "ok"; m.solid = true; m.t = 0; delete m.col; return true; });
 }
-var mfx_up0 = update; update = function (dt) { const r = mfx_up0.apply(this, arguments); if (S && S.escape && !S.duel) escFixTick(dt); return r; };
+var mfx_up0 = update; update = function (dt) { const r = mfx_up0.apply(this, arguments); if (S && S.escape) escFixTick(dt); return r; }; // v175 bot QA: also in duel (7 adapted modifiers did nothing there)
 // v173 (user 2026-11-11, white screen with Split): safety net. An enemy that ends up with a non-finite position is removed
 // before drawing, so one bad enemy can never break every frame again.
 { const u0 = update; update = function () { const r = u0.apply(this, arguments);
@@ -17356,7 +17416,7 @@ function colBuy(s, btn) {
 .overlay .shoppg.colpg .sdet canvas.cpv{width:96px !important;height:84px !important;image-rendering:pixelated;flex:none}
 .overlay .shoppg.colpg .sdet small{font-size:9px}
 #ov > .pg .rowbig.colrowbtns #backBtn,#ov > .pg .rowbig.colrowbtns #colRest{width:auto !important;flex:1 1 0 !important;min-width:0 !important}
-.overlay .shoppg .rowbig.colrowbtns .go{flex:1 1 0;min-width:0;font-size:9px;letter-spacing:0 !important;padding-left:4px;padding-right:4px;white-space:nowrap}
+.overlay .shoppg .rowbig.colrowbtns .go{flex:1 1 0;min-width:0;font-size:10px;letter-spacing:0 !important;padding-left:4px;padding-right:4px;white-space:normal;line-height:1.15;overflow:hidden;text-overflow:clip} /* v175 bot QA: RESTAURAR COMPRAS wraps to 2 lines instead of spilling out */
 .wardrobe .wtile.colk{box-shadow:inset 0 0 0 2px #c98a2a}
 .wardrobe .wtile.colk.sel,.wardrobe .wtile.colk.peek{box-shadow:inset 0 0 0 2px #f2c14e}
 .wardrobe .wtile .wcolb{position:absolute;top:2px;right:2px;font-style:normal;line-height:0}`; document.head.appendChild(st); })();
@@ -17369,9 +17429,10 @@ function colBuy(s, btn) {
 // (same secret and maths; keep them in step). REDEEM_REWARDS is FROZEN by id: only add new ids.
 const RD_SECRET = "__OMF_REDEEM_SECRET__"; // placeholder: the iOS build (sync-game.mjs) swaps in the real value from a GitHub Actions secret; real value lives only in movil/privado/redeem-secret.txt
 const RD_REWARDS = {
-  1: { es: "Aspecto de tester de Android", en: "Android tester skin", skin: "tester_android" }, // skin art comes from the design thread
+  1: { es: "Aspectos de tester de Android: BETA y VIGÍA LUNAR", en: "Android tester skins: BETA and MOON WATCHER", skin: "tester_android", skins: ["tester_android", "tester_beta"], android: true }, // v175: both T1 + T2 (tester.js), Android only
   2: { es: "500 de oro para la bolsa", en: "500 gold for your bag", bank: 500 },
   3: { es: "Colección CRISTAL VIVO (4 aspectos)", en: "LIVING CRYSTAL collection (4 skins)", col: "K4" }, // user 2026-11-11
+  4: { es: "TODAS las colecciones (16 aspectos)", en: "ALL collections (16 skins)", cols: ["K1", "K2", "K3", "K4", "ALL"] }, // v175, user 2026-11-13
 };
 const rdH = (n, salt) => { let h = 0x811c9dc5 ^ salt; const s = RD_SECRET + ":" + n + ":" + salt;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
@@ -17392,9 +17453,11 @@ function rdGrant(d) { const R = RD_REWARDS[d.reward];
   if (R.bank) META.bank = (META.bank || 0) + R.bank;
   try { saveMeta(); } catch (_) {} }
 // a reward skin counts as owned once its code was redeemed (the skin itself is added to HERO_SKINS when its art lands)
-{ const so = skinOwned; skinOwned = function (id) { for (const k in RD_REWARDS) if (RD_REWARDS[k].skin === id) return rdHas(+k); return so.apply(this, arguments); }; }
+{ const so = skinOwned; skinOwned = function (id) { for (const k in RD_REWARDS) if (RD_REWARDS[k].skin === id || (RD_REWARDS[k].skins && RD_REWARDS[k].skins.includes(id))) return rdHas(+k); return so.apply(this, arguments); }; }
+// v175: Android-only rewards (the tester skins) are refused on iPhone / iPad
+var TESTER_IOS = (() => { try { const C = window.Capacitor; if (C && C.getPlatform) { const pf = C.getPlatform(); if (pf === "ios") return true; if (pf === "android") return false; } return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); } catch (_) { return false; } })();
 // a reward collection counts as owned once its code was redeemed (on top of the store purchase)
-if (typeof colOwned === "function") { const co = colOwned; colOwned = function (pk) { for (const k in RD_REWARDS) if (RD_REWARDS[k].col && RD_REWARDS[k].col === pk && rdHas(+k)) return true; return co.apply(this, arguments); }; }
+if (typeof colOwned === "function") { const co = colOwned; colOwned = function (pk) { for (const k in RD_REWARDS) if (((RD_REWARDS[k].col && RD_REWARDS[k].col === pk) || (RD_REWARDS[k].cols && RD_REWARDS[k].cols.includes(pk))) && rdHas(+k)) return true; return co.apply(this, arguments); }; }
 function showRedeem() {
   try { omfSfx("click"); } catch (_) {}
   ov.hidden = false; ov.classList.remove("dead");
@@ -17411,7 +17474,8 @@ function showRedeem() {
   const say = (t, bad) => { note.textContent = t || " "; note.classList.toggle("bad", !!bad); };
   const sync = () => { const s = String(inp.value || "").toUpperCase().replace(/[\s\-_.]/g, "").slice(0, 10);
     cells.forEach((c, i) => { c.textContent = s[i] || ""; c.classList.toggle("cur", i === s.length); });
-    cur = s.length === 10 ? rdDecode(s) : null; const used = cur && (META.redeemed || []).includes(cur.code);
+    cur = s.length === 10 ? rdDecode(s) : null; const used = cur && (META.redeemed || []).includes(cur.code), noDev = cur && RD_REWARDS[cur.reward].android && TESTER_IOS;
+    if (noDev) { go.disabled = true; prev.textContent = " "; say(Lx("Este código no sirve en este dispositivo.", "This code isn't valid on this device."), true); return; }
     go.disabled = !cur || used; prev.textContent = cur ? Lx(RD_REWARDS[cur.reward].es, RD_REWARDS[cur.reward].en) : " ";
     say(s.length === 10 ? (!cur ? Lx("Código no válido", "Invalid code") : used ? Lx("Ya canjeaste este código", "You already redeemed this code") : "") : "", s.length === 10 && (!cur || used)); };
   inp.addEventListener("input", sync); inp.onkeydown = e => { e.stopPropagation(); if (e.key === "Enter" && !go.disabled) go.click(); }; inp.onkeyup = e => e.stopPropagation();
@@ -17447,6 +17511,80 @@ if (typeof ESC_PI === "object" && !ESC_PI.key) ESC_PI.key = [".........", ".###.
 .rdpage .rdbox .cells i{width:22px}.rdpage .rdprev{min-height:18px;text-align:center;color:#f2c14e;font-size:12px;margin:2px 0 8px}
 .rdpage .frnote.ok{color:#7fbf6a}
 .tools.rdrow{display:flex;gap:8px;justify-content:center}.tools.rdrow > button{flex:1 1 0;min-width:0;max-width:170px;justify-content:center}`; document.head.appendChild(st); })();
+
+// ===== v175 (user 2026-11-13, handoff ideas/skin-tester/HANDOFF-T1-T2.md): the Android beta-tester reward, two Velo skins.
+// tester_beta = T1 BETA "El bicho de prueba" (missing-texture checker on the cloak, a cyan/magenta glitch 0.24 s every 1.6 s,
+// no glitch when Ajustes > ACCESIBILIDAD > destellos is NO). tester_android = T2 VIGÍA LUNAR "Catorce noches seguidas" (night
+// cloak with twinkling stars, a moon over the shoulder cycling 14 phases). Redeem reward 1 grants both. ANDROID ONLY: on iOS
+// they are never registered (no wardrobe, no Codex) and a reward-1 code says it is not valid on this device (canje.js).
+// Same frame pipeline as the paid collections (colFrame / colHash / COL_DATA.ROLE from colecciones.js).
+var TESTER_SKINS = {
+  tester_beta: { c: "T1", name: "BETA", en: "BETA", r: { L1: "#ff9af0", L2: "#ff3ad8", L3: "#b01ea0", L4: "#560e52", A1: "#3ae8ff", A2: "#d0ffff", A3: "#1a7a9a", FD: "#0a0a14", E: "#4aff8a", B: "#16141e" }, chk: "#1a1024" },
+  tester_android: { c: "T2", name: "VIGÍA LUNAR", en: "MOON WATCHER", r: { L1: "#e8eeff", L2: "#5a6ab8", L3: "#38428e", L4: "#1c2052", A1: "#c8d0e8", A2: "#ffffff", A3: "#7a84a8", FD: "#0e1030", E: "#fff3a0", B: "#1c2052" } }
+};
+if (!TESTER_IOS && typeof COL_DATA === "object" && HERO_SKINS.velo) {
+  const base = HERO_SKINS.velo, role = COL_DATA.ROLE.velo;
+  for (const id in TESTER_SKINS) { const T0 = TESTER_SKINS[id], pal = Object.assign({}, base.pal); for (const c in role) if (T0.r[role[c]]) pal[c] = T0.r[role[c]];
+    HERO_SKINS[id] = { ch: "velo", name: T0.name, en: T0.en, weapon: base.weapon, unlock: null, tester: T0.c, ts: T0, tier: "tester", pal, f: base.f, umb: base.umb };
+    EN_TEXT[T0.name] = T0.en; }
+}
+const tsHow = () => Lx("Premio por probar la beta en Android", "Reward for beta testing on Android");
+// moon: radius-3 disc in a 7 x 7 box, phase 0..13 (0 new, 7 full)
+function tsMoon(ph) { const o = [], k = ph / 14;
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) { const dx = x - 3, dy = y - 3; if (dx * dx + dy * dy > 10) continue;
+    const w = Math.sqrt(Math.max(0, 10 - dy * dy)), u = (dx + w) / (2 * w || 1); let lit = k < 0.5 ? u > 1 - k * 2 : u < 2 - k * 2; if (ph === 0) lit = false; if (ph === 7) lit = true;
+    const edge = dx * dx + dy * dy > 6; o.push([x, y, lit ? (edge ? "#c8d0e8" : "#fff8dc") : (edge ? "#1b1430" : "#2a2e5a")]); }
+  return o; }
+function tsGlitch(k, t) { if (k.tester !== "T1" || escCalm()) return null; const cyc = t % 1.6; if (cyc > 0.24) return null; const seed = Math.floor(t / 1.6), step = Math.floor(cyc * 25), rows = {};
+  for (let i = 0; i < 3; i++) { const y0 = colHash(seed, i * 7 + step) % 24, h = 1 + colHash(i, seed) % 3, dx = (colHash(seed + i, step) % 5) - 2; for (let y = y0; y < y0 + h; y++) rows[y] = dx; }
+  return rows; }
+function tsFx(P, k, fr, anim, t, layer) {
+  const T0 = k.ts, role = COL_DATA.ROLE.velo;
+  if (layer === "back") { if (k.tester === "T2") { const ph = Math.floor(t * 2) % 14, bob = Math.round(Math.sin(t * 2)); tsMoon(ph).forEach(([x, y, c]) => P(-5 + x, 4 + y + bob, c)); } return; }
+  if (layer === "body") {
+    for (let y = 0; y < 26; y++) for (let x = 0; x < 16; x++) { const ch = fr[y * 16 + x]; if (ch === "." || ch === "o") continue; const rl = role[ch]; let col = null;
+      if (k.tester === "T1" && (rl === "L2" || rl === "L3") && y >= 13) col = ((x >> 1) + (y >> 1)) % 2 === 0 ? (rl === "L2" ? T0.r.L2 : T0.chk) : (rl === "L2" ? T0.chk : T0.r.L3);
+      if (k.tester === "T2" && (rl === "L3" || rl === "L4") && y >= 17) { const hv = colHash(x, y + Math.floor(t * 3)); if (hv % 9 === 0) col = (hv >> 4) % 2 ? "#ffffff" : "#fff3a0"; }
+      if (col) P(x, y, col); }
+    return; }
+  const gl = tsGlitch(k, t); if (!gl) return;
+  for (let y = 0; y < 26; y++) { const dx = gl[y]; if (dx === undefined) continue;
+    for (let x = 0; x < 16; x++) { const ch = fr[y * 16 + x]; if (ch === ".") continue; P(x + dx - 1, y, "rgba(58,232,255,.75)"); P(x + dx + 1, y, "rgba(255,58,216,.75)"); }
+    for (let x = 0; x < 16; x++) { const ch = fr[y * 16 + x]; if (ch === ".") continue; P(x + dx, y, k.pal[ch] || "#1b1430"); } }
+}
+if (!TESTER_IOS) {
+  // in the world (same wrapper shape as the collections')
+  { const d0 = sprDrawHero; sprDrawHero = function (p, flipped) {
+      const cid = S.char && S.char.id, id = heroSkinOf(cid === "rolo" ? "kai" : cid), k = HERO_SKINS[id];
+      if (!k || !k.tester || S.mode === "dead") return d0.apply(this, arguments);
+      const t = S.t || 0, sc = p.w / 16, cx = Math.round(p.x + p.w / 2), by = Math.round(flipped ? p.y : p.y + p.h), fh = p.face < 0;
+      const W = (sq, fn) => { ctx.save(); ctx.translate(cx, by); ctx.scale((fh ? -1 : 1) * sq[0], (flipped ? -1 : 1) * sq[1]); fn((x, y, c) => { ctx.fillStyle = c; ctx.fillRect(-8 * sc + x * sc, (-26 + y) * sc, sc, sc); }); ctx.restore(); };
+      const prev = p._tsFr; if (prev) W([1, 1], P => tsFx(P, k, prev.fr, prev.anim, t, "back"));
+      let got = null; const hf = heroFrame, sb = sprBlit;
+      heroFrame = function (hid, anim, i) { const cv = hf.apply(this, arguments); if (hid === id && cv && !got) got = { anim, i, cv }; return cv; };
+      sprBlit = function (cv) { if (got && cv === got.cv && !got.sq) got.sq = [SQX, SQY]; return sb.apply(this, arguments); };
+      let r; try { r = d0.apply(this, arguments); } finally { heroFrame = hf; sprBlit = sb; }
+      const fr = got && got.sq && colFrame(k, got.anim, got.i);
+      if (fr) { p._tsFr = { fr, anim: got.anim }; W(got.sq, P => { tsFx(P, k, fr, got.anim, t, "body"); tsFx(P, k, fr, got.anim, t, "front"); }); } else p._tsFr = null;
+      return r; }; }
+  // menu portraits (home, wardrobe): repaint with the FX
+  { const pv0 = pvTick; pvTick = function () {
+      const cvs = [...document.querySelectorAll("canvas.pv")].filter(c => { const k = HERO_SKINS[c.dataset.skin || ""]; return k && k.tester && c.dataset.lock !== "1"; });
+      cvs.forEach(c => { c._pvf = null; });
+      const r = pv0.apply(this, arguments);
+      if (!heroesOn() || S.mode !== "title") return r;
+      for (const c of cvs) { const x = c.getContext("2d"), id = c.dataset.skin, k = HERO_SKINS[id], t = performance.now() / 1000 + (c.dataset.off || 0) * 1, running = t % 5 > 3.6, anim = running ? "run" : "idle";
+        const fr = colFrame(k, anim, running ? Math.floor(t * 12) : Math.floor(t * 4)); if (!fr) continue;
+        const s = Math.min(Math.floor(c.width / 16), Math.floor(c.height / 26)), ox = Math.round((c.width - 16 * s) / 2), oy = c.height - 26 * s, P = (px, py, col) => { x.fillStyle = col; x.fillRect(ox + px * s, oy + py * s, s, s); };
+        tsFx(P, k, fr, anim, t, "body"); tsFx(P, k, fr, anim, t, "front");
+        x.save(); x.globalCompositeOperation = "destination-over"; tsFx(P, k, fr, anim, t, "back"); x.restore(); }
+      return r; }; }
+  // how to get it, and the gold frame in the wardrobe like the collections
+  { const l0 = lockInfo; lockInfo = function (kind, id) { const k = kind === "skin" && HERO_SKINS[id]; if (k && k.tester) return { t: tsHow() }; return l0.apply(this, arguments); }; }
+  { const w0 = escWardrobe; escWardrobe = function (ch) { const r = w0.apply(this, arguments), el = document.getElementById("wardrobe"); if (!el) return r;
+      el.querySelectorAll(".wtile[data-w]").forEach(b => { const k = HERO_SKINS[b.dataset.w]; if (k && k.tester) b.classList.add("colk"); });
+      return r; }; }
+}
 
 // v173 (user 2026-11-11 "añade al lado de los desafíos un botón para promocionar", "que sea servidor side así podemos actualizarlo
 // en todos los juegos", "que lleve a nuestra web"): STUDIO NEWS. A newspaper button sits next to the challenges target on the
@@ -17577,11 +17715,309 @@ body.bigui #ov { transform: scale(var(--uik)); transform-origin: 0 0; inset: 0 a
 body.bigui.esc .hud { transform: scale(var(--uik)); transform-origin: 0 0; right: auto; width: calc(100% / var(--uik)); }
 body.bigui.esc.playing .pausebtn { transform: scale(var(--uik)); transform-origin: 100% 0; top: calc(env(safe-area-inset-top, 0px) + 54px * var(--uik)); }
 #rotMsg > div { transform: scale(var(--rotk, 1)); }
+/* v175 (user 2026-11-13: "la barra de abajo en los controles otra vez está pequeña, debería verse en toda la pantalla"): on a big
+   screen the touch controls grow with the rest of the UI. Strip: taller band, so its buttons (sized from --padH) grow and spread
+   over the full width. Classic / Combined: the d-pad and the buttons scale from their corners. */
+body.bigui.esc { --padH: calc(clamp(150px, 22vh, 200px) * var(--uik)); }
+body.bigui.esc.ctl-franja .gpad { --u: min(calc((var(--padH) - 22px) / 3), calc((100vw - 92px) / 6.2)); }
+body.bigui.esc.ctl-franja .gpad .px span { font-size: calc(11px * var(--uik)); }
+body.bigui.esc.ctl-franja .gpad .px svg { width: calc(26px * var(--uik)); height: calc(26px * var(--uik)); }
+body.bigui.esc.ctl-clasico .gpad { height: calc(clamp(150px, 24vh, 200px) * var(--uik)); }
+body.bigui.esc.ctl-clasico .gpad .dpad { transform: scale(var(--uik)); transform-origin: 0 100%; }
+body.bigui.esc:not(.ctl-franja) .gpad #gJump, body.bigui.esc:not(.ctl-franja) .gpad #gAtk { transform: scale(var(--uik)); transform-origin: 100% 100%; }
+body.bigui.esc.ctl-clasico .gpad #gAtk { right: calc(104px * var(--uik)); bottom: calc(64px * var(--uik)); }
+body.bigui.esc.ctl-invisible .gpad #gAtk { right: calc(104px * var(--uik)); bottom: calc(env(safe-area-inset-bottom, 0px) + 72px * var(--uik)); }
+body.bigui.esc.ctl-invisible .gpad .base { transform: scale(var(--uik)); }
 `; document.head.appendChild(st); }
 // on a tablet the notice says "turn the screen", not "turn the phone"
 if (Math.min(screen.width || innerWidth, screen.height || innerHeight) >= 700) { try { const b = document.querySelector("#rotMsg b"); if (b) b.textContent = T(Lx("GIRA LA PANTALLA", "TURN YOUR SCREEN")); } catch (_) {} }
 uiScaleApply();
 addEventListener("resize", uiScaleApply); addEventListener("orientationchange", () => setTimeout(uiScaleApply, 120));
+
+// ===== v175 (user 2026-11-13: "cuando pausas, debería haber una pregunta de confirmación al presionar Otra vez y Menú,
+// así no se presionan accidentalmente"). In the pause menu, OTRA VEZ and MENÚ open the same fixed 300x300 pixel window as
+// the friend-tower modifier info (.infopop.frpop) asking to confirm; the run is lost only on SÍ. CANCELAR, a tap outside,
+// the pad's back button and START (resume) all close it. Gamepad focus lands on CANCELAR, so a stray press never confirms.
+function pauseSure(kind, go) {
+  try { omfSfx("click"); } catch (_) {}
+  document.querySelectorAll(".pausesure").forEach(x => x.remove());
+  const again = kind === "again";
+  const el = document.createElement("div"); el.className = "infopop frpop pausesure";
+  el.innerHTML = `<div class="ipc"><b>${again ? Lx("¿EMPEZAR OTRA VEZ?", "START AGAIN?") : Lx("¿SALIR AL MENÚ?", "QUIT TO MENU?")}</b>
+    <p class="frpd">${again ? Lx("Perderás esta subida y empezarás desde abajo.", "You will lose this climb and start again from the bottom.")
+      : Lx("Perderás esta subida y volverás al menú principal.", "You will lose this climb and go back to the main menu.")}</p>
+    <p class="frpf"></p>
+    <div class="frpb"><button class="go alt" id="psNo">${Lx("CANCELAR", "CANCEL")}</button><button class="go" id="psYes">${again ? Lx("OTRA VEZ", "AGAIN") : Lx("SALIR", "QUIT")}</button></div></div>`;
+  const close = () => { el.remove(); const b = document.getElementById(again ? "rstBtn" : "menuBtn"); if (b) try { b.focus({ preventScroll: true }); } catch (_) {} };
+  el.onclick = e => { if (e.target === el) { try { omfSfx("click"); } catch (_) {} close(); } };
+  el.querySelector("#psNo").onclick = () => { try { omfSfx("click"); } catch (_) {} close(); };
+  el.querySelector("#psYes").onclick = () => { el.remove(); go(); };
+  document.body.appendChild(el);
+  try { el.querySelector("#psNo").focus({ preventScroll: true }); } catch (_) {}
+}
+{ const ep = escPause; escPause = function () {
+    const was = S && S.mode; const r = ep.apply(this, arguments);
+    if (!(S && S.mode === "menu" && was === "play")) return r;
+    for (const [id, kind] of [["rstBtn", "again"], ["menuBtn", "menu"]]) {
+      const b = document.getElementById(id); if (!b || b.dataset.sure) continue;
+      const go = b.onclick; if (typeof go !== "function") continue;
+      b.dataset.sure = "1"; b.onclick = e => pauseSure(kind, () => go.call(b, e));
+    }
+    return r; }; }
+{ const er = escResume; escResume = function () { document.querySelectorAll(".pausesure").forEach(x => x.remove()); return er.apply(this, arguments); }; }
+
+// ===== v175 (user 2026-11-13: "mejor menú de pausa para poder ver qué hace cada cosa de mejor manera", "que los puedas tocar")
+// The pause menu gets an EN ESTA PARTIDA panel under the buttons: three tabs, MODIFICADORES / OBJETOS / MEJORAS, each a grid
+// of pixel tiles (icon, name, and the seconds left or the level). Tapping a tile opens the same fixed 300x300 pixel window as
+// the other info popups (.infopop.frpop) with what it does. The panel has a fixed height and switching tabs never resizes it.
+// The old AVISOS list stays below. A controller moves over the tiles like any button; B closes the window.
+var PINFO_TAB = "mods";
+function pinfoLists() {
+  const el = Math.max(0, (S.pauseAt || S.t) - S.escT0), mods = [], objs = [], perks = [];
+  for (const id of S.rules || []) { const r = RULE[id]; if (!r) continue; const m = (S.escMods || []).find(x => x.id === id);
+    const left = m ? Math.max(0, Math.ceil(m.until - el)) : null;
+    mods.push({ k: "mod", id, ic: r.icon, n: T(r.name), sub: left != null ? left + " s" : Lx("BIOMA", "BIOME"), d: T(r.desc), cost: r.cost,
+      x: left != null ? Lx("Se va en " + left + " s.", "Leaves in " + left + " s.") : Lx("Viene con el bioma: dura mientras sigas en él.", "Comes with the biome: lasts while you stay in it.") }); }
+  for (const id of S.trk || []) { const t = typeof TRK !== "undefined" && TRK[id]; if (!t) continue;
+    objs.push({ k: "obj", id, img: trkImg(id), n: T(t.n), sub: Lx("OBJETO", "ITEM"), d: T(t.d), x: Lx("Te dura toda la partida.", "Lasts the whole run.") }); }
+  for (const q of ESC_PERKS) { const lv = (S.perk && S.perk[q.id]) || 0; if (!lv || q.id === "curar") continue;
+    perks.push({ k: "perk", id: q.id, ic: q.icon, n: T(q.name), sub: q.max > 1 ? Lx("NV ", "LV ") + lv + "/" + q.max : "", d: T(q.desc),
+      x: q.max > 1 ? Lx("Nivel " + lv + " de " + q.max + ".", "Level " + lv + " of " + q.max + ".") : Lx("Te dura toda la partida.", "Lasts the whole run.") }); }
+  return { mods, objs, perks };
+}
+function pinfoTile(t, i) {
+  return `<button class="pit" data-pit="${i}"><span class="pii">${t.img || t.ic}</span><b>${t.n}</b><span class="pis${t.k === "mod" && t.cost >= 3 ? " hard" : ""}">${t.sub || "&nbsp;"}</span></button>`;
+}
+function pinfoPop(t) {
+  try { omfSfx("click"); } catch (_) {}
+  document.querySelectorAll(".pinfopop").forEach(x => x.remove());
+  const el = document.createElement("div"); el.className = "infopop frpop pinfopop";
+  el.innerHTML = `<div class="ipc"><span class="gi">${t.img || t.ic}</span><b>${t.n}${t.k === "mod" ? " " + skullsHTML(t.cost, true) : ""}</b>
+    <p class="frpd">${t.d}</p><p class="pinx">${t.x}</p>
+    <div class="frpb one"><button class="go" id="pipX">${Lx("CERRAR", "CLOSE")}</button></div></div>`;
+  const close = () => { el.remove(); const b = ov.querySelector(`.pinfo [data-pit="${t.i}"]`); if (b) try { b.focus({ preventScroll: true }); } catch (_) {} };
+  el.onclick = e => { if (e.target === el) { try { omfSfx("click"); } catch (_) {} close(); } };
+  el.querySelector("#pipX").onclick = () => { try { omfSfx("click"); } catch (_) {} close(); };
+  document.body.appendChild(el); try { paintPxi(el); } catch (_) {}
+  try { el.querySelector("#pipX").focus({ preventScroll: true }); } catch (_) {}
+}
+function pinfoFill(box) {
+  const L = pinfoLists(), tabs = [["mods", Lx("MODS", "MODS"), L.mods], ["objs", Lx("OBJETOS", "ITEMS"), L.objs], ["perks", Lx("MEJORAS", "UPGRADES"), L.perks]];
+  const cur = tabs.find(x => x[0] === PINFO_TAB) || tabs[0], list = cur[2];
+  list.forEach((t, i) => t.i = i);
+  const empty = { mods: Lx("Ningún modificador activo ahora mismo.", "No modifiers active right now."), objs: Lx("Aún no llevas objetos. Salen en salas secretas, tiendas y jefes.", "No items yet. They come from secret rooms, shops and bosses."), perks: Lx("Aún no tienes mejoras. Sube de nivel venciendo enemigos.", "No upgrades yet. Level up by defeating enemies.") }[cur[0]];
+  box.innerHTML = `<div class="pitabs" role="tablist">${tabs.map(([k, n, l]) => `<button role="tab" data-ptab="${k}" class="${k === cur[0] ? "on" : ""}" aria-selected="${k === cur[0]}">${n}<i>${l.length}</i></button>`).join("")}</div>
+    <div class="pigrid">${list.length ? list.map(pinfoTile).join("") : `<p class="piempty">${empty}</p>`}</div>
+    <p class="pihint">${list.length ? Lx("Toca uno para ver qué hace.", "Tap one to see what it does.") : "&nbsp;"}</p>`;
+  box.querySelectorAll("[data-ptab]").forEach(b => b.onclick = () => { if (b.dataset.ptab === PINFO_TAB) return; try { omfSfx("click"); } catch (_) {} PINFO_TAB = b.dataset.ptab; pinfoFill(box); const nb = box.querySelector(`[data-ptab="${PINFO_TAB}"]`); if (nb) try { nb.focus({ preventScroll: true }); } catch (_) {} });
+  box.querySelectorAll("[data-pit]").forEach(b => b.onclick = () => pinfoPop(list[+b.dataset.pit]));
+  try { paintPxi(box); } catch (_) {}
+}
+{ const st = document.createElement("style"); st.textContent = `
+.pinfo { margin: 14px auto 0; width: min(92%, 380px); height: 262px; box-sizing: border-box; background: #1b1829; border: 3px solid #3e3960; box-shadow: 0 0 0 3px #0a0812; padding: 8px; display: flex; flex-direction: column; gap: 6px; font-family: Silkscreen, monospace; }
+.pinfo .pih { margin: 0; font: 400 12px Silkscreen, monospace; color: #f2c14e; letter-spacing: 1px; text-align: left; }
+.pinfo .pitabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.pinfo .pitabs button { min-width: 0; height: 30px; padding: 0 2px; background: #12101d; color: #9a94b8; border: 2px solid #3e3960; font: 400 10px Silkscreen, monospace; letter-spacing: 0; white-space: nowrap; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: none; }
+.pinfo .pitabs button i { font-style: normal; min-width: 14px; height: 14px; line-height: 14px; background: #3e3960; color: #ece8f5; font-size: 10px; }
+.pinfo .pitabs button.on { background: #2a2540; color: #f2c14e; border-color: #f2c14e; }
+.pinfo .pitabs button.on i { background: #f2c14e; color: #1b1829; }
+.pinfo .pigrid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 74px; gap: 5px; align-content: start; scrollbar-width: none; }
+.pinfo .pigrid::-webkit-scrollbar { display: none; }
+.pinfo .pit { min-width: 0; height: 74px; padding: 4px 3px; background: #12101d; border: 2px solid #3e3960; color: #ece8f5; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 2px; box-shadow: inset -2px -2px 0 rgba(0,0,0,.35); }
+.pinfo .pit:active, .pinfo .pit.padfocus { border-color: #5fd1c4; }
+.pinfo .pit .pii { height: 26px; display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1; }
+.pinfo .pit .pii img { width: 24px; height: 24px; image-rendering: pixelated; }
+.pinfo .pit b { font: 400 10px Silkscreen, monospace; line-height: 1.1; max-height: 20px; overflow: hidden; width: 100%; text-align: center; color: #ece8f5; }
+.pinfo .pit .pis { font-size: 10px; color: #f2c14e; height: 11px; line-height: 11px; }
+.pinfo .pit .pis.hard { color: #e0566b; }
+.pinfo .piempty { grid-column: 1 / -1; margin: 18px 6px 0; font-size: 11px; line-height: 1.4; color: #9a94b8; text-align: center; }
+.pinfo .pihint { margin: 0; height: 12px; font-size: 10px; color: #9a94b8; text-align: center; }
+.pinfopop .ipc .gi img { width: 32px; height: 32px; image-rendering: pixelated; }
+.pinfopop .pinx { margin: 0 0 8px; min-height: 16px; font-size: 11px; color: #5fd1c4; }
+.frpop .frpb.one { grid-template-columns: 1fr; }
+`; document.head.appendChild(st); }
+{ const ep = escPause; escPause = function () {
+    const was = S && S.mode; const r = ep.apply(this, arguments);
+    if (!(S && S.escape && S.mode === "menu" && was === "play")) return r;
+    try { const m = ov.querySelector(".menu"); if (!m || m.querySelector(".pinfo")) return r;
+      const box = document.createElement("div"); box.className = "pinfo";
+      const plog = m.querySelector(".plog"); if (plog) plog.before(box); else m.appendChild(box);
+      const L = pinfoLists(); if (!L.mods.length && (L.objs.length || L.perks.length)) PINFO_TAB = L.objs.length ? "objs" : "perks"; else PINFO_TAB = "mods";
+      pinfoFill(box); } catch (er) { try { errLog(er.message, "pinfo"); } catch (_) {} }
+    return r; }; }
+{ const er = escResume; escResume = function () { document.querySelectorAll(".pinfopop").forEach(x => x.remove()); return er.apply(this, arguments); }; }
+
+// ===== v175 (user 2026-11-13: "deberías poder mover los botones de posición con el menú", picked "recolocar los controles
+// táctiles"). Settings > Controles has MOVER BOTONES: the touch controls show over the screen and the d-pad (with its touch
+// zone), GOLPE and SALTO can be dragged anywhere on screen. RESTABLECER puts the current layout back; LISTO saves.
+// Saved per layout (Franja / Combinado / Clásico) as a fraction of the screen, so it survives other screen sizes and the
+// iPad scaling (CSS `translate` stacks on top of pantallas.js's `transform: scale`). Combinado has no d-pad (floating stick).
+const CTLPOS_KEY = "omf-ctlpos";
+function ctlPosAll() { try { const o = JSON.parse(localStorage.getItem(CTLPOS_KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (_) { return {}; } }
+function ctlPosSave(all) { try { localStorage.setItem(CTLPOS_KEY, JSON.stringify(all)); } catch (_) {} }
+const CTLPOS_PARTS = [["mv", "gMove", "gDpad"], ["atk", "gAtk", "gAtk"], ["jump", "gJump", "gJump"]]; // key, element moved, element you grab
+function ctlPosApply() {
+  if (!ESCAPE) return; const p = ctlPosAll()[CTL] || {}, w = innerWidth, h = innerHeight;
+  for (const [k, id] of CTLPOS_PARTS) { const el = document.getElementById(id); if (!el) continue; const v = p[k];
+    const t = Array.isArray(v) && isFinite(v[0]) && isFinite(v[1]) ? Math.round(v[0] * w) + "px " + Math.round(v[1] * h) + "px" : "";
+    if (el.style.translate !== t) el.style.translate = t; }
+}
+{ const sc = setCtl; setCtl = function () { const r = sc.apply(this, arguments); ctlPosApply(); return r; }; }
+addEventListener("resize", () => ctlPosApply());
+ctlPosApply();
+{ const st = document.createElement("style"); st.textContent = `
+body.ctledit .gpad, body.ctledit .gpad.off { display: block !important; visibility: visible !important; z-index: 120; }
+body.ctledit .gpad > *, body.ctledit .gpad.off > *, body.ctledit .gpad .px { visibility: visible !important; }
+body.ctledit.ctl-invisible .gpad .dpad { display: none !important; }
+body.ctledit .gpad .dpad, body.ctledit .gpad #gAtk, body.ctledit .gpad #gJump { outline: 2px dashed rgba(242,193,78,.85); outline-offset: 4px; }
+body.ctledit .gpad .grabbed { outline-color: #5fd1c4 !important; }
+.ctledl { position: fixed; inset: 0; z-index: 125; touch-action: none; background: rgba(8,6,16,.35); }
+.ctledl .ctlp { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 16px); transform: translateX(-50%); width: 300px; max-width: calc(100vw - 32px); height: 150px;
+  box-sizing: border-box; padding: 12px 14px; background: #1b1829; border: 3px solid #f2c14e; clip-path: var(--frame, none); text-align: center; display: flex; flex-direction: column; gap: 8px; }
+.ctledl .ctlp b { font-family: var(--font-display, monospace); font-weight: 400; font-size: 15px; color: #f2c14e; letter-spacing: .05em; }
+.ctledl .ctlp p { margin: 0; flex: 1; font-size: 13px; line-height: 1.35; color: #ece8f5; }
+.ctledl .ctlp .frpb { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ctledl .ctlp .go { min-width: 0; width: 100%; height: 40px; padding: 0 6px; background: #f2c14e; color: #1b1829; border: 2px solid #f2c14e; font-family: Silkscreen, monospace; box-shadow: inset -2px -2px 0 rgba(0,0,0,.35); }
+.ctledl .ctlp .go.alt { background: #1b1829; color: #f2c14e; }
+body.bigui .ctledl .ctlp { transform: translateX(-50%) scale(var(--uik)); transform-origin: 50% 0; }
+`; document.head.appendChild(st); }
+function ctlEditOpen() {
+  if (!ESCAPE) return; try { omfSfx("click"); } catch (_) {}
+  const all = ctlPosAll(), cur = Object.assign({}, all[CTL] || {}), parts = CTLPOS_PARTS.filter(([k]) => !(k === "mv" && CTL === "invisible"));
+  ov.hidden = true; document.body.classList.add("ctledit"); ctlPosApply();
+  const L = document.createElement("div"); L.className = "ctledl";
+  L.innerHTML = `<div class="ctlp"><b>${Lx("MOVER BOTONES", "MOVE BUTTONS")} · ${T(CTL_NAME[CTL])}</b>
+    <p>${CTL === "invisible" ? Lx("Arrastra GOLPE y SALTO donde quieras. El stick sigue apareciendo donde tocas.", "Drag HIT and JUMP wherever you like. The stick still appears where you touch.")
+      : Lx("Arrastra la cruceta, GOLPE y SALTO donde quieras.", "Drag the d-pad, HIT and JUMP wherever you like.")}</p>
+    <div class="frpb"><button class="go alt" id="ceReset">${Lx("RESTABLECER", "RESET")}</button><button class="go" id="ceDone">${Lx("LISTO", "DONE")}</button></div></div>`;
+  document.body.appendChild(L);
+  const el = id => document.getElementById(id), w = () => innerWidth, h = () => innerHeight;
+  const off = k => Array.isArray(cur[k]) ? [cur[k][0] * w(), cur[k][1] * h()] : [0, 0];
+  let drag = null;
+  L.addEventListener("pointerdown", e => {
+    if (e.target.closest(".ctlp")) return;
+    let best = null;
+    for (const [k, mid, gid] of parts) { const g = el(gid); if (!g) continue; const r = g.getBoundingClientRect(), pad = 14;
+      if (e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad) {
+        const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)); if (!best || d < best.d) best = { k, mid, gid, d, r }; } }
+    if (!best) return; e.preventDefault(); try { L.setPointerCapture(e.pointerId); } catch (_) {}
+    const o = off(best.k), r = best.r; el(best.gid).classList.add("grabbed");
+    drag = { id: e.pointerId, k: best.k, mid: best.mid, gid: best.gid, sx: e.clientX, sy: e.clientY, ox: o[0], oy: o[1], base: { l: r.left - o[0], t: r.top - o[1], w: r.width, h: r.height } };
+  });
+  L.addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return; e.preventDefault();
+    const b = drag.base, top = 8, m = 4;
+    let x = drag.ox + e.clientX - drag.sx, y = drag.oy + e.clientY - drag.sy;
+    x = Math.max(m - b.l, Math.min(w() - m - b.w - b.l, x)); y = Math.max(top - b.t, Math.min(h() - m - b.h - b.t, y));
+    cur[drag.k] = [x / w(), y / h()]; el(drag.mid).style.translate = Math.round(x) + "px " + Math.round(y) + "px";
+  });
+  const up = e => { if (!drag || e.pointerId !== drag.id) return; const g = el(drag.gid); if (g) g.classList.remove("grabbed"); drag = null; };
+  L.addEventListener("pointerup", up); L.addEventListener("pointercancel", up);
+  const close = save => {
+    if (save) { const a = ctlPosAll(); if (Object.keys(cur).length) a[CTL] = cur; else delete a[CTL]; ctlPosSave(a); }
+    L.remove(); document.body.classList.remove("ctledit"); ctlPosApply(); try { if (typeof dpadClear === "function") dpadClear(); } catch (_) {} showSettings();
+  };
+  L.querySelector("#ceReset").onclick = () => { try { omfSfx("click"); } catch (_) {} for (const k of Object.keys(cur)) delete cur[k]; for (const [, mid] of CTLPOS_PARTS) { const x = el(mid); if (x) x.style.translate = ""; } };
+  L.querySelector("#ceDone").onclick = () => { try { omfSfx("pick"); } catch (_) {} close(true); };
+  // a controller's back button (mando.js clicks the open .infopop-style modal) or Escape on a keyboard saves and leaves
+  L.onclick = e => { if (e.target === L && e.detail === 0) close(true); };
+  const kd = e => { if (!L.isConnected) { removeEventListener("keydown", kd); return; } if (e.key === "Escape") { e.preventDefault(); close(true); removeEventListener("keydown", kd); } };
+  addEventListener("keydown", kd);
+  try { L.querySelector("#ceDone").focus({ preventScroll: true }); } catch (_) {}
+}
+{ const ss = showSettings; showSettings = function () { const r = ss.apply(this, arguments);
+    try { const d = document.getElementById("ctlDesc"); if (ESCAPE && d && !document.getElementById("ctlMoveBtn") && !(window.OMF_PC || window.__omfPcPad))
+      d.insertAdjacentHTML("afterend", `<div class="rowbig"><button id="ctlMoveBtn">${Lx("MOVER BOTONES", "MOVE BUTTONS")}</button></div>`);
+      const b = document.getElementById("ctlMoveBtn"); if (b) b.onclick = ctlEditOpen; } catch (_) {}
+    return r; }; }
+
+// ===== v175 bot QA (accessibility): Settings > ACCESIBILIDAD > TEMBLOR Y DESTELLOS  SÍ | NO  (META.calm, see escCalm in base.html).
+// Same pixel two-button selector as IDIOMA. Until the player picks, the game follows the system's reduce-motion setting.
+{ const ss = showSettings; showSettings = function () { const r = ss.apply(this, arguments);
+    try { if (!ESCAPE || document.getElementById("calmSel")) return r;
+      const at = (document.getElementById("ctlMoveBtn") || {}).parentElement || document.getElementById("ctlDesc"); if (!at) return r;
+      const on = !escCalm();
+      at.insertAdjacentHTML("afterend", `<div class="mlabel">${Lx("ACCESIBILIDAD", "ACCESSIBILITY")}</div>
+        <p class="ctldesc calmlbl">${Lx("Temblor de pantalla y destellos", "Screen shake and flashes")}</p>
+        <div class="ctlsel" id="calmSel"><button data-calm="0" aria-pressed="${on}">${Lx("SÍ", "ON")}</button><button data-calm="1" aria-pressed="${!on}">${Lx("NO", "OFF")}</button></div>`);
+      ov.querySelectorAll("[data-calm]").forEach(b => b.onclick = () => { const v = +b.dataset.calm; if (META.calm === v && b.getAttribute("aria-pressed") === "true") return;
+        try { omfSfx("click"); } catch (_) {} META.calm = v; try { saveMeta(); } catch (_) {}
+        ov.querySelectorAll("[data-calm]").forEach(o => o.setAttribute("aria-pressed", String(o === b))); });
+    } catch (er) { try { errLog(er.message, "a11y"); } catch (_) {} }
+    return r; }; }
+// bot QA r2: a button reached with the pad never ends up under the pad button bar at the bottom of the screen
+{ const st = document.createElement("style"); st.textContent = `#ov { scroll-padding-bottom: 84px; scroll-padding-top: 12px; }`; document.head.appendChild(st); }
+
+// ===== v175 bot QA (2026-11-13, informe qa/bots/INFORME.md, mejoras 2 y 3)
+// Death screen: OTRA VEZ (and RÉCORDS / MENÚ) move up, right under the run's numbers, so retrying never needs a scroll on a
+// small phone (it sat at y=865 under the unlock lists). A controller's ring always starts on OTRA VEZ: the death screen gets
+// its own one-off class, so the ring memory of the pause menu (also ".menu") never puts it on MENÚ.
+// New players: the first 2 Escape climbs skip "ELIGE TU PRIMER MODIFICADOR", the camera waits 6 s instead of 3 in the first 3
+// climbs (escCamDelay in base.html), the first deaths show one short tip, and the home top bar has a "?" for Cómo se juega.
+var DEAD_N = 0;
+const escPlain = () => !!S && S.run === "escape" && !S.daily && !S.duel && !S.friend && !S.horde && !S.descent && !S.tw && !S.test;
+const DEAD_TIPS = {
+  fell: ["Si caes por debajo de la pantalla, se acabó: sube antes de que te alcance.", "If you drop below the screen, it's over: climb before it catches you."],
+  cam: ["La cámara solo sube y cada vez más rápido: no te quedes quieto.", "The camera only goes up, faster over time: keep moving."],
+  spike: ["Los pinchos quitan un corazón: salta por encima o espera a que se escondan.", "Spikes cost a heart: jump over them or wait until they hide."],
+  mob: ["Golpea con GOLPE o salta encima de los enemigos. Al tocarte de lado te quitan vida.", "Use HIT or jump on enemies. They hurt you if they touch your side."],
+  hit: ["Golpea con GOLPE o salta encima de los enemigos. Al tocarte de lado te quitan vida.", "Use HIT or jump on enemies. They hurt you if they touch your side."],
+  drown: ["Bajo el agua el aire se acaba: sal a la superficie a respirar.", "Underwater your air runs out: come up to breathe."],
+  boss: ["Los jefes avisan antes de atacar: aléjate y golpea cuando terminen.", "Bosses warn you before they attack: back off and hit them when they finish."]
+};
+const DEAD_TIPS_ANY = [["Caer sobre un enemigo le hace daño: es más seguro que golpearlo de frente.", "Landing on an enemy hurts it: safer than hitting it head on."],
+  ["En las escaleras mantén ARRIBA para subir: no te dejan caer.", "On ladders hold UP to climb: they never drop you."],
+  ["Al subir de nivel eliges una mejora o quitas un modificador.", "When you level up you pick an upgrade or remove a modifier."]];
+{ const st = document.createElement("style"); st.textContent = `
+/* first-time Cómo se juega: ¡A JUGAR! stays on screen even on a 360x640 phone */
+#ov .menu.howfirst .rowbig { position: sticky; bottom: 0; z-index: 2; padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(rgba(14,11,24,0), #0e0b18 30%); }
+#ov.dead .menu .deadbtns { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+#ov.dead .menu .dtip { margin: 2px 0 0; padding: 8px 10px; border: 2px solid #5fd1c4; background: rgba(95,209,196,.08); color: #ece8f5; font-size: 13px; line-height: 1.35; text-align: left; }
+#ov.dead .menu .dtip b { color: #5fd1c4; font-weight: 400; font-family: var(--font-display, monospace); margin-right: 6px; }
+`; document.head.appendChild(st); }
+{ const sd = showDead; showDead = function () { const r = sd.apply(this, arguments);
+    try { const m = ov.querySelector(".menu"), go = document.getElementById("goBtn"); if (!m || !go) return r;
+      m.classList.add("dk" + (++DEAD_N), "deadscr"); // first two classes make the ring-memory key: a new one every death
+      const row = go.closest(".rowbig"), tools = m.querySelector(".tools");
+      let at = null; for (const sel of [".acta", ".stats", ".hbest"]) { const e = m.querySelector(":scope > " + sel); if (e) at = e; }
+      if (row && at) { const box = document.createElement("div"); box.className = "deadbtns"; box.appendChild(row); if (tools && tools.parentElement === m) box.appendChild(tools); at.after(box);
+        if (escPlain() && (META.escIntro || 0) <= 5) { const k = S.deathCause && DEAD_TIPS[S.deathCause] ? DEAD_TIPS[S.deathCause] : DEAD_TIPS_ANY[(META.escIntro || 0) % DEAD_TIPS_ANY.length];
+          box.insertAdjacentHTML("afterend", `<p class="dtip"><b>${Lx("CONSEJO", "TIP")}</b>${Lx(k[0], k[1])}</p>`); } }
+      ov.scrollTop = 0; try { go.focus({ preventScroll: true }); } catch (_) {}
+    } catch (er) { try { errLog(er.message, "deadTop"); } catch (_) {} }
+    return r; }; }
+// first two climbs: straight in, no first-modifier card (modifiers still arrive every 20 s)
+{ const sc = showCards; showCards = function () { if (ESCAPE && escPlain() && (META.escIntro || 0) < 2 && !(S.rules || []).length) { ov.innerHTML = ""; ov.hidden = true; return startFloor(); } return sc.apply(this, arguments); }; }
+// "?" in the home top bar opens Cómo se juega
+{ const th = escTitleHTML; escTitleHTML = function () { let h = th.apply(this, arguments);
+    try { if (typeof h === "string" && h.includes('class="a3top"') && !h.includes('id="howBtnT"')) {
+      const btn = `<button id="howBtnT" class="a3ib" aria-label="${Lx("Cómo se juega", "How to play")}">${pxi("q", "#5fd1c4")}</button>`;
+      h = h.replace('<span class="a3sp"></span>', '<span class="a3sp"></span>' + btn); } } catch (_) {}
+    return h; }; }
+{ const tw = escTitleWire; escTitleWire = function () { const r = tw.apply(this, arguments);
+    try { const b = document.getElementById("howBtnT"); if (b) { b.onclick = () => { omfSfx("click"); showHow(); }; if (typeof paintPxi === "function") paintPxi(b.parentElement); } } catch (_) {}
+    return r; }; }
+// user 2026-11-13: "que lo de cómo jugar te salga la primera vez cuando abres el menú de climb": the first tap on ESCALAR
+// opens Cómo se juega once (META.howSeen); its button says ¡A JUGAR! and starts the climb. Volver later stays as before.
+{ const tw = escTitleWire; escTitleWire = function () { const r = tw.apply(this, arguments);
+    try { const g = document.getElementById("goBtn"); if (g && g.onclick && !g.dataset.how && !META.howSeen && !(META.escIntro > 0)) { const go = g.onclick; g.dataset.how = "1";
+      g.onclick = function (e) { if (META.howSeen) return go.call(this, e); META.howSeen = 1; try { saveMeta(); } catch (_) {} showHow(); { const mm = ov.querySelector(".menu"); if (mm) mm.classList.add("howfirst"); }
+        const b = document.getElementById("backBtn"); if (b) { b.textContent = Lx("¡A JUGAR!", "LET'S PLAY!"); b.onclick = () => { try { omfSfx("click"); } catch (_) {} go.call(g, e); }; try { b.focus({ preventScroll: true }); } catch (_) {} } }; } } catch (_) {}
+    return r; }; }
+// TV thread 2026-11-13: Esc / Backspace (keyboards, TV remotes) go back on every menu page, like the pad's B. The home screen,
+// the pause menu (its own Esc), the card picks and text fields are left alone. The PC layer only acts if this did nothing.
+addEventListener("keydown", e => {
+  if (!ESCAPE || !(e.key === "Escape" || e.key === "Backspace" || e.key === "GoBack" || e.key === "BrowserBack")) return;
+  const t = e.target; if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (!S || S.mode === "play" || document.getElementById("resBtn") || ov.querySelector(":scope > .cards")) return;
+  const pop = [...document.querySelectorAll(".infopop, .sharepop, .cxsheet, .ctledl")].filter(el => el.isConnected && el.getClientRects().length).pop();
+  if (pop) { if (pop.classList.contains("ctledl")) return; /* mover-controles.js has its own Esc */ e.preventDefault(); const c = pop.querySelector("#psNo, #pipX, #frpX, #backBtn, #shClose, .wok, .sh-close"); if (c) c.click(); else pop.click(); return; }
+  if (ov.hidden || ov.querySelector(".a3top")) return;
+  const b = document.getElementById("backBtn") || document.getElementById("menuBtn"); if (b && !b.disabled) { e.preventDefault(); b.click(); }
+});
+// the home menu is drawn under the start splash before the add-ons load: draw it again so the "?" and the news button show
+// from the very first screen (before, both only appeared after you came back to the menu once)
+try { if (ESCAPE && S && S.mode === "title" && ov.querySelector(".a3top") && !document.getElementById("howBtnT")) showTitle(); } catch (_) {}
 
 window.__omf = { room: (d, k) => escEnterRoom(d, k), hitCrack: (x, y, a) => escHitCrack(x, y, a), step: dt => update(dt), xp: n => escGainXp(n), kill: e => kill(e), noise: (x, y) => noise(x, y), mk: (t, x, y) => mkEnemy(t, x, y), die: () => die(), genEsc: () => genEscSegment(), showPact, finishFloor, gainRelic, analyzeFloor, reachGraph, buildFloor, get S() { return S; }, input, pressed, applyRule, startFloor, RULES, setVert: v => { forceVert = v; }, setClimb: v => { forceClimb = v; }, testBoss, newRun, get BP_ATK() { return BP_ATK; }, ach: { UNLOCKS, GOOD_UNLOCKS, unlockCheck, achClosest, goodOk, escModOk, get META() { return META; } }, showDead, showCodex };
 })();
