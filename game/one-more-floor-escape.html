@@ -7018,7 +7018,8 @@ function draw() {
     ctx.fillStyle = "#e6fffb"; ctx.fillText(T("¡NIVEL") + " " + S.lvl + "!", CW / 2, CH * 0.4); ctx.restore(); ctx.textAlign = "left"; ctx.font = "12px Silkscreen, monospace"; }
   if (S.escape && !has("broken")) { const el = Math.max(0, S.t - S.escT0); // time, height, difficulty and level live in the html HUD
     if (S.arena && S.arena.state === "fight") { ctx.fillStyle = "#f2c14e"; ctx.fillText("JEFE · TIEMPO DETENIDO", 34, hy); hy += 16; }
-    if (S.secret) { ctx.fillStyle = "#f2c14e"; ctx.fillText(T("SALA SECRETA · TIEMPO DETENIDO"), 34, hy); hy += 16;
+    if (S.secret && typeof salaPlaque === "function") hy = salaPlaque(hy); /* v176: secret rooms rework, the plaque says what to do */
+    else if (S.secret) { ctx.fillStyle = "#f2c14e"; ctx.fillText(T("SALA SECRETA · TIEMPO DETENIDO"), 34, hy); hy += 16;
       if (S.secret.kind === "trial" && S.secret.objs[0].st === 0) { ctx.fillStyle = "#e0566b"; ctx.fillText(T("LA GEMA SE ROMPE EN") + " " + Math.ceil(S.secret.timer), 34, hy); hy += 16; } }
     const nx = S.escNextMod - el; if (nx < 5.2 && nx > 0 && !(S.arena && S.arena.state === "fight") && !S.secret) { drawNextMod(nx, hy - 13); hy += 28; } else S.nmBox = null; }
   else if (has("timer") && !has("broken")) { const tl = S.escape ? (S.escTmr || 0) : S.timeLeft; ctx.fillStyle = tl < 8 ? "#e0566b" : "#ece8f5"; ctx.fillText("TIEMPO " + Math.ceil(tl), 34, hy); hy += 16; }
@@ -11117,7 +11118,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v175";
+var OMF_VER = "Escape v176";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -17171,6 +17172,433 @@ function swapAnimTick(dt) { const A = S && S.swapAnim; if (!A) return; const p =
   (A.trail = A.trail || []).push({ x: p.x, y: p.y, t: S.t }, { x: e.x, y: e.y, t: S.t, e: 1 }); if (A.trail.length > 24) A.trail.splice(0, 2);
   if (k >= 1) { S.swapAnim = null; burst(p.x + p.w / 2, p.y + p.h / 2, "#b9a7ff", 12); S.swapTrail = { pts: A.trail, t: S.t, w: p.w, h: p.h, ew: e.w, eh: e.h }; } }
 { const u1 = update; update = function (dt) { const r = u1.apply(this, arguments); try { swapAnimTick(dt); } catch (_) { S.swapAnim = null; } return r; }; }
+
+// ===== v176 SECRET ROOMS REWORK (user 2026-11-13: "salen siempre las mismas y muchas no hacen nada... deben decirte qué hacer";
+// approved page ideas/salas-secretas-rework.html, user "súbelas a test lab así puedo probar en la siguiente build").
+// 13 rooms in the endless tower (+ Nota perdida, La Huida only). Every room has a fixed plaque at the top saying what to do
+// (salaPlaque, drawn from the HUD), it turns green "HECHO · SAL POR EL HUECO" when finished and an arrow blinks at the exit.
+// Never the same room as one of the last 3 in the run; flatter odds; Ídolo and Sombra only from 400 m. All listed in
+// PRUEBAS > SALAS SECRETAS and in the Codex (SALAS). Replaces escEnterRoom / escSecretTick from base.html.
+ESC_ROOM_TYPES.length = 0;
+ESC_ROOM_TYPES.push(["treasure", 11], ["fountain", 8], ["altar", 8], ["merchant", 9], ["ambush", 8], ["trial", 8], ["cursed", 6], ["oracle", 7], ["forge", 7], ["slots", 7], ["targets", 8], ["coinpit", 8], ["shadow", 5], ["lore", 3]);
+Object.assign(ESC_ROOM_NAME, { treasure: "Tres cofres", fountain: "Fuente de los deseos", trial: "La gema alta", oracle: "Oráculo", forge: "Forja", slots: "Tragaperras", targets: "Sala de tiro", coinpit: "Pozo de monedas", shadow: "Tu sombra", lore: "Nota perdida" });
+Object.assign(EN_TEXT, { "Tres cofres": "Three chests", "Fuente de los deseos": "Wishing fountain", "La gema alta": "The high gem", "Oráculo": "Oracle", "Forja": "Forge", "Tragaperras": "Slot machine", "Sala de tiro": "Shooting gallery", "Pozo de monedas": "Coin pit", "Tu sombra": "Your shadow", "Nota perdida": "Lost note", "SALAS": "ROOMS", "Sala secreta": "Secret room" });
+const SALA_DEEP = { cursed: 400, shadow: 400 }; // metres climbed before these can come up
+const SALA_TALL = { trial: 22, targets: 24, coinpit: 22 }; // ceiling row (default ESC_ROOM.C 26)
+const SALA_BASE_C = ESC_ROOM.C;
+const SALA_TXT = {
+  treasure: ["GOLPEA UN COFRE · SOLO UNO", "HIT A CHEST · ONLY ONE"],
+  fountain: ["TÓCALA PARA BEBER · GOLPÉALA: 10 DE ORO, UN DESEO", "TOUCH IT TO DRINK · HIT IT: 10 GOLD, ONE WISH"],
+  altar: ["TOCA EL ALTAR Y ELIGE UN PACTO", "TOUCH THE ALTAR AND PICK A PACT"],
+  merchant: ["TOCA AL MERCADER PARA COMPRAR", "TOUCH THE MERCHANT TO SHOP"],
+  ambush: ["VENCE 3 OLEADAS · OLEADA ", "BEAT 3 WAVES · WAVE "],
+  trial: ["COGE LA GEMA DE ARRIBA · ", "GRAB THE GEM UP THERE · "],
+  cursed: ["TÓCALO: TE DICE EL TRATO ANTES DE ACEPTAR", "TOUCH IT: IT SHOWS THE DEAL FIRST"],
+  oracle: ["TOCA EL LIBRO: MIRA Y CAMBIA LO QUE VIENE", "TOUCH THE BOOK: SEE AND CHANGE WHAT'S COMING"],
+  forge: ["GOLPEA EL YUNQUE 3 VECES · ", "HIT THE ANVIL 3 TIMES · "],
+  slots: ["GOLPEA LA MÁQUINA · 10 DE ORO · TIRADA ", "HIT THE MACHINE · 10 GOLD · SPIN "],
+  targets: ["ROMPE 6 DIANAS · ", "BREAK 6 TARGETS · "],
+  coinpit: ["COGE LAS MONEDAS · ", "GRAB THE COINS · "],
+  shadow: ["VENCE A TU SOMBRA · TE SIGUE LOS PASOS", "BEAT YOUR SHADOW · IT FOLLOWS YOUR STEPS"],
+  lore: ["TOCA LA NOTA", "TOUCH THE NOTE"]
+};
+// ---------- picking: weighted, never one of the last 3 of this run ----------
+function salaPick() {
+  const hu = typeof huOn === "function" && huOn(), huEco = typeof huEcoLeft === "function" && huEcoLeft(), m = S.escBest || 0, hist = S.roomHist || [];
+  let pool = ESC_ROOM_TYPES.filter(([k]) => k !== "lore" || (hu && huEco)).filter(([k]) => !SALA_DEEP[k] || m >= SALA_DEEP[k]).map(([k, w]) => [k, k === "lore" ? 60 : w]);
+  let p2 = pool.filter(([k]) => !hist.slice(-3).includes(k)); if (!p2.length) p2 = pool.filter(([k]) => k !== hist[hist.length - 1]); if (!p2.length) p2 = pool;
+  if (escTier() >= 4 && Math.random() < 0.2) { const bad = p2.filter(([k]) => k === "ambush" || k === "cursed" || k === "shadow"); if (bad.length) return bad[Math.floor(Math.random() * bad.length)][0]; }
+  let tot = p2.reduce((a, [, w]) => a + w, 0), r = Math.random() * tot;
+  for (const [k, w] of p2) if ((r -= w) < 0) return k;
+  return p2[0][0];
+}
+const salaMid = () => (ESC_ROOM.a + ESC_ROOM.b + 1) / 2 * TS;
+escEnterRoom = function (d, force) {
+  if (!S.roomTest) skinCount("rooms");
+  const g = S.grid, Q = ESC_ROOM, LW = S.LW, p = S.player, side = d.tx === 0 ? 1 : -1;
+  const kind = force || salaPick();
+  (S.roomHist = S.roomHist || []).push(kind);
+  if (!S.roomTest) { META.roomsSeen = META.roomsSeen || []; if (!META.roomsSeen.includes(kind)) { META.roomsSeen.push(kind); try { saveMeta(); } catch (_) {} } }
+  Q.C = SALA_TALL[kind] || SALA_BASE_C;
+  escReserveRooms(g, LW);
+  for (let y = Q.C + 1; y < Q.F; y++) for (let x = Q.a; x <= Q.b; x++) g[y][x] = 0;
+  const ex = side < 0 ? Q.a - 1 : Q.b + 1; g[Q.F - 1][ex] = 0; g[Q.F - 2][ex] = 0;
+  const zone = S.rowZone[d.y1] || 0; for (let y = 14; y <= 46; y++) S.rowZone[y] = zone;
+  const mid = salaMid(), objs = [], L = side < 0, mir = c => L ? c : Q.a + Q.b - c; // L: you come in on the left
+  const R = { d, kind, side, ex, camY: S.camY, objs, timer: 0, wave: 0, away: false, spikes: [], clock: 0, done: false, hp0: S.hp };
+  if (kind === "treasure") { const kinds = ["gold", "item", Math.random() < 0.25 ? "mimic" : "heart"]; for (let i = kinds.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
+    [mid - 3 * TS, mid, mid + 3 * TS].forEach((x, i) => objs.push({ k: kinds[i] === "mimic" ? "mimic" : "chest", x, st: 0, c: kinds[i] })); }
+  else if (kind === "ambush") objs.push({ k: "bars", x: ex * TS + TS / 2, st: 0 });
+  else if (kind === "trial") {
+    for (let c = Q.a + 1; c <= Q.b - 1; c++) S.spikes.push({ tx: c, ty: Q.F - 1, room: true });
+    S.movers.push({ kind: "crumble", x: mir(4) * TS, y: 29 * TS, w: TS, h: TS / 2, solid: true, st: "ok", t: 0, room: true });
+    S.movers.push({ kind: "crumble", x: mir(6) * TS, y: 27 * TS, w: TS, h: TS / 2, solid: true, st: "ok", t: 0, room: true });
+    R.ledge = []; for (const c of [8, 9, 10]) { g[25][mir(c)] = 1; R.ledge.push([mir(c), 25]); }
+    R.gem = { x: (mir(9) + 0.5) * TS, by: 25 * TS, st: 0 }; R.timer = 10; R.spawn = { x: (L ? Q.a : Q.b) * TS + 4 };
+  }
+  else if (kind === "coinpit") {
+    for (const c of [4, 8]) g[Q.F][c] = 6;
+    const add = (x, y, v) => S.coinsL.push({ x: x - 5, y, w: 10, h: 12, v, room: true });
+    for (const c of [4, 8]) for (let r = 24; r <= 28; r += 2) add((c + 0.5) * TS, r * TS, 1);
+    for (let c = 3; c <= 9; c++) add((c + 0.5) * TS, 23 * TS + 4, 2);
+    for (const c of [6]) for (let r = 25; r <= 28; r += 1.5) add((c + 0.5) * TS, r * TS, 1);
+    R.coinN = S.coinsL.filter(c => c.room).length; R.timer = 8;
+  }
+  else if (kind === "targets") { R.timer = 10; R.tg = []; R.hits = 0; }
+  else if (kind === "forge") { objs.push({ k: "anvil", x: mid, st: 0 }); R.hits = 0; }
+  else if (kind === "slots") { objs.push({ k: "slots", x: mid, st: 0, reel: ["coin", "heart", "star"] }); R.spins = 0; }
+  else if (kind === "oracle") objs.push({ k: "book", x: mid, st: 0 });
+  else if (kind === "shadow") {
+    const e = mkEnemy("walker", (L ? Q.b - 0.5 : Q.a + 0.5) * TS - p.w / 2, Q.F * TS - 22.01);
+    Object.assign(e, { shadow: true, room: true, alert: 99, w: p.w, h: p.h, hp: 5 + 2 * escTier(), sface: L ? -1 : 1, san: "idle" }); e.y = Q.F * TS - p.h - 0.01; e.maxhp = e.hp; e.vw = e.vh = 0;
+    S.enemies.push(e); R.sh = e; R.hist = [];
+  }
+  else objs.push({ k: { fountain: "fountain", altar: "altar", merchant: "merchant", cursed: "cursed", lore: "lore" }[kind], x: mid, st: 0 });
+  if (!S.roomTest) achRoom(kind);
+  S.secret = R;
+  R.held = S.rules.slice(); S.rules = []; // no modifiers inside; the ones you had come back when you leave
+  p.x = (L ? Q.a : Q.b) * TS + 4; p.y = Q.F * TS - p.h - 0.01; p.vx = p.vy = 0; p.ground = true; p.climb = false; p.inv = Math.max(p.inv, 0.6); p.face = -side;
+  S.camY = Math.max(0, (Q.F + 1) * TS - CH * 0.65);
+  toast(T("Sala secreta:") + " " + T(ESC_ROOM_NAME[kind])); lastHud = "";
+};
+// leaving: room platforms go, the ceiling goes back to normal, the cursed idol's deal starts
+{ const lv = escLeaveRoom; escLeaveRoom = function () {
+    const R = S.secret; S.movers = S.movers.filter(m => !m.room); S.coinsL = S.coinsL.filter(c => !c.room);
+    const r = lv.apply(this, arguments); ESC_ROOM.C = SALA_BASE_C;
+    if (R && R.curse && RULE[R.curse]) { const el = S.t - S.escT0, nm = S.noMods; S.noMods = false; /* the lab test runs block modifiers: the deal still has to show */ try { escAddMod(R.curse, el); } finally { S.noMods = nm; } const m = S.escMods.find(x => x.id === R.curse); if (m) m.until = el + 40; }
+    return r; }; }
+// a modifier taken away inside a room must not come back with the held ones when you leave
+{ const rm = escRemoveMod; escRemoveMod = function (id) { if (S.secret && S.secret.held) S.secret.held = S.secret.held.filter(x => x !== id); return rm.apply(this, arguments); }; }
+// Altar "Riesgo": the next modifier lasts twice as long
+{ const am = escAddMod; escAddMod = function (id, el) { const had = has(id), r = am.apply(this, arguments);
+    if (S.salaRisk && !had && has(id)) { const m = S.escMods.find(x => x.id === id); if (m && m.until < 1e8) { m.until = el + 2 * (m.until - el); S.salaRisk = false; } }
+    return r; }; }
+// Oráculo: the queued modifiers come in that order
+{ const pk = escPickMod; escPickMod = function (pool) { if (S.salaQ && S.salaQ.length) { const i = S.salaQ.findIndex(id => pool.includes(id)); if (i >= 0) return S.salaQ.splice(i, 1)[0]; } return pk.apply(this, arguments); }; }
+function salaUnlockBack(opts) { // escChoice always adds "Irse": drop it when the choice is already paid for
+  const n = opts.length - 1, b = ov.querySelector(`.card[data-i="${n}"]`); if (b) b.remove(); }
+function salaPerkCards(title, n, extra) {
+  const pool = escPerkPool().slice(); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const opts = (extra || []).concat(pool.slice(0, n).map(k => ({ icon: k.icon, name: T(k.name), desc: T(k.desc), fn: () => { S.perk[k.id] = (S.perk[k.id] || 0) + 1; if (k.relic) gainRelic(k.id); if (k.id === "corazon") { S.maxhp++; S.hp++; } toast(T(k.name)); } })));
+  if (!opts.length) opts.push({ icon: "🪙", name: T("Bolsa de oro"), desc: "+30 " + T("de oro"), fn: () => addGold(30) });
+  escChoice(title, opts); salaUnlockBack(opts);
+}
+function salaHeldMods() { return (S.escMods || []).filter(m => (S.secret && S.secret.held || []).includes(m.id)); }
+function salaWorst() { const m = salaHeldMods().sort((a, b) => b.until - a.until)[0]; return m ? m.id : null; }
+function salaOldest() { const m = salaHeldMods().sort((a, b) => a.until - b.until)[0]; return m ? m.id : null; }
+function salaLevel() { if ((S.lvl || 1) >= ESC_LVL_MAX) { addGold(40); return false; } escGainXp(Math.max(0, escNeed(S.lvl || 1) - (S.xp || 0))); return true; }
+// ---------- hits with GOLPE inside a room ----------
+function salaSwing(pcx, pcy, ang) {
+  const R = S.secret; if (!R) return; const Q = ESC_ROOM, hx = pcx + Math.cos(ang) * 18, hy = pcy + Math.sin(ang) * 18, floor = Q.F * TS;
+  const atFloor = (x, r) => Math.abs(hx - x) < r && hy > floor - 52;
+  if (R.kind === "treasure" && !R.done) { const o = R.objs.find(o => o.st === 0 && o.k && atFloor(o.x, 26)); if (o) salaOpenChest(R, o); }
+  if (R.kind === "fountain" && !R.wished) { const o = R.objs[0]; if (atFloor(o.x, 28)) salaWish(R); }
+  if (R.kind === "forge" && !R.done && !R.forgeOpen) { const o = R.objs[0]; if (atFloor(o.x, 28)) { R.hits++; omfSfx("crack"); burst(o.x, floor - 14, "#ffd75a", 12); S.shake = Math.max(S.shake || 0, 0.12); if (R.hits >= 3) salaForge(R); } }
+  if (R.kind === "slots" && !R.done && !R.spinT) { const o = R.objs[0]; if (atFloor(o.x, 32)) salaSpin(R); }
+  if (R.kind === "targets" && R.tg) for (const t of R.tg) if (!t.hit && Math.hypot(hx - t.x, hy - t.y) < 30) { t.hit = true; R.hits++; omfSfx("coin"); burst(t.x, t.y, "#ff5a4a", 12); }
+}
+{ const sw = swingAt; swingAt = function (pcx, pcy, ang) { const r = sw.apply(this, arguments); if (S && S.secret) try { salaSwing(pcx, pcy, ang); } catch (er) { try { errLog(er.message, "salaSwing"); } catch (_) {} } return r; }; }
+function salaOpenChest(R, o) {
+  const Q = ESC_ROOM; for (const c of R.objs) if (c !== o && c.st === 0) { c.st = 2; c.k = "chestL"; }
+  achAdd("treasure");
+  if (o.c === "mimic") { o.st = 1; o.k = null; const p = S.player, e = mkEnemy("charger", o.x - 14, Q.F * TS - 22.01); Object.assign(e, { mimic: true, w: 28, h: 22, hp: 10 + 2 * escTier(), mst: "idle", mcd: 1.4, wake: 0.9, face: Math.sign(p.x - o.x) || 1 }); e.maxhp = e.hp; e.room = true; e.alert = 99; S.enemies.push(e); R.mimic = e; S.shake = 0.4; toast("¡Era un mímico!"); return; }
+  o.st = 1; burst(o.x, Q.F * TS - 12, "#f2c14e", 16); omfSfx("coin");
+  if (o.c === "gold") { escRoomCoins(10, 3, 5, o.x); toast(Lx("¡Oro!", "Gold!")); }
+  else if (o.c === "item") { const id = trkDrop(Math.random() < 0.4 ? "rare" : "chest", o.x - 7, (Q.F - 1) * TS + 4); toast(id ? T(TRK[id].n) : Lx("¡Oro!", "Gold!")); }
+  else { if (S.hp < S.maxhp) { S.hp = Math.min(S.maxhp, S.hp + 2); toast(Lx("Te curas 2 corazones", "You heal 2 hearts")); } else { S.maxhp++; S.hp++; toast("Corazón máximo +1"); } updateHud(true); }
+  R.done = true;
+}
+function salaWish(R) {
+  const o = R.objs[0], Q = ESC_ROOM, cost = trkPz(10);
+  if (S.coins < cost) { toast("No te llega el oro"); return; }
+  S.coins -= cost; R.wished = true; omfSfx("coin"); burst(o.x, Q.F * TS - 20, "#ffd75a", 14);
+  const id = salaOldest(); if (id) escRemoveMod(id); else { salaLevel(); toast(Lx("Deseo: un nivel más", "Wish: one more level")); }
+  updateHud(true);
+}
+function salaForge(R) {
+  R.forgeOpen = true; const cost = trkPz(25), poor = S.coins < cost ? "No te llega el oro" : null, opts = [];
+  for (const k of ESC_PERKS) { const lv = perk(k.id); if (!lv || k.id === "curar" || lv >= k.max) continue;
+    opts.push({ icon: k.icon, name: Lx("Forjar ", "Forge ") + T(k.name), desc: Lx("Nivel ", "Level ") + lv + " → " + (lv + 1), price: cost, off: poor, fn: () => { S.coins -= cost; S.perk[k.id] = lv + 1; if (k.id === "corazon") { S.maxhp++; S.hp++; } toast(T(k.name) + " " + (lv + 1)); R.done = true; } }); }
+  if (!opts.length && escPerkPool().length) opts.push({ icon: "⚒", name: Lx("Forjar una mejora nueva", "Forge a new upgrade"), desc: Lx("Una mejora al azar.", "A random upgrade."), price: cost, off: poor, fn: () => { S.coins -= cost; const k = escRandomPerk(); toast(k ? T(k.name) : "+20"); R.done = true; } });
+  if (!opts.length) opts.push({ icon: "🪙", name: Lx("Pulir oro", "Polish gold"), desc: "+20 " + T("de oro"), fn: () => { addGold(20); R.done = true; } });
+  escChoice(Lx("FORJA", "FORGE"), opts, T("Tienes") + " 🪙 " + S.coins);
+  // "Irse": the forge closes and 3 more hits open it again
+  const n = opts.length - 1, b = ov.querySelector(`.card[data-i="${n}"]`); if (b) { const f = b.onclick; b.onclick = () => { R.hits = 0; R.forgeOpen = false; f && f(); }; }
+  ov.querySelectorAll(".card").forEach(c => { if (c.dataset.i != n) { const f = c.onclick; c.onclick = () => { f && f(); if (!R.done) { R.hits = 0; } R.forgeOpen = false; }; } });
+}
+const SALA_SYM = ["coin", "heart", "star", "skull"];
+function salaSpin(R) {
+  const cost = trkPz(10); if (S.coins < cost) { toast("No te llega el oro"); return; }
+  S.coins -= cost; R.spins++; R.spinT = 0.9; omfSfx("click");
+  const r = Math.random(); let res;
+  if (r < 0.12) res = ["coin", "coin", "coin"]; else if (r < 0.2) res = ["heart", "heart", "heart"]; else if (r < 0.26) res = ["star", "star", "star"]; else if (r < 0.3) res = ["skull", "skull", "skull"];
+  else if (r < 0.65) { const a = SALA_SYM[Math.floor(Math.random() * 4)], b = SALA_SYM.filter(x => x !== a)[Math.floor(Math.random() * 3)]; res = [a, a, b]; for (let i = 2; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [res[i], res[j]] = [res[j], res[i]]; } }
+  else { const s = SALA_SYM.slice(); for (let i = 3; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s[i], s[j]] = [s[j], s[i]]; } res = s.slice(0, 3); }
+  R.res = res; updateHud(true);
+}
+function salaSpinEnd(R) {
+  const o = R.objs[0], res = R.res, Q = ESC_ROOM; o.reel = res.slice();
+  const cnt = {}; res.forEach(s => cnt[s] = (cnt[s] || 0) + 1); const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  if (cnt[top] === 3) {
+    burst(o.x, Q.F * TS - 30, "#ffd75a", 20); S.shake = 0.25;
+    if (top === "coin") { escRoomCoins(12, 5, 5, o.x); toast(Lx("¡Tres monedas! +60 de oro", "Three coins! +60 gold")); }
+    else if (top === "heart") { S.hp = S.maxhp; toast(Lx("¡Tres corazones! Vida llena", "Three hearts! Full health")); }
+    else if (top === "star") { const k = escRandomPerk(); toast(k ? Lx("¡Tres estrellas! ", "Three stars! ") + T(k.name) : "+30"); if (!k) addGold(30); }
+    else { const pool = ESC_ROT_POOL.filter(id => RULE[id] && !(R.held || []).includes(id) && escHardOk(id)); if (pool.length) { R.skull = pool[Math.floor(Math.random() * pool.length)]; } addGold(40); toast(Lx("Tres calaveras: un modificador 20 s · +40 de oro", "Three skulls: a modifier for 20 s · +40 gold")); }
+  } else if (cnt[top] === 2) { S.coins += trkPz(10); toast(Lx("Dos iguales: recuperas la moneda", "Two of a kind: coin back")); }
+  else toast(Lx("Nada esta vez", "Nothing this time"));
+  updateHud(true);
+}
+// the slot machine's skull curse starts when you leave (20 s), like the idol's
+{ const lv = escLeaveRoom; escLeaveRoom = function () { const R = S.secret, r = lv.apply(this, arguments);
+    if (R && R.skull && RULE[R.skull]) { const el = S.t - S.escT0, nm = S.noMods; S.noMods = false; try { escAddMod(R.skull, el); } finally { S.noMods = nm; } const m = S.escMods.find(x => x.id === R.skull); if (m) m.until = el + 20; }
+    return r; }; }
+// ---------- the per-frame room logic ----------
+escSecretTick = function (p, dt) {
+  const R = S.secret, Q = ESC_ROOM, o = R.objs[R.objs.length - 1];
+  S.escT0 += dt; R.clock += dt; // time stops in here
+  S.camY = Math.max(0, (Q.F + 1) * TS - CH * 0.65);
+  const pcx = p.x + p.w / 2, near = (ob, r = 18) => ob && Math.abs(pcx - ob.x) < r && Math.abs(p.y + p.h - (ob.by || Q.F * TS)) < 34;
+  if (o && !near(o, 26)) R.away = true;
+  const open = () => { if (near(o, 22) && R.away) { R.away = false; return true; } return false; };
+  switch (R.kind) {
+    case "treasure":
+      if (R.mimic && R.mimic.dead && !R.paid) { R.paid = true; R.done = true; escRoomCoins(14, 3, 7, R.mimic.x + 14); toast("El mímico suelta el doble"); }
+      break;
+    case "fountain":
+      if (!o.st && near(o, 22)) { o.st = 1; R.drank = true; achAdd("fountain"); if (S.hp < S.maxhp) { S.hp = S.maxhp; toast("La fuente te cura"); } else { S.maxhp++; S.hp++; toast("Corazón máximo +1"); } burst(o.x, Q.F * TS - 20, "#7fd8ff", 16); updateHud(true); }
+      R.done = !!R.drank && (!!R.wished || S.coins < trkPz(10));
+      break;
+    case "altar":
+      if (!o.st && open()) {
+        const opts = [], bad = salaWorst();
+        opts.push({ icon: "🩸", name: "Pacto de sangre", desc: Lx("Das 1 corazón y eliges 1 de 2 mejoras.", "Give 1 heart and pick 1 of 2 upgrades."), off: S.hp <= 1 ? Lx("Te queda 1 corazón", "Only 1 heart left") : null, fn: () => { S.hp--; o.st = 1; R.done = true; setTimeout(() => salaPerkCards(Lx("PACTO DE SANGRE", "BLOOD PACT"), 2), 0); } });
+        const cost = Math.max(15, Math.ceil(S.coins * 0.3));
+        opts.push({ icon: "✖", name: "Pacto de oro", desc: bad ? T("Quitar") + " " + RULE[bad].name : Lx("Quita un modificador", "Removes a modifier"), price: cost, off: !bad ? "No tienes modificadores" : S.coins < cost ? "No te llega el oro" : null, fn: () => { S.coins -= cost; escRemoveMod(bad); o.st = 1; R.done = true; } });
+        opts.push({ icon: "🎲", name: Lx("Pacto de riesgo", "Risk pact"), desc: Lx("El próximo modificador dura el doble. A cambio subes 1 nivel.", "The next modifier lasts twice as long. In return you gain 1 level."), fn: () => { S.salaRisk = true; salaLevel(); o.st = 1; R.done = true; toast(Lx("Pacto de riesgo", "Risk pact")); } });
+        escChoice("ALTAR DE PACTO", opts);
+      }
+      break;
+    case "merchant":
+      if (open()) salaShop(R);
+      R.done = !!R.bought;
+      break;
+    case "ambush": {
+      const live = S.enemies.filter(e => e.room && !e.dead);
+      if (R.wave < 3) o.st = Math.min(1, o.st + dt * 3);
+      if (o.st > 0.9) { S.grid[Q.F - 1][R.ex] = 1; S.grid[Q.F - 2][R.ex] = 1; }
+      if (R.wave === 0 || (R.wave < 3 && !live.length && o.st >= 1)) {
+        if (R.wave === 2) { R.wave = 3; escGainXp(3); R.objs.push({ k: "chest", x: salaMid(), st: 0, prize: true }); toast(Lx("¡Superada! Toca el cofre", "Cleared! Touch the chest")); }
+        else { R.wave++; const types = ["walker", "hopper", "bat", "shooter", "charger"];
+          const cols = []; for (let c = Q.a + 1; c < Q.b; c++) cols.push(c);
+          let safe = cols.filter(c => Math.abs(c * TS + TS / 2 - pcx) >= 3 * TS); if (!safe.length) safe = cols.sort((u, v) => Math.abs(v * TS + TS / 2 - pcx) - Math.abs(u * TS + TS / 2 - pcx)).slice(0, 2);
+          for (let i = 0; i < 2 + R.wave; i++) { const t = types[Math.floor(Math.random() * types.length)], x = safe[Math.floor(Math.random() * safe.length)] * TS; const e = mkEnemy(t, x, (Q.C + 2) * TS); e.room = true; e.alert = 99; S.enemies.push(e); } toast(R.wave === 1 ? "¡Emboscada!" : Lx("¡Oleada ", "Wave ") + R.wave + "!"); }
+      }
+      if (R.wave === 3) { const bars = R.objs[0]; bars.st = Math.max(0, bars.st - dt * 2); if (bars.st < 0.5) { S.grid[Q.F - 1][R.ex] = 0; S.grid[Q.F - 2][R.ex] = 0; }
+        const c = R.objs[R.objs.length - 1]; if (c.prize && !c.st && near(c, 22)) { c.st = 1; R.done = true; burst(c.x, Q.F * TS - 12, "#f2c14e", 16); salaPerkCards(Lx("PREMIO", "REWARD"), 3); } }
+      break; }
+    case "trial": {
+      const G = R.gem;
+      if (S.hp < R.hp0 && !G.st) { p.x = R.spawn.x; p.y = Q.F * TS - p.h - 0.01; p.vx = p.vy = 0; p.inv = Math.max(p.inv, 1.2); }
+      R.hp0 = S.hp;
+      if (!G.st) { R.timer -= dt; if (near(G, 18)) { G.st = 1; R.done = true; achMark("gem"); addGold(20); const up = salaLevel(); burst(G.x, G.by - 20, "#ff5a7a", 18); toast(up ? Lx("¡Gema! +1 nivel y +20 de oro", "Gem! +1 level and +20 gold") : Lx("¡Gema! +60 de oro", "Gem! +60 gold")); }
+        else if (R.timer <= 0) { G.st = 2; R.done = true; burst(G.x, G.by - 20, "#9a94b8", 12); toast("La gema se rompe"); } }
+      break; }
+    case "cursed":
+      if (!o.st && open()) {
+        const held = R.held || [], pool0 = ESC_ROT_POOL.filter(id => RULE[id] && !held.includes(id) && escHardOk(id) && !(S.easy && id === "mirror")), hard = pool0.filter(id => RULE[id].cost >= 3), pool = hard.length ? hard : pool0;
+        const mod = R.dealMod || (R.dealMod = pool[Math.floor(Math.random() * pool.length)]), item = R.dealItem !== undefined ? R.dealItem : (R.dealItem = trkPick("rare"));
+        if (!mod) { o.st = 1; R.done = true; break; }
+        const what = item ? T(TRK[item].n) : "80 " + T("de oro");
+        escChoice(Lx("ÍDOLO MALDITO", "CURSED IDOL"), [{ icon: RULE[mod].icon, name: Lx("Aceptar el trato", "Accept the deal"), desc: Lx("Durante 40 s tendrás ", "For 40 s you get ") + T(RULE[mod].name) + Lx(". A cambio: ", ". In return: ") + what + ". " + skullsHTML(RULE[mod].cost, true), fn: () => { o.st = 1; R.done = true; R.curse = mod; if (item) trkGive(item); else addGold(80); S.shake = 0.3; } }]);
+      }
+      break;
+    case "oracle":
+      if (open()) salaOracle(R, o);
+      break;
+    case "forge": break;
+    case "slots":
+      if (R.spinT) { R.spinT -= dt; if (R.spinT <= 0) { R.spinT = 0; salaSpinEnd(R); } }
+      R.done = !R.spinT && (R.spins >= 3 || S.coins < trkPz(10));
+      break;
+    case "targets": {
+      if (R.done) break;
+      const live = R.tg.filter(t => !t.hit && R.clock < t.die);
+      if (R.clock > 1.2) { R.timer -= dt;
+        for (let tries = 0; tries < 20 && live.length < 2; tries++) { const t = { x: (Q.a + 1 + Math.random() * (Q.b - Q.a - 1)) * TS, y: (Q.C + 2 + Math.random() * (Q.F - Q.C - 3.2)) * TS, die: R.clock + 2.2, born: R.clock };
+          if (Math.hypot(t.x - pcx, t.y - (p.y + p.h / 2)) < 50) continue; R.tg.push(t); live.push(t); } }
+      R.tg = R.tg.filter(t => !t.hit && R.clock < t.die);
+      if (R.hits >= 6 || R.timer <= 0) { R.done = true; R.tg = []; const mid = salaMid();
+        if (R.hits >= 6) { const id = trkDrop("chest", mid - 7, (Q.F - 1) * TS + 4); toast(Lx("¡6 dianas! ", "6 targets! ") + (id ? T(TRK[id].n) : "")); }
+        else if (R.hits >= 3) { escRoomCoins(5, 3, 3, mid); toast(R.hits + Lx(" dianas: +15 de oro", " targets: +15 gold")); }
+        else toast(Lx("Solo ", "Only ") + R.hits + Lx(" dianas", " targets")); }
+      break; }
+    case "coinpit": {
+      if (R.done) break;
+      if (R.clock > 0.8) R.timer -= dt;
+      const left = S.coinsL.filter(c => c.room).length;
+      if (!left) { R.done = true; addGold(R.coinN); toast(Lx("¡Todas! +", "All of them! +") + R.coinN + Lx(" de bonus", " bonus")); }
+      else if (R.timer <= 0) { R.done = true; S.coinsL = S.coinsL.filter(c => !c.room); toast((R.coinN - left) + "/" + R.coinN + Lx(" monedas", " coins")); }
+      break; }
+    case "shadow": {
+      const e = R.sh, an = p.atk > 0 ? "attack" : !p.ground ? ((p.vy || 0) < 0 ? "jump" : "fall") : Math.abs(p.vx || 0) > 30 ? "run" : "idle";
+      R.hist.push({ t: R.clock, x: p.x, y: p.y, f: p.face, an }); while (R.hist.length > 2 && R.hist[1].t < R.clock - 1.2) R.hist.shift();
+      if (e && !e.dead) { const h = R.hist.find(h => h.t >= R.clock - 1) || R.hist[0];
+        if (R.clock > 1 && h && !(e.flash > 0)) { const vx = 175 * dt, vy = 320 * dt, ox = e.x;
+          e.x += Math.max(-vx, Math.min(vx, h.x - e.x)); e.y += Math.max(-vy, Math.min(vy, h.y - e.y));
+          e.sface = Math.abs(e.x - ox) > 0.2 ? Math.sign(e.x - ox) : h.f; e.san = Math.abs(h.x - e.x) > 4 && h.an === "idle" ? "run" : h.an; }
+        e.vx = 0; e.vy = 0; e.w = p.w; e.h = p.h; }
+      if (e && e.dead && !R.done) { R.done = true; burst(e.x + e.w / 2, e.y + e.h / 2, "#6a2a8a", 20);
+        setTimeout(() => salaPerkCards(Lx("TU SOMBRA", "YOUR SHADOW"), 2, [{ icon: "❤", name: Lx("Corazón máximo +1", "Max heart +1"), desc: Lx("+1 de vida máxima y te cura 1.", "+1 max health and heals 1."), fn: () => { S.maxhp++; S.hp++; toast("Corazón máximo +1"); } }]), 400); }
+      break; }
+    case "lore":
+      if (!o.st && near(o) && huOn()) { o.st = 1; R.done = true; huTakeEco(); }
+      else if (!o.st && near(o)) { o.st = 1; R.done = true; S.loreSeen = true; addGold(15); toast("«Subí para olvidar lo que dejé abajo.» · +15 de oro"); }
+      break;
+  }
+  if (!R.armed && !(R.side < 0 ? input.left : input.right)) R.armed = true;
+  if (R.armed && S.grid[Q.F - 1][R.ex] === 0 && Math.floor(pcx / TS) === R.ex && !S.fade && !(p.knockT > 0) && (R.side < 0 ? input.left : input.right)) escFade(escLeaveRoom);
+};
+function salaShop(R) {
+  const bad = salaWorst(), opts = [], poor = c => S.coins < c ? "No te llega el oro" : null;
+  if (R.sale === undefined) R.sale = Math.floor(Math.random() * 3);
+  const pz = (n, i) => i === R.sale ? Math.ceil(trkPz(n) / 2) : trkPz(n);
+  const p0 = pz(10, 0), p1 = pz(25, 1), p2 = pz(35, 2), saleTag = i => i === R.sale ? " · -50%" : "";
+  opts.push({ icon: "✚", name: T("Curar 1 corazón") + saleTag(0), desc: "Recuperas 1 corazón.", price: p0, off: S.hp >= S.maxhp ? "Ya tienes la vida llena" : poor(p0), fn: () => { S.coins -= p0; S.hp++; } });
+  opts.push({ icon: "✖", name: (bad ? T("Quitar") + " " + RULE[bad].name : T("Quitar un modificador")) + saleTag(1), desc: "Quita un modificador malo", price: p1, off: !bad ? "No tienes modificadores" : poor(p1), fn: () => { S.coins -= p1; escRemoveMod(bad); } });
+  opts.push({ icon: "🎁", name: T("Mejora al azar") + saleTag(2), desc: "Una mejora como las de subir de nivel.", price: p2, off: !escPerkPool().length ? "Ya lo tienes todo" : poor(p2), fn: () => { S.coins -= p2; const k = escRandomPerk(); toast(k ? T(k.name) : "Ya lo tienes todo"); } });
+  if (R.trkOffer === undefined) R.trkOffer = trkPick("shop");
+  if (R.trkOffer) { const tid = R.trkOffer, pr = trkPrice(tid); opts.push({ icon: trkImg(tid), name: TRK[tid].n, desc: TRK[tid].d, price: pr, off: poor(pr), fn: () => { S.coins -= pr; trkGive(tid); R.trkOffer = null; } }); }
+  if (S.coins < 10 && S.hp > 1) opts.push({ icon: "🩸", name: Lx("Vender 1 corazón", "Sell 1 heart"), desc: Lx("El mercader te da 30 de oro por 1 corazón.", "The merchant gives you 30 gold for 1 heart."), fn: () => { S.hp--; S.coins += 30; omfSfx("coin"); } });
+  opts.forEach(o => { const f = o.fn; o.fn = () => { const c0 = S.coins; f(); R.bought = true; omfSfx("buy"); skinCount("buys"); if (c0 > S.coins) achAdd("spent", c0 - S.coins); unlockCheck(); updateHud(true); }; });
+  escChoice("MERCADER", opts, T("Tienda · compra con el oro que recoges") + " · " + T("Tienes") + " 🪙 " + S.coins);
+}
+function salaOracle(R, o) {
+  const held = R.held || [], pool = ESC_ROT_POOL.filter(id => RULE[id] && !held.includes(id) && escHardOk(id) && !(S.easy && id === "mirror"));
+  if (!R.q) { const q = []; if (S.escNextId && RULE[S.escNextId]) q.push(S.escNextId);
+    const left = pool.filter(id => !q.includes(id)); while (q.length < 3 && left.length) q.push(left.splice(Math.floor(Math.random() * left.length), 1)[0]);
+    R.q = q; S.salaQ = q.slice(S.escNextId ? 1 : 0); }
+  o.st = 1; R.done = true;
+  const opts = R.q.map((id, i) => ({ icon: RULE[id].icon, name: (R.struck ? "" : Lx("Tachar ", "Strike ")) + T(RULE[id].name), desc: (i + 1) + Lx("º en llegar. ", " to arrive. ") + T(RULE[id].desc), off: R.struck ? Lx("Ya tachaste uno", "Already struck one") : null,
+    fn: () => { const rest = pool.filter(x => !R.q.includes(x)); if (!rest.length) return; const nw = rest[Math.floor(Math.random() * rest.length)]; R.q[i] = nw; R.struck = true;
+      if (i === 0 && S.escNextId === id) S.escNextId = nw; S.salaQ = R.q.slice(S.escNextId && S.escNextId === R.q[0] ? 1 : 0); toast(Lx("Tachado: ", "Struck: ") + T(RULE[id].name) + " → " + T(RULE[nw].name)); } }));
+  if (!opts.length) { toast(Lx("El libro está en blanco", "The book is blank")); return; }
+  escChoice(Lx("ORÁCULO", "ORACLE"), opts, Lx("Estos son los próximos modificadores, en orden. Puedes tachar uno.", "These are the next modifiers, in order. You can strike one."));
+}
+// ---------- drawing ----------
+const SALA_G = {
+  anvil: ["....oooooooooo..", "oooosssssssssso.", "osssssssssssssSo", ".ooSSSSSSSSSSSo.", "...ooSSSSSSoo...", "....oSddddSo....", "...oSddddddSo...", "..oddddddddddo..", "..oooooooooooo.."],
+  book: [".oooooooooo.", "ottttottttto", "otkkkotkkkto", "ottttottttto", "otkkkotkkkto", "oooooooooooo", "....oNNo....", "....oNNo....", "....oNNo....", "...oNNNNo...", "..oooooooo.."],
+  target: ["..oooo..", ".orrrro.", "orwwwwro", "orwrrwro", "orwrrwro", "orwwwwro", ".orrrro.", "..oooo.."],
+  coin: [".yyy.", "yyYyy", "yyYyy", "yyYyy", ".yyy."], heart: [".r.r.", "rrrrr", "rrrrr", ".rrr.", "..r.."], skull: [".ccc.", "ccccc", "coCoc", ".ccc.", ".c.c."], star: ["..y..", ".yyy.", "yyyyy", ".yyy.", ".y.y."],
+  arrow: ["...o....", "..oyo...", ".oyyoooo", "oyyyyyyo", ".oyyoooo", "..oyo...", "...o...."]
+};
+function salaCv(k, swap) { const key = "sala_" + k + (swap || ""); let cv = sprsCache.get(key); if (cv) return cv; const rows = SALA_G[k];
+  cv = document.createElement("canvas"); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length; const c = cv.getContext("2d");
+  rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { let ch = r[x]; if (ch === ".") continue; if (swap && ch === "y") ch = swap; c.fillStyle = SPRS_P[ch] || ch; c.fillRect(x, y, 1, 1); } });
+  sprsCache.set(key, cv); return cv; }
+{ const ss = sprSecret; sprSecret = function (k, cx, by, t, st) {
+    const A = TS / 16, G = typeof sprGlow === "function" ? sprGlow : () => {};
+    if (k === "chestL") { ctx.save(); ctx.globalAlpha *= 0.4; ss("chest", cx, by, t, 0); ctx.restore(); return true; }
+    if (k === "anvil") { // forge fire behind, then the anvil
+      const fx = cx + 30 * A; ctx.fillStyle = "#120c1a"; ctx.fillRect(Math.round(fx - 9 * A), Math.round(by - 20 * A), 18 * A, 20 * A); ctx.fillStyle = "#3e3960"; ctx.fillRect(Math.round(fx - 8 * A), Math.round(by - 19 * A), 16 * A, 19 * A);
+      ctx.fillStyle = "#0a0812"; ctx.fillRect(Math.round(fx - 5 * A), Math.round(by - 11 * A), 10 * A, 10 * A);
+      for (let i = 0; i < 5; i++) { const hgt = 4 + ((Math.floor(t * 10) + i * 3) % 4); ctx.fillStyle = i % 2 ? "#ffd75a" : "#ff5a4a"; ctx.fillRect(Math.round(fx - 4 * A + i * 2 * A), Math.round(by - (1 + hgt) * A), 2 * A, hgt * A); }
+      G(fx, by - 6 * A, 22 * A, "255,140,60", 0.22 + 0.06 * Math.sin(t * 9));
+      sprsBlit(salaCv("anvil"), cx, by); return true; }
+    if (k === "book") { sprsBlit(salaCv("book"), cx, by); if (!st) { G(cx, by - 12 * A, 20 * A, "200,220,255", 0.2 + 0.08 * Math.sin(t * 3)); for (let i = 0; i < 3; i++) { const ph = (t * 0.6 + i / 3) % 1; ctx.fillStyle = `rgba(200,220,255,${1 - ph})`; ctx.fillRect(Math.round(cx + (i - 1) * 4 * A), Math.round(by - (12 + ph * 12) * A), A, A); } } return true; }
+    if (k === "slots") { const R = S.secret, o = R && R.objs[0], P = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(cx + x * A), Math.round(by + y * A), Math.ceil(w * A), Math.ceil(h * A)); };
+      P(-15, -35, 30, 35, "#120c1a"); P(-14, -34, 28, 34, "#a8243a"); P(-14, -34, 28, 2, "#ff5a4a"); P(-12, -31, 24, 3, "#ffd75a");
+      P(-12, -25, 24, 10, "#120c1a"); const spin = R && R.spinT > 0;
+      for (let i = 0; i < 3; i++) { P(-11 + i * 8, -24, 6, 8, "#e8e2f4"); const sym = spin && R.spinT > 0.2 * (3 - i) ? SALA_SYM[(Math.floor(t * 14) + i) % 4] : (spin ? R.res[i] : o && o.reel ? o.reel[i] : "star"); sprsBlit(salaCv(sym), cx + (-8 + i * 8) * A, by - 17 * A); }
+      P(-12, -12, 24, 10, "#8a5a32"); P(-4, -9, 8, 2, "#120c1a");
+      const down = spin && R.spinT > 0.6; P(14, -20, 4, 3, "#120c1a"); P(17, down ? -20 : -32, 3, down ? 18 : 15, "#120c1a"); P(18, down ? -19 : -31, 1, down ? 16 : 13, "#cfd8e2"); P(16, down ? -6 : -36, 5, 5, "#ff5a4a");
+      G(cx, by - 20 * A, 26 * A, "255,200,90", 0.16); return true; }
+    return ss.apply(this, arguments); }; }
+function salaDrawWorld() {
+  const R = S.secret; if (!R) return; const Q = ESC_ROOM, A = TS / 16, G = typeof sprGlow === "function" ? sprGlow : () => {};
+  if (R.kind === "treasure" && !R.done) for (const o of R.objs) if (o.st === 0 && o.k) { if (o.c === "gold") G(o.x, Q.F * TS - 8 * A, 20 * A, "255,215,90", 0.2 + 0.05 * Math.sin(S.t * 4)); else if (o.c === "item") G(o.x, Q.F * TS - 8 * A, 20 * A, "120,200,255", 0.22 + 0.05 * Math.sin(S.t * 4)); }
+  if (R.kind === "trial" && R.ledge) for (const [x, y] of R.ledge) { S._zo = S.rowZone[y]; (typeof tl_tile0 === "function" ? tl_tile0 : sprDrawTile)(S.grid, x, y, x * TS, y * TS); } /* tl_tile0: the uncached tile painter (the band cache skips static tiles) */ // the room's back wall is drawn over the tiles: draw the ledge again
+  if (R.kind === "trial" && R.gem) { const g = R.gem; sprSecret("pedestal", g.x, g.by, S.t, g.st ? 1 : 0); if (!g.st) G(g.x, g.by - 14 * A, 16 * A, "255,90,120", 0.25); }
+  if (R.kind === "targets" && R.tg) for (const t of R.tg) { const life = t.die - R.clock, a = life < 0.4 ? Math.max(0, life / 0.4) : Math.min(1, (R.clock - t.born) / 0.15); sprsBlit(salaCv("target"), t.x, t.y + 4 * A, a); }
+  if (R.kind === "shadow" && R.sh && !R.sh.dead) G(R.sh.x + R.sh.w / 2, R.sh.y + R.sh.h / 2, 18 * A, "120,80,180", 0.22);
+  salaPlaqueWorld();
+  if (R.done && Math.floor(S.t * 3) % 2 === 0) { const x = R.ex * TS + TS / 2, y = (Q.F - 1) * TS; ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (R.side > 0) ctx.scale(-1, 1); ctx.drawImage(salaCv("arrow"), Math.round(-4 * A), Math.round(-4 * A), 8 * A, 7 * A); ctx.restore(); }
+}
+{ const df = drawDecorFront; drawDecorFront = function () { const r = df.apply(this, arguments); try { if (S.secret) salaDrawWorld(); } catch (er) { try { errLog(er.message, "salaDraw"); } catch (_) {} } return r; }; }
+// the shadow: your own hero frame, all black, a step behind you
+const salaDark = new Map();
+function salaDarkCv(cv, white) { const key = cv; let m = salaDark.get(key); if (!m) { m = {}; salaDark.set(key, m); } const w = white ? "w" : "d"; if (m[w]) return m[w];
+  const c2 = document.createElement("canvas"); c2.width = cv.width; c2.height = cv.height; const x = c2.getContext("2d"); x.drawImage(cv, 0, 0); x.globalCompositeOperation = "source-atop"; x.fillStyle = white ? "#ffffff" : "#120c1a"; x.fillRect(0, 0, c2.width, c2.height);
+  if (!white) { x.globalCompositeOperation = "source-over"; const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; for (let i = 0; i < d.length; i += 4) if (d[i + 3] && d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) { x.fillStyle = "#ff3a4a"; x.fillRect((i / 4) % cv.width, Math.floor(i / 4 / cv.width), 1, 1); } }
+  m[w] = c2; return c2; }
+{ const de = sprDrawEnemy; sprDrawEnemy = function (e, p, white, bobY) {
+    if (!e.shadow) return de.apply(this, arguments);
+    const cid = S.char && S.char.id, id = heroSkinOf(cid === "rolo" ? "kai" : cid), an = e.san || "idle", i = an === "run" ? Math.floor(S.t * 12) % 6 : an === "attack" ? Math.floor(S.t * 18) % 3 : Math.floor(S.t * 6) % 4;
+    const cv = heroFrame(id, an, i) || heroFrame(id, "idle", 0); if (!cv) return de.apply(this, arguments);
+    sprBlit(salaDarkCv(cv, white), e.x + e.w / 2, e.y + e.h, e.w / 16, (e.sface || 1) < 0, false); return true; }; }
+// the plaque, drawn by the HUD (base.html calls salaPlaque in a secret room)
+function salaPlaque(hy) { return hy; } // base.html asks the HUD; the plaque itself hangs on the room's wall (salaPlaqueWorld)
+function salaPlaqueText(R) {
+  const tx = SALA_TXT[R.kind] || ["", ""]; let s = Lx(tx[0], tx[1]);
+  if (R.kind === "ambush") s += Math.max(1, Math.min(3, R.wave)) + "/3"; if (R.kind === "ambush" && R.wave === 3) s = Lx("TOCA EL COFRE: ELIGE UNA MEJORA", "TOUCH THE CHEST: PICK AN UPGRADE");
+  if (R.kind === "trial") s += Math.max(0, Math.ceil(R.timer)) + " S";
+  if (R.kind === "forge") s += Math.min(3, R.hits) + "/3";
+  if (R.kind === "slots") s += Math.min(3, R.spins + (R.spinT ? 0 : 1)) + "/3";
+  if (R.kind === "targets") s += R.hits + "/6 · " + Math.max(0, Math.ceil(R.timer)) + " S";
+  if (R.kind === "coinpit") s += Math.max(0, Math.ceil(R.timer)) + " S";
+  if (R.kind === "fountain" && R.drank) s = Lx("GOLPÉALA: 10 DE ORO, UN DESEO", "HIT IT: 10 GOLD, ONE WISH");
+  if (R.done) s = Lx("HECHO · SAL POR EL HUECO", "DONE · LEAVE THROUGH THE GAP");
+  return s;
+}
+// world space, on the wall right above the room's ceiling, so it always sits with the room whatever the screen
+function salaPlaqueWorld() {
+  const R = S.secret; if (!R) return; const Q = ESC_ROOM, s = salaPlaqueText(R), done = R.done;
+  ctx.save(); ctx.font = "11px Silkscreen, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  const cx = (Q.a + Q.b + 1) / 2 * TS, maxW = (Q.b - Q.a + 3) * TS - 16, words = s.split(" "), lines = []; let cur = "";
+  for (const w of words) { const t = cur ? cur + " " + w : w; if (ctx.measureText(t).width > maxW - 16 && cur) { lines.push(cur); cur = w; } else cur = t; } if (cur) lines.push(cur);
+  const w = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + 18), h = 10 + lines.length * 14, x = Math.round(cx - w / 2), y = Math.round(Q.C * TS - h - 4);
+  const col = done ? "#7cba46" : "#f2c14e";
+  ctx.fillStyle = "#0a0812"; ctx.fillRect(x - 3, y - 3, w + 6, h + 6); ctx.fillStyle = col; ctx.fillRect(x, y, w, h); ctx.fillStyle = "#12101d"; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+  ctx.fillStyle = col; lines.forEach((l, i) => ctx.fillText(l, cx, y + 16 + i * 14));
+  ctx.restore();
+}
+// ---------- Codex: SALAS ----------
+Object.assign(ESC_PI, {
+  door: ["..#####..", ".#.....#.", "#.......#", "#.......#", "#.....#.#", "#.......#", "#.......#", "#.......#", "#########"],
+  chest: [".........", ".#######.", "#.......#", "#########", "#...#...#", "#..###..#", "#...#...#", "#########", "........."],
+  drop: ["....#....", "...###...", "..#####..", ".#######.", ".#######.", ".#######.", "..#####..", "...###...", "........."],
+  gem: ["...###...", "..#####..", ".#######.", "#########", ".#######.", "..#####..", "...###...", "....#....", "........."],
+  skull: ["..#####..", ".#######.", "##..#..##", "##..#..##", "#########", ".###.###.", "..#.#.#..", "..#####..", "........."],
+  anvil: [".........", "#########", "#########", ".#######.", "...###...", "...###...", "..#####..", ".#######.", "........."],
+  slot: ["#########", "#.......#", "#.#.#.#.#", "#.#.#.#.#", "#.......#", "#########", "#.......#", "#..###..#", "#########"],
+  coin: ["..#####..", ".#######.", "##.....##", "##.###.##", "##.###.##", "##.....##", ".#######.", "..#####..", "........."],
+  shade: ["...###...", "..#####..", "..#.#.#..", "..#####..", ".#######.", "#########", "#.#####.#", "..##.##..", "..##.##.."],
+  bag: ["...###...", "....#....", "..#####..", ".#######.", "####.####", "###...###", "####.####", ".#######.", "..#####.."],
+  altar: ["....#....", "...###...", "....#....", ".#######.", "..#####..", "..#####..", "..#####..", ".#######.", "#########"]
+});
+const SALA_INFO = {
+  treasure: ["chest", "#f2c14e", "Tres cofres en fila. Golpeas uno y los otros se cierran. Oro, un objeto o un corazón... o un mímico.", "Three chests in a row. Hit one and the others lock. Gold, an item or a heart... or a mimic."],
+  fountain: ["drop", "#7fd8ff", "Tocarla te cura (o +1 corazón máximo). Golpearla cuesta 10 de oro y se lleva el modificador más viejo.", "Touching it heals you (or +1 max heart). Hitting it costs 10 gold and takes the oldest modifier away."],
+  altar: ["altar", "#c86ad6", "Tres pactos: 1 corazón por una mejora, oro por quitar un modificador, o un modificador más largo por un nivel.", "Three pacts: 1 heart for an upgrade, gold to remove a modifier, or a longer modifier for a level."],
+  merchant: ["bag", "#ffbe6e", "Tienda con una oferta a mitad de precio. Si vas sin oro, te compra un corazón por 30.", "A shop with one item at half price. If you are broke, it buys a heart for 30."],
+  ambush: ["swords", "#e0566b", "Las rejas bajan: 3 oleadas de enemigos. Al final, eliges 1 de 3 mejoras.", "The bars drop: 3 waves of enemies. At the end, pick 1 of 3 upgrades."],
+  trial: ["gem", "#ff5a7a", "La gema está arriba. Sube por plataformas que se rompen, sobre pinchos, en 10 s. Premio: 1 nivel y 20 de oro.", "The gem is up high. Climb crumbling platforms over spikes in 10 s. Reward: 1 level and 20 gold."],
+  cursed: ["skull", "#b04ad6", "Te enseña el trato: un modificador duro durante 40 s a cambio de un objeto raro. Aceptas o te vas.", "It shows the deal: a hard modifier for 40 s for a rare item. Accept or walk away."],
+  oracle: ["book", "#c8dcff", "El libro te enseña los 3 próximos modificadores, en orden. Puedes tachar uno.", "The book shows the next 3 modifiers, in order. You can strike one."],
+  forge: ["anvil", "#ff8c50", "Golpea el yunque 3 veces y sube 1 nivel una mejora que ya tienes, por 25 de oro.", "Hit the anvil 3 times to level up an upgrade you have, for 25 gold."],
+  slots: ["slot", "#ffd75a", "Hasta 3 tiradas de 10 de oro. Tres iguales: oro, vida o una mejora. Tres calaveras: un modificador 20 s.", "Up to 3 spins at 10 gold. Three of a kind: gold, health or an upgrade. Three skulls: a modifier for 20 s."],
+  targets: ["target", "#ff6e6e", "Rompe 6 dianas en 10 s con GOLPE. 3 dan oro; 6, un objeto de la torre.", "Break 6 targets in 10 s with HIT. 3 give gold; 6 give a tower item."],
+  coinpit: ["coin", "#ffd75a", "Camas elásticas y monedas en el aire. 8 s para cogerlas; si las coges todas, el doble.", "Springs and coins in the air. 8 s to grab them; get them all for double."],
+  shadow: ["shade", "#9a7ad6", "Una copia negra de tu héroe que te sigue los pasos. Véncela: +1 corazón máximo o una mejora.", "A black copy of your hero that follows your steps. Beat it: +1 max heart or an upgrade."],
+  lore: ["q", "#c8dcff", "Solo en La Huida: guarda los recuerdos de la historia.", "The Escape only: it keeps the story's notes."]
+};
+if (typeof CX2_CAT !== "undefined" && !CX2_CAT.some(c => c[0] === "sal")) CX2_CAT.splice(5, 0, ["sal", "SALAS", "#f2c14e", "door"]);
+{ const ce = cx2Entries; cx2Entries = function (cat) { if (cat !== "sal") return ce.apply(this, arguments);
+    const seen = META.roomsSeen || [];
+    return ESC_ROOM_TYPES.map(([k]) => { const I = SALA_INFO[k] || ["door", "#f2c14e", "", ""];
+      return { id: "sal:" + k, ok: seen.includes(k), art: pxi(I[0], I[1], 3), name: T(ESC_ROOM_NAME[k]), desc: Lx(I[2], I[3]), sub: T("Sala secreta"), rows: SALA_DEEP[k] ? [[Lx("Sale desde", "From"), SALA_DEEP[k] + " m"]] : [],
+        lock: { t: k === "lore" ? Lx("Rompe paredes agrietadas en La Huida.", "Break cracked walls in The Escape.") : Lx("Rompe las paredes agrietadas de la torre para encontrarla.", "Break the tower's cracked walls to find it.") + (SALA_DEEP[k] ? Lx(" Sale desde " + SALA_DEEP[k] + " m.", " From " + SALA_DEEP[k] + " m.") : "") } }; }); }; }
 
 // ===================================================================
 // v166 (user 2026-11-08 11:11 "me gusta sube y crea la in app en apple para la siguiente version"): PAID SKIN COLLECTIONS.
