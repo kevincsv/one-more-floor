@@ -26,7 +26,7 @@ function serveMedia(req, m) { const buf = new Uint8Array(m[0]), n = buf.length, 
 // v2 (2026-11-11): single-use REDEEM CODES. POST /redeem {"code":"XXXXX-XXXXX"} -> {ok:true,reward} | {e:"bad"|"used"|"off"}.
 // The Worker checks the code with the same maths as the game (secret in the REDEEM_SECRET Worker secret, never in files),
 // then one "codes" Durable Object marks it used atomically. Stored: only the code and the day it was used. No IPs, no ids.
-const RD_T = 268435456, RD_P = 4194304, RD_REWARDS = [1, 2, 3];
+const RD_T = 268435456, RD_P = 4194304, RD_REWARDS = [1, 2, 3, 4];
 const rdH = (sec, n, salt) => { let h = 0x811c9dc5 ^ salt; const s = sec + ":" + n + ":" + salt;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
