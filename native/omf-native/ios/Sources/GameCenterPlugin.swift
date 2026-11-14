@@ -18,11 +18,15 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
         CAPPluginMethod(name: "showLeaderboard", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resetAchievements", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "loadTop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pendingActivity", returnType: CAPPluginReturnPromise),
     ]
 
     private let prefix = "omf_"
     private var pendingSignIn: [CAPPluginCall] = []
     private var handlerInstalled = false
+    /// Retos y actividades de Game Center (iOS 26+): la que el jugador abrió y el juego aún no ha leído.
+    fileprivate var pendingAct: [String: Any]? = nil
+    private var actListener: NSObject? = nil
 
     private func gcId(_ raw: String?) -> String? {
         guard let raw = raw, !raw.isEmpty else { return nil }
@@ -54,6 +58,31 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
             let r = self.result(error == nil && GKLocalPlayer.local.isAuthenticated,
                                 error.map { ["error": $0.localizedDescription] } ?? [:])
             calls.forEach { $0.resolve(r) }
+            if GKLocalPlayer.local.isAuthenticated { self.registerActivityListener() }
+        }
+    }
+
+    private func registerActivityListener() {
+        guard actListener == nil else { return }
+        if #available(iOS 26.0, *) {
+            let l = OmfActivityListener(plugin: self)
+            actListener = l
+            GKLocalPlayer.local.register(l)
+        }
+    }
+
+    fileprivate func gotActivity(id: String, party: String) {
+        let data: [String: Any] = ["id": id, "party": party]
+        pendingAct = data
+        notifyListeners("gameActivity", data: data, retainUntilConsumed: true)
+    }
+
+    /// Devuelve una vez la actividad pendiente ({ id, party }) o {} si no hay.
+    @objc func pendingActivity(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let a = self.pendingAct ?? [:]
+            self.pendingAct = nil
+            call.resolve(a)
         }
     }
 
@@ -164,5 +193,19 @@ public class GameCenterPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterControll
 
     public func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
         gameCenterViewController.dismiss(animated: true)
+    }
+}
+
+/// Escucha cuando el jugador abre un reto o actividad de Game Center (app Juegos de iOS 26).
+@available(iOS 26.0, *)
+private final class OmfActivityListener: NSObject, GKLocalPlayerListener {
+    weak var plugin: GameCenterPlugin?
+    init(plugin: GameCenterPlugin) { self.plugin = plugin }
+
+    func player(_ player: GKPlayer, wantsToPlay activity: GKGameActivity) async -> Bool {
+        let id = activity.activityDefinition.identifier
+        let party = activity.partyCode ?? ""
+        await MainActor.run { self.plugin?.gotActivity(id: id, party: party) }
+        return true
     }
 }
