@@ -427,6 +427,9 @@ html, body.esc { overscroll-behavior: none; }
 body.esc { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 body.esc #gpad, body.esc #gpad *, body.esc #c, body.esc #touch, body.esc #touch * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; } /* v99 (user): no iOS magnifier when holding the d-pad */
 body.esc.portrait .gpad { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+/* v177 (user 2026-11-14: "la parte de abajo de los botones sigue sin cubrir toda la pantalla"): the Barra strip is a full-bleed band, edge to edge and down to the bottom edge; its buttons keep clear of side safe areas */
+body.esc.portrait.ctl-franja .gpad { left: 0; right: 0; }
+body.esc.ctl-franja .gpad .dpad { margin-left: env(safe-area-inset-left, 0px); } body.esc.ctl-franja .gpad #gJump, body.esc.ctl-franja .gpad #gAtk { margin-right: env(safe-area-inset-right, 0px); }
 /* QA batch 4 (screens): chips wrap onto a second row and keep clear of the pause button; short screens get compact cards;
    an opaque strip covers the notch / island / status bar so scrolled menus never show under it */
 body.esc .hud .chips { flex-wrap: wrap !important; overflow: visible !important; box-sizing: border-box; max-width: 100%; padding-right: 50px; row-gap: 3px; }
@@ -2960,6 +2963,12 @@ function urchinBounds(e) {
   let lb = false, rb = false, ub = false;
   for (let y = y0; y <= y1; y++) { if (sol(x0 - 1, y)) lb = true; if (sol(x1 + 1, y)) rb = true; }
   for (let x = x0; x <= x1; x++) if (sol(x, y1 + 1)) ub = true;
+  // v177 (user 2026-11-14: "a veces las atraviesa y va a la siguiente... si hay una escalera también se sube a ella"): a side with
+  // another block or a ladder within 1 tile, or a ladder/block just under the ledge, counts as closed: the urchin never crawls
+  // round onto it, so it stays on its own platform
+  const lad = (x, y) => y >= 0 && y < S.LH && x >= 0 && x < S.LW && g[y][x] === 3;
+  for (let y = y0 - 1; y <= y1 + 1; y++) { if (sol(x0 - 2, y) || lad(x0 - 1, y) || lad(x0 - 2, y)) lb = true; if (sol(x1 + 2, y) || lad(x1 + 1, y) || lad(x1 + 2, y)) rb = true; }
+  for (let x = x0 - 1; x <= x1 + 1; x++) if (sol(x, y1 + 2) || lad(x, y1 + 1) || lad(x, y1 + 2)) ub = true;
   for (const m of S.movers || []) if (m.side && Math.abs(m.y - e.py0) < TS && (Math.abs(m.fx - e.px1) < 2 || Math.abs(m.fx + m.fw - e.px0) < 2)) { if (m.side > 0) lb = true; else rb = true; }
   const r = 8, W = e.px1 - e.px0 + 2 * r, Hh = e.py1 - e.py0 + 2 * r, P = 2 * (W + Hh), m = r + e.w / 2 + 1;
   e.bk = null;
@@ -3040,7 +3049,7 @@ function owHit(h) { return h.kind ? owMover(h) : h.w === TS && h.h === TS && owT
 function hitAt(px, py) {
   const tx = Math.floor(px / TS), ty = Math.floor(py / TS);
   if (ty < 0 || ty >= S.LH || tx < 0 || tx >= S.LW || isSolidTile(S.grid[ty][tx])) { if (!(OW && owTile(tx, ty))) return { x: tx * TS, y: ty * TS, w: TS, h: TS }; }
-  for (const m of S.movers) if (m.solid && px >= m.x && px < m.x + m.w && py >= m.y && py < m.y + m.h && !(OW && owMover(m))) return m;
+  for (const m of S.movers) if (m.solid && px >= m.x && px < m.x + m.w && py >= m.y && py < m.y + m.h && !(OW && owMover(m)) && !(MV_IGN && MV_IGN.includes(m))) return m;
   return null;
 }
 function solid(px, py) { return !!hitAt(px, py); }
@@ -3112,9 +3121,15 @@ const hurtsFair = (p, e) => { if (e.wake > 0) return false; const b = hurtBox(e)
   return overlap({ x: p.x + 2, y: p.y - 1, w: p.w - 4, h: p.h + 1 }, { x: b.x + k, y: b.y + k, w: b.w - 2 * k, h: b.h - 2 * k }); };
 function inWater(y) { if (!has("tide")) return false; if (S.escape) return y > (S.camY || 0) + CH - S.tide; if (S.vertical) return false; return S.gdir > 0 ? y > H * TS - S.tide : y < S.tide; }
 
+// v177 (user 2026-11-14: "si un enemigo queda aplastado por las plataformas que se mueven se teletransportan"): an enemy that a
+// platform has ended up inside (carried into a ceiling, a blinking or returning block appearing on it...) used to be snapped to
+// that platform's far edge or top. Now it ignores the platforms it is already inside until it is out of them, and riders are
+// only carried where their body fits.
+var MV_IGN = null;
 function move(e, dt) {
   const ow = owOn(e); OW = ow ? 1 : 0;
-  try { moveBody(e, dt, ow); } finally { OW = 0; }
+  if (e !== S.player && S.movers && S.movers.length) { const emb = S.movers.filter(m => m.solid && e.x + 1 < m.x + m.w && e.x + e.w - 1 > m.x && e.y + 1 < m.y + m.h && e.y + e.h - 1 > m.y); if (emb.length) MV_IGN = emb; }
+  try { moveBody(e, dt, ow); } finally { OW = 0; MV_IGN = null; }
 }
 function moveBody(e, dt, ow) {
   e.hitWall = false;
@@ -3198,7 +3213,7 @@ function updateMovers(dt, p) {
       if (overlap(p, { x: m.x, y: m.y - 4, w: m.w, h: m.h + 8 })) m.revealed = true;
     }
     const dx = m.x - ox, dy = m.y - oy;
-    if (dx || dy) for (const e of riders) { e.x += dx; e.y += dy; }
+    if (dx || dy) for (const e of riders) { if (e !== p && S.escape) { const fx = e.x + dx, fy = e.y + dy, blk = [fx + 1, fx + e.w / 2, fx + e.w - 1].some(x => [fy + 1, fy + e.h / 2].some(y => { const t = S.grid[Math.floor(y / TS)]; return t && solidCode(t[Math.floor(x / TS)]); })); if (blk) continue; } e.x += dx; e.y += dy; }
   }
 }
 
@@ -3751,7 +3766,7 @@ function escEnemyAI(e, dt, p, dx, dy, dist) {
     return true;
   }
   if (e.type === "urchin") {
-    if (!e.bkLive) { e.bkLive = true; urchinBounds(e); }
+    if (!e.bkLive || (e.bkT = (e.bkT || 0) - dt) <= 0) { e.bkLive = true; e.bkT = 0.5; urchinBounds(e); } /* v177: checked again twice a second, the next tower segment can add a ladder or ledge beside it */
     const onIt = p.x + p.w > e.px0 - 4 && p.x < e.px1 + 4 && p.y + p.h > e.py0 - 2 * TS && p.y < e.py1 + TS;
     if (onIt && !e.angry) { e.angry = true; e.warn = 0.6; }
     if (!onIt) e.angry = false;
@@ -11110,7 +11125,10 @@ if (ESCAPE) {
   window.addEventListener("blur", () => escPause());
   document.addEventListener("keydown", e => { if (e.key === "Escape" || e.key === "p" || e.key === "P") { if (S && S.mode === "play") escPause(); else if (document.getElementById("resBtn")) escResume(); } });
 }
-const escLandMQ = window.matchMedia ? matchMedia("(orientation: landscape) and (pointer: coarse)") : null;
+/* v177 (user 2026-11-14, foldable iPhone): a near-square landscape screen (unfolded foldable, about 4:3, wider than tall)
+   is played as it is, the tower centered; only a real phone held sideways (3:2 or wider) asks to turn it. iPads keep asking. */
+const escIsPad = /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const escLandMQ = window.matchMedia ? matchMedia(escIsPad ? "(orientation: landscape) and (pointer: coarse)" : "(orientation: landscape) and (pointer: coarse) and (min-aspect-ratio: 3/2)") : null;
 const escLandscape = () => ESCAPE && !!escLandMQ && escLandMQ.matches;
 // the title was drawn before this add-on loaded: draw it again so the picker shows the heroes
 if (S && S.mode === "title") showTitle();
@@ -11118,7 +11136,7 @@ if (S && S.mode === "title") showTitle();
   if (re === "settings" && ESCAPE) showSettings(); else if (S && S.mode === "title") showStudio(() => showBoot(showSplash)); }
 // ===== v77 (user, spec /mnt/project-files/escape-pendientes/lote-gc-icloud-spec.md): Game Center + iCloud copy, backup code,
 // best-height line, share card, 3 daily challenges, store build check and a local error log. Same code on phone and PC.
-var OMF_VER = "Escape v176";
+var OMF_VER = "Escape v177";
 function Lx(es, en) { return LANG === "en" ? en : es; }
 function hhmm(t) { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
@@ -17226,7 +17244,7 @@ escEnterRoom = function (d, force) {
   const zone = S.rowZone[d.y1] || 0; for (let y = 14; y <= 46; y++) S.rowZone[y] = zone;
   const mid = salaMid(), objs = [], L = side < 0, mir = c => L ? c : Q.a + Q.b - c; // L: you come in on the left
   const R = { d, kind, side, ex, camY: S.camY, objs, timer: 0, wave: 0, away: false, spikes: [], clock: 0, done: false, hp0: S.hp };
-  if (kind === "treasure") { const kinds = ["gold", "item", Math.random() < 0.25 ? "mimic" : "heart"]; for (let i = kinds.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
+  if (kind === "treasure") { const kinds = ["gold", "item", S.roomTest || Math.random() < 0.5 ? "mimic" : "heart"] /* user 2026-11-13 "el mimic ya no sale?": 1 in 2 treasure rooms (always in PRUEBAS), and it wakes when you walk up to it */; for (let i = kinds.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
     [mid - 3 * TS, mid, mid + 3 * TS].forEach((x, i) => objs.push({ k: kinds[i] === "mimic" ? "mimic" : "chest", x, st: 0, c: kinds[i] })); }
   else if (kind === "ambush") objs.push({ k: "bars", x: ex * TS + TS / 2, st: 0 });
   else if (kind === "trial") {
@@ -17299,14 +17317,14 @@ function salaSwing(pcx, pcy, ang) {
 }
 { const sw = swingAt; swingAt = function (pcx, pcy, ang) { const r = sw.apply(this, arguments); if (S && S.secret) try { salaSwing(pcx, pcy, ang); } catch (er) { try { errLog(er.message, "salaSwing"); } catch (_) {} } return r; }; }
 function salaOpenChest(R, o) {
-  const Q = ESC_ROOM; for (const c of R.objs) if (c !== o && c.st === 0) { c.st = 2; c.k = "chestL"; }
+  const Q = ESC_ROOM; if (o.c !== "mimic") for (const c of R.objs) if (c !== o && c.st === 0 && c.c !== "mimic") { c.st = 2; c.k = "chestL"; } // the mimic is not a pick: beating it still leaves your one chest
   achAdd("treasure");
   if (o.c === "mimic") { o.st = 1; o.k = null; const p = S.player, e = mkEnemy("charger", o.x - 14, Q.F * TS - 22.01); Object.assign(e, { mimic: true, w: 28, h: 22, hp: 10 + 2 * escTier(), mst: "idle", mcd: 1.4, wake: 0.9, face: Math.sign(p.x - o.x) || 1 }); e.maxhp = e.hp; e.room = true; e.alert = 99; S.enemies.push(e); R.mimic = e; S.shake = 0.4; toast("¡Era un mímico!"); return; }
   o.st = 1; burst(o.x, Q.F * TS - 12, "#f2c14e", 16); omfSfx("coin");
   if (o.c === "gold") { escRoomCoins(10, 3, 5, o.x); toast(Lx("¡Oro!", "Gold!")); }
   else if (o.c === "item") { const id = trkDrop(Math.random() < 0.4 ? "rare" : "chest", o.x - 7, (Q.F - 1) * TS + 4); toast(id ? T(TRK[id].n) : Lx("¡Oro!", "Gold!")); }
   else { if (S.hp < S.maxhp) { S.hp = Math.min(S.maxhp, S.hp + 2); toast(Lx("Te curas 2 corazones", "You heal 2 hearts")); } else { S.maxhp++; S.hp++; toast("Corazón máximo +1"); } updateHud(true); }
-  R.done = true;
+  R.picked = true;
 }
 function salaWish(R) {
   const o = R.objs[0], Q = ESC_ROOM, cost = trkPz(10);
@@ -17363,7 +17381,9 @@ escSecretTick = function (p, dt) {
   const open = () => { if (near(o, 22) && R.away) { R.away = false; return true; } return false; };
   switch (R.kind) {
     case "treasure":
-      if (R.mimic && R.mimic.dead && !R.paid) { R.paid = true; R.done = true; escRoomCoins(14, 3, 7, R.mimic.x + 14); toast("El mímico suelta el doble"); }
+      R.done = !!R.picked && (!R.mimic || R.mimic.dead);
+      { const mo = R.objs.find(o => o.k === "mimic" && o.st === 0); if (mo && R.clock > 0.8 && Math.abs(pcx - mo.x) < 26 && p.y + p.h > Q.F * TS - 34) salaOpenChest(R, mo); }
+      if (R.mimic && R.mimic.dead && !R.paid) { R.paid = true; escRoomCoins(14, 3, 7, R.mimic.x + 14); toast("El mímico suelta el doble"); }
       break;
     case "fountain":
       if (!o.st && near(o, 22)) { o.st = 1; R.drank = true; achAdd("fountain"); if (S.hp < S.maxhp) { S.hp = S.maxhp; toast("La fuente te cura"); } else { S.maxhp++; S.hp++; toast("Corazón máximo +1"); } burst(o.x, Q.F * TS - 20, "#7fd8ff", 16); updateHud(true); }
@@ -17599,6 +17619,57 @@ if (typeof CX2_CAT !== "undefined" && !CX2_CAT.some(c => c[0] === "sal")) CX2_CA
     return ESC_ROOM_TYPES.map(([k]) => { const I = SALA_INFO[k] || ["door", "#f2c14e", "", ""];
       return { id: "sal:" + k, ok: seen.includes(k), art: pxi(I[0], I[1], 3), name: T(ESC_ROOM_NAME[k]), desc: Lx(I[2], I[3]), sub: T("Sala secreta"), rows: SALA_DEEP[k] ? [[Lx("Sale desde", "From"), SALA_DEEP[k] + " m"]] : [],
         lock: { t: k === "lore" ? Lx("Rompe paredes agrietadas en La Huida.", "Break cracked walls in The Escape.") : Lx("Rompe las paredes agrietadas de la torre para encontrarla.", "Break the tower's cracked walls to find it.") + (SALA_DEEP[k] ? Lx(" Sale desde " + SALA_DEEP[k] + " m.", " From " + SALA_DEEP[k] + " m.") : "") } }; }); }; }
+
+// ===== v177 (user 2026-11-13: "hay un bug que objetos spawnean dentro de spike, eso no debería pasar"). Items come from many
+// places (rare potions/rubies on platforms, tower item chests, enemy drops, room rewards, biome roses...) and spikes can also be
+// laid later by the next tower segment, right under an item already there. So instead of fixing each spawner, a light check
+// (4 times a second) moves any item touching a spike to the nearest free tile on the same floor (up to 4 tiles away), or one
+// tile up if there is none. Coins are left alone.
+function itSpikeFix() {
+  if (!S || !S.items || !S.items.length || !S.spikes || !S.spikes.length) return;
+  const g = S.grid, LW = S.LW, key = (x, y) => y * 64 + x, sp = new Set();
+  for (const s of S.spikes) if (!s.dead) sp.add(key(s.tx, s.ty));
+  const hits = it => S.spikes.some(s => !s.dead && Math.abs(s.tx * TS + TS / 2 - (it.x + it.w / 2)) < TS && Math.abs(s.ty * TS + TS / 2 - (it.y + it.h / 2)) < TS * 1.5 && overlap({ x: it.x - 3, y: it.y - 3, w: it.w + 6, h: it.h + 6 }, spikeBox(s)));
+  const free = (c, r) => c > 0 && c < LW - 1 && g[r] && g[r][c] === 0 && !sp.has(key(c, r));
+  for (const it of S.items) {
+    if (it.taken || !hits(it)) continue;
+    const cx = Math.floor((it.x + it.w / 2) / TS), r = Math.floor((it.y + it.h - 1) / TS), dx = it.x - cx * TS;
+    let done = false;
+    for (let k = 1; k <= 4 && !done; k++) for (const c of [cx - k, cx + k]) {
+      if (!free(c, r) || !g[r + 1] || !solidCode(g[r + 1][c]) || sp.has(key(c, r + 1))) continue;
+      // only along the same floor: every tile between must be walkable too
+      let ok = true; for (let q = Math.min(c, cx) + 1; q < Math.max(c, cx); q++) if (!g[r + 1] || !solidCode(g[r + 1][q]) && !(g[r][q] === 0)) ok = false;
+      if (!ok) continue; it.x = c * TS + dx; done = true; break;
+    }
+    if (!done && g[r - 1] && g[r - 1][cx] === 0 && !sp.has(key(cx, r - 1))) { it.y -= TS; done = true; }
+    if (!done && g[r - 1] && g[r - 1][cx] === 0) it.y -= TS * 2;
+  }
+}
+{ const up0 = update; let acc = 0; update = function (dt) { const r = up0.apply(this, arguments);
+    try { if (S && S.escape && S.mode === "play" && (acc += dt) > 0.25) { acc = 0; itSpikeFix(); } } catch (er) { try { errLog(er.message, "itSpike"); } catch (_) {} }
+    return r; }; }
+
+// ===== v177 GAME CENTER CHALLENGES + ACTIVITIES (user 2026-11-14: "quiero que puedas usar los challenges de iOS games como se
+// implementa"). Apple's challenges (iOS 26, Games app) are built on our leaderboards: the score we already post to "height",
+// "height_hard"... counts for the challenge, nothing else to send. What the game adds: when a player taps a challenge or an
+// activity in the Games app, iOS opens the game with an activity id (GKGameActivityListener, native GameCenter plugin, event
+// "gameActivity" { id }) and we start that mode with the right difficulty. Mid-run, it waits for the home screen.
+// Activity ids (same in App Store Connect): climb_normal, climb_hard, climb_easy, daily, daily_hard.
+const GC_ACT = { climb_normal: ["climb", ""], climb_hard: ["climb", "h"], climb_easy: ["climb", "e"], daily: ["daily", ""], daily_hard: ["daily", "h"] };
+var GC_ACT_PENDING = null;
+function omfActivity(id) {
+  const A = GC_ACT[id]; if (!A || !ESCAPE) return false;
+  if (S && S.mode !== "title") { GC_ACT_PENDING = id; try { toast(Lx("Reto de Game Center: empieza al volver al menú", "Game Center challenge: starts when you go back to the menu")); } catch (_) {} return true; }
+  GC_ACT_PENDING = null;
+  META.easy = A[1] === "e"; META.hard = A[1] === "h"; try { saveMeta(); } catch (_) {}
+  try { showTitle(); const b = document.getElementById(A[0] === "daily" ? "dailyBtn" : "goBtn"); if (b && !b.disabled) b.click(); } catch (er) { try { errLog(er.message, "gcAct"); } catch (_) {} }
+  return true;
+}
+window.omfActivity = omfActivity;
+{ const st = showTitle; showTitle = function () { const r = st.apply(this, arguments); if (GC_ACT_PENDING && S && S.mode === "title") { const id = GC_ACT_PENDING; GC_ACT_PENDING = null; setTimeout(() => omfActivity(id), 300); } return r; }; }
+// native side: live event while the game runs, plus the one that launched the game (the plugin keeps it until we ask)
+try { if (PGS && typeof PGS.addListener === "function") PGS.addListener("gameActivity", e => { if (e && e.id) omfActivity(e.id); }); } catch (_) {}
+try { if (PGS && typeof PGS.pendingActivity === "function") { const r = PGS.pendingActivity(); if (r && r.then) r.then(e => { if (e && e.id) { if (S && S.mode === "title") omfActivity(e.id); else GC_ACT_PENDING = e.id; } }).catch(() => {}); } } catch (_) {}
 
 // ===================================================================
 // v166 (user 2026-11-08 11:11 "me gusta sube y crea la in app en apple para la siguiente version"): PAID SKIN COLLECTIONS.
