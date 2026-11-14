@@ -16016,15 +16016,36 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
     // button further down (the pause panel tabs) never wins over the OTRA VEZ / MENÚ row in between
     if (dy) { const rows = f.filter(el => el !== cur).map(el => { const r = el.getBoundingClientRect(); return { el, gap: dy > 0 ? r.top - a.bottom : a.top - r.bottom, mid: dy > 0 ? r.top + r.height / 2 - ay : ay - (r.top + r.height / 2), cross: Math.abs(r.left + r.width / 2 - ax) }; }).filter(o => o.mid > 2 && o.gap > -a.height / 2);
       if (rows.length) { const g0 = Math.min(...rows.map(o => Math.max(0, o.gap))); const near = rows.filter(o => Math.max(0, o.gap) <= g0 + 14); near.sort((p, q) => p.cross - q.cross); best = near[0].el; } }
+    if (!best && dx && !window.__omfPadNoPage && pageStep(dx)) return;
     if (best) { try { best.focus({ preventScroll: true }); } catch (_) {} best.scrollIntoView({ block: "nearest" }); mark(best); try { omfSfx("click"); } catch (_) {} } }
   function back() { const m = modal();
     if (m) { if (m.classList.contains("pckb")) { kbClose(); return; } if (m.classList.contains("cxsheet")) { if (typeof cx2Close === "function") cx2Close(); else m.remove(); fEl = null; ensureFocus(); return; } if (m.classList.contains("infopop")) { m.click(); return; } const c = m.querySelector("#backBtn, #shClose, .wok, .sh-close, #ceDone"); if (c) c.click(); else m.remove(); return; }
     const dr = ov && ov.querySelector(".dupause #duRes"); if (dr) { dr.click(); return; }
     if (typeof navBack === "function") navBack(); else { const b = document.getElementById("backBtn"); if (b) b.click(); } }
   // LB / RB in menus: previous / next tab of the screen's tab row (codex chips, records boards, settings tabs, difficulty)
-  function tabStep(dir) { const sc = scope(); if (!sc || sc.querySelector("#ctlDesc")) return; /* v175 bot QA: Settings has option rows, not tabs (RB was flipping 60/120 FPS) */
+  function tabStep(dir) { const sc = scope(); if (!sc || sc.querySelector("#ctlDesc")) return false; /* v175 bot QA: Settings has option rows, not tabs (RB was flipping 60/120 FPS) */
     for (const r of [...sc.querySelectorAll(".chips, .seg, .pcstabs, .lbtabs, .tabs, .stabs, .rtabs, [role=tablist], .difsel")].filter(vis)) { const bs = [...r.querySelectorAll(":scope > button, :scope > [role=tab]")].filter(vis); if (bs.length < 2) continue;
-      const i = bs.findIndex(b => /(^|\s)(on|sel|act|active)(\s|$)/.test(b.className) || b.getAttribute("aria-selected") === "true" || b.getAttribute("aria-pressed") === "true"); if (i < 0) continue; const nb = bs[(i + dir + bs.length) % bs.length]; lastKey = keyOf(nb); lastSig = sig(); nb.click(); mark(nb); try { omfSfx("click"); } catch (_) {} return; } }
+      const i = bs.findIndex(b => /(^|\s)(on|sel|act|active)(\s|$)/.test(b.className) || b.getAttribute("aria-selected") === "true" || b.getAttribute("aria-pressed") === "true"); if (i < 0) continue; const nb = bs[(i + dir + bs.length) % bs.length]; lastKey = keyOf(nb); lastSig = sig(); nb.click(); mark(nb); try { omfSfx("click"); } catch (_) {} return true; } return false; }
+  // v177 (user 2026-11-14: "es muy complicado ir entre todas las opciones... estilo de los juegos grandes de consola"):
+  // LB / RB jump between the MAIN SECTIONS (INICIO, TIENDA, CÓDICE, LOGROS, RÉCORDS, AJUSTES, the home screen's bottom bar),
+  // from anywhere in them, wrapping around. LT / RT switch the tabs INSIDE a screen (shop, codex, records, difficulty);
+  // where a screen has pages and no tabs they turn the page. Left / right past the last item of a paged grid turns the page.
+  let secIdx = -1;
+  const secTabs = () => ov ? [...ov.querySelectorAll(".a3tabs > button, .a3tabs > .a3tab")].filter(b => b.getClientRects().length) : [];
+  document.addEventListener("click", e => { const t = e.target.closest && e.target.closest(".a3tabs > *"); if (t) { const i = secTabs().indexOf(t); if (i >= 0) secIdx = i; } }, true);
+  const onHome = () => !!(ov && !ov.hidden && ov.querySelector(".etitle") && !modal());
+  function secStep(dir) {
+    if (modal() || !inMenu() || (S && S.mode !== "title" && S.mode !== "menu" && S.mode !== "dead") || document.getElementById("resBtn") || ov.querySelector(".cards")) return false;
+    const home = onHome(); if (!home && secIdx < 0) return false;
+    let n = (home ? -1 : secIdx) + dir; const go = () => { const tabs = secTabs(); if (!tabs.length) return;
+      if (n >= tabs.length) n = -1; if (n < -1) n = tabs.length - 1;
+      if (n < 0) { secIdx = -1; fEl = null; ensureFocus(); try { omfSfx("click"); } catch (_) {} return; }
+      secIdx = n; lastKey = null; tabs[n].click(); fEl = null; try { omfSfx("click"); } catch (_) {} };
+    if (home) { go(); return true; }
+    // back out to the home screen first (sub-pages of a section go back one level at a time), then open the next section
+    let k = 0; const up = () => { if (onHome()) { go(); return; } if (k++ > 5) return; if (typeof navBack === "function") navBack(); else { const b = document.getElementById("backBtn"); if (b) b.click(); } setTimeout(up, 0); };
+    up(); return true; }
+  function pageStep(dir) { const x = scope().querySelector(dir < 0 ? "#shopPrev, .spager button:first-child, [data-pg='-1']" : "#shopNext, .spager button:last-child, [data-pg='1']"); if (x && !x.disabled && vis(x)) { lastKey = keyOf(x); lastSig = sig(); x.click(); try { omfSfx("click"); } catch (_) {} return true; } return false; }
   // on-screen pixel keyboard: a pad can't open the phone keyboard, so A on a text box opens this (friend's tower code, duel code)
   let kbFor = null;
   function kbClose() { const k = document.querySelector(".pckb"); if (k) k.remove(); const t = kbFor; kbFor = null; fEl = null; if (t && t.isConnected) mark(t.closest("label") || t); }
@@ -16049,6 +16070,7 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
   function setPad(on) { if (padOn === on) return; padOn = on; document.body.classList.toggle("padon", on); if (!on) mark(null); }
   function poll(now) {
     requestAnimationFrame(poll);
+  window.__omfPadNav = { move, focusables, ensureFocus, secStep, tabStep, pageStep, back, cur: () => fEl, set: el => mark(el), on: v => { lastDev = "pad"; setPad(v !== false); } };
     if (window.__omfPcPad) return; // the PC build drives the pad itself
     let pads = []; try { pads = [...navigator.getGamepads()].filter(Boolean); } catch (_) {}
     // v164 (spec 14): the pad that was used last is the active one (two pads, or Steam's virtual pad next to the real one)
@@ -16087,13 +16109,13 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
       // spec 10: the right stick scrolls long lists and texts
       if (scrollY && inMenu()) { let el = fEl || scope(); while (el && el !== document.body && !(el.scrollHeight > el.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(el).overflowY))) el = el.parentElement; (el && el !== document.body ? el : ov).scrollBy(0, scrollY * 14); }
       // spec 5: LT / RT turn pages (shop pager, codex)
-      if (!kb && inMenu()) { const pgb = d => scope().querySelector(d < 0 ? "#shopPrev, .spager button:first-child, [data-pg='-1']" : "#shopNext, .spager button:last-child, [data-pg='1']"); if (edge("lt")) { const x = pgb(-1); if (x && !x.disabled) { lastKey = keyOf(x); lastSig = sig(); x.click(); } } if (edge("rt")) { const x = pgb(1); if (x && !x.disabled) { lastKey = keyOf(x); lastSig = sig(); x.click(); } } }
+      if (!kb && inMenu()) { if (edge("lt")) tabStep(-1) || pageStep(-1); if (edge("rt")) tabStep(1) || pageStep(1); }
       if (cardWait) { if (!cardWait.isConnected || !inMenu()) cardWait = null; else if (!cardWait.closest(".cards.lock")) { const c = cardWait; cardWait = null; if (c === fEl) c.click(); } }
       if (kb && edge("x")) kbType("DEL");
       else if (kb && edge("start")) kbType("OK");
       else if (edge("bb")) back();
       else if (edge("start")) { const r = document.getElementById("resBtn") || ov.querySelector(".dupause #duRes"); if (r) r.click(); else if (!(ov && ov.querySelector(".etitle")) || modal()) back(); /* spec 6: START on the title does nothing */ }
-      if (!kb && inMenu()) { if (edge("lb")) tabStep(-1); if (edge("rb")) tabStep(1); }
+      if (!kb && inMenu()) { if (edge("lb")) secStep(-1) || tabStep(-1); if (edge("rb")) secStep(1) || tabStep(1); }
       prevBtn._f = !!fEl && scope().contains(fEl);
     }
     for (const k in st) prevBtn[k] = st[k];
@@ -16102,23 +16124,26 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
   const F5 = { A: [".###.", "#...#", "#####", "#...#", "#...#"], B: ["####.", "#...#", "####.", "#...#", "####."], X: ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"], Y: ["#...#", ".#.#.", "..#..", "..#..", "..#.."],
     o: [".###.", "#...#", "#...#", "#...#", ".###."], s: ["#####", "#...#", "#...#", "#...#", "#####"], t: ["..#..", ".#.#.", ".#.#.", "#...#", "#####"], "+": ["..#..", "..#..", "#####", "..#..", "..#.."], "=": ["#####", ".....", "#####", ".....", "#####"], R: ["####.", "#...#", "####.", "#..#.", "#...#"], L: ["#....", "#....", "#....", "#....", "#####"] };
   // [glyph, letter colour, disc colour] for: ok, back, jump, hit, pause
-  const GLY = { XB: { ok: ["A", "#fff", "#4f9a2a"], back: ["B", "#fff", "#c0303e"], jump: ["A", "#fff", "#4f9a2a"], hit: ["X", "#fff", "#2c6ad0"], pause: ["=", "#e8e2d0", "#3e3960"], lb: ["L", "#e8e2d0", "#3e3960"], rb: ["R", "#e8e2d0", "#3e3960"] },
-    PS: { ok: ["X", "#8ab8ff", "#1a1530"], back: ["o", "#ff6a7a", "#1a1530"], jump: ["X", "#8ab8ff", "#1a1530"], hit: ["s", "#ff8ad8", "#1a1530"], pause: ["=", "#e8e2d0", "#3e3960"], lb: ["L", "#e8e2d0", "#3e3960"], rb: ["R", "#e8e2d0", "#3e3960"] },
-    NS: { ok: ["A", "#fff", "#2a2340"], back: ["B", "#fff", "#2a2340"], jump: ["A", "#fff", "#2a2340"], hit: ["Y", "#fff", "#2a2340"], pause: ["+", "#fff", "#2a2340"], lb: ["L", "#fff", "#2a2340"], rb: ["R", "#fff", "#2a2340"] } };
+  const GLY = { XB: { ok: ["A", "#fff", "#4f9a2a"], back: ["B", "#fff", "#c0303e"], jump: ["A", "#fff", "#4f9a2a"], hit: ["X", "#fff", "#2c6ad0"], pause: ["=", "#e8e2d0", "#3e3960"], lb: ["L", "#e8e2d0", "#3e3960"], rb: ["R", "#e8e2d0", "#3e3960"], lt: ["L", "#1b1829", "#c9c3e6"], rt: ["R", "#1b1829", "#c9c3e6"] },
+    PS: { ok: ["X", "#8ab8ff", "#1a1530"], back: ["o", "#ff6a7a", "#1a1530"], jump: ["X", "#8ab8ff", "#1a1530"], hit: ["s", "#ff8ad8", "#1a1530"], pause: ["=", "#e8e2d0", "#3e3960"], lb: ["L", "#e8e2d0", "#3e3960"], rb: ["R", "#e8e2d0", "#3e3960"], lt: ["L", "#1b1829", "#c9c3e6"], rt: ["R", "#1b1829", "#c9c3e6"] },
+    NS: { ok: ["A", "#fff", "#2a2340"], back: ["B", "#fff", "#2a2340"], jump: ["A", "#fff", "#2a2340"], hit: ["Y", "#fff", "#2a2340"], pause: ["+", "#fff", "#2a2340"], lb: ["L", "#fff", "#2a2340"], rb: ["R", "#fff", "#2a2340"], lt: ["L", "#1b1829", "#c9c3e6"], rt: ["R", "#1b1829", "#c9c3e6"] } };
   const glyCache = {};
   function glyURL(fam, k) { const key = fam + k; if (glyCache[key]) return glyCache[key]; const [ch, fg, bg] = GLY[fam][k], c = document.createElement("canvas"); c.width = c.height = 11; const g = c.getContext("2d");
-    for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) { const dx = x - 5, dy = y - 5, d = dx * dx + dy * dy; if (d <= 26) { g.fillStyle = d >= 20 ? "#000" : bg; g.fillRect(x, y, 1, 1); } }
+    if (k === "lt" || k === "rt") { g.fillStyle = "#000"; g.fillRect(1, 0, 9, 11); g.fillRect(0, 1, 11, 10); g.fillStyle = bg; g.fillRect(1, 1, 9, 9); g.fillRect(2, 0, 7, 1); } else for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) { const dx = x - 5, dy = y - 5, d = dx * dx + dy * dy; if (d <= 26) { g.fillStyle = d >= 20 ? "#000" : bg; g.fillRect(x, y, 1, 1); } }
     F5[ch].forEach((row, y) => [...row].forEach((v, x) => { if (v === "#") { g.fillStyle = fg; g.fillRect(x + 3, y + 3, 1, 1); } }));
     return (glyCache[key] = c.toDataURL()); }
   const gly = k => `<img class="padg" src="${glyURL(padFam, k)}" alt="">`;
   const bar = document.createElement("div"); bar.id = "padBar"; bar.setAttribute("aria-hidden", "true"); document.body.appendChild(bar);
   let barKey = "";
   // v164 (spec 4): the bar only shows what works on this screen
+  const hasPages = () => { const sc = scope(); return !!(sc && [...sc.querySelectorAll("#shopPrev, .spager button, [data-pg]")].some(b => b.getClientRects().length)); };
+  const hasSecs = () => !modal() && (onHome() ? secTabs().length > 0 : secIdx >= 0 && !(ov && ov.querySelector(".cards")) && !document.getElementById("resBtn"));
   const hasTabs = () => { const sc = scope(); return !!(sc && !sc.querySelector("#ctlDesc") && [...sc.querySelectorAll(".chips, .seg, .pcstabs, .lbtabs, .tabs, .stabs, .rtabs, [role=tablist], .difsel")].some(r => r.getClientRects().length && r.querySelectorAll(":scope > button, :scope > [role=tab]").length > 1)); };
   setInterval(() => { const kbo = !!document.querySelector(".pckb"), on = padOn && !window.__omfPcPad && (kbo || (ov && !ov.hidden && !splashOn()) || !!modal());
     const pause = on && !kbo && !!(document.getElementById("resBtn") || ov.querySelector(".dupause")), cards = on && !kbo && !!ov.querySelector(".cards"), title = on && !!(ov.querySelector(".etitle")) && !modal(), tabs = on && !kbo && !cards && hasTabs();
-    const key = on ? padFam + (kbo ? "k" : pause ? "p" : cards ? "c" : title ? "t" : "m") + (tabs ? "T" : "") + LANG : ""; if (key === barKey) return; barKey = key; bar.classList.toggle("on", on);
-    const T2 = tabs ? `<span>${gly("lb")}${gly("rb")}${Lx("PESTAÑAS", "TABS")}</span>` : "";
+    const secs = on && !kbo && hasSecs(), pages = on && !kbo && !cards && !tabs && hasPages();
+    const key = on ? padFam + (kbo ? "k" : pause ? "p" : cards ? "c" : title ? "t" : "m") + (tabs ? "T" : "") + (secs ? "S" : "") + (pages ? "P" : "") + LANG : ""; if (key === barKey) return; barKey = key; bar.classList.toggle("on", on); if (document.body.classList.contains("padbar") !== on) { document.body.classList.toggle("padbar", on); try { dispatchEvent(new Event("resize")); } catch (_) {} }
+    const T2 = (secs ? `<span>${gly("lb")}${gly("rb")}${Lx("SECCIÓN", "SECTION")}</span>` : "") + (tabs ? `<span>${gly("lt")}${gly("rt")}${Lx("PESTAÑAS", "TABS")}</span>` : pages ? `<span>${gly("lt")}${gly("rt")}${Lx("PÁGINA", "PAGE")}</span>` : "");
     bar.innerHTML = !on ? "" : kbo ? `<span>${gly("ok")}${Lx("ESCRIBE", "TYPE")}</span><span>${gly("hit")}${Lx("BORRA", "DELETE")}</span><span>${gly("pause")}OK</span><span>${gly("back")}${Lx("CIERRA", "CLOSE")}</span>`
       : pause ? `<span>${gly("ok")}${Lx("ELEGIR", "SELECT")}</span><span>${gly("back")}${Lx("SEGUIR", "RESUME")}</span>`
       : cards ? `<span>${gly("ok")}${Lx("ELEGIR", "SELECT")}</span>`
@@ -16168,8 +16193,11 @@ function descSoonTap() { try { omfSfx("click"); } catch (_) {} const b = documen
 @keyframes padring{50%{outline-color:#e8fffb}}
 #ov .padfocus_unused{outline:3px solid #f2c14e!important;outline-offset:2px;box-shadow:0 0 0 5px #000!important}
 .padset .padlbl{margin:8px 0 4px;text-align:center;font-size:11px;color:#9a94b8;letter-spacing:.06em}.padset .padrow{display:grid!important;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}.padset .padrow button{height:36px;min-width:0;padding:0 2px;white-space:nowrap}
-#padBar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;justify-content:center;gap:18px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:#0b0912;box-shadow:0 -2px 0 #3e3960;font:700 10px Silkscreen,monospace;letter-spacing:1px;color:#c9c3e6;pointer-events:none}
-#padBar.on{display:flex}#padBar span{display:flex;align-items:center;gap:5px}#padBar .padg{width:22px;height:22px;image-rendering:pixelated;image-rendering:crisp-edges}
+#padBar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;justify-content:center;gap:12px;height:34px;box-sizing:content-box;padding:0 6px env(safe-area-inset-bottom,0px);white-space:nowrap;background:#0b0912;box-shadow:0 -2px 0 #3e3960;font:700 10px Silkscreen,monospace;letter-spacing:1px;color:#c9c3e6;pointer-events:none}
+#padBar.on{display:flex}#padBar span{display:flex;align-items:center;gap:4px}#padBar .padg{width:20px;height:20px;image-rendering:pixelated;image-rendering:crisp-edges}
+/* v177: the hint bar never covers the menu: the menu ends above it */
+body.padbar #ov{bottom:calc(34px + env(safe-area-inset-bottom,0px))}body.padbar .overlay .etitle.a3 .a3tabs{bottom:calc(34px + env(safe-area-inset-bottom,0px));padding-bottom:8px}body.bigui.padbar #ov{height:calc((100% - 34px - env(safe-area-inset-bottom,0px)) / var(--uik))}
+@media (max-width:420px){#padBar{gap:8px;font-size:9px;letter-spacing:.5px}}
 body.padon #gpad,body.padon .gbtns,body.padon #gtap{visibility:hidden!important;pointer-events:none!important}`;
   document.head.appendChild(st);
 })();
@@ -18345,6 +18373,46 @@ function pinfoFill(box) {
       pinfoFill(box); } catch (er) { try { errLog(er.message, "pinfo"); } catch (_) {} }
     return r; }; }
 { const er = escResume; escResume = function () { document.querySelectorAll(".pinfopop").forEach(x => x.remove()); return er.apply(this, arguments); }; }
+
+// ===== v177 (user 2026-11-14: "quiero esto en el móvil", screenshot of the PC panel): when cards are dealt (level up, first
+// modifier, shops, room rewards) a LLEVAS AHORA panel under them shows what you already carry, so you choose knowing it:
+// your level, the active modifiers with the seconds left, and your upgrades. Same data as the PC panel (pc-layer.js cardsNow),
+// drawn in the mobile pause panel's pixel style. Fixed size: each column scrolls inside it, the panel never grows.
+function lvNowFill() {
+  if (!S || !S.escape || !ov || ov.hidden || window.__omfPcPad) return; // the PC layer draws its own (pc-layer.js cardsNow)
+  const cards = ov.querySelector(":scope > .cards"); if (!cards || ov.querySelector(":scope > .lvnow")) return;
+  const el = Math.max(0, (S.pauseAt || S.t) - (S.escT0 || 0)), mods = [];
+  for (const id of S.rules || []) { const r = RULE[id]; if (!r) continue; const m = (S.escMods || []).find(x => x.id === id);
+    mods.push({ ic: r.icon, n: T(r.name), t: m ? Math.max(0, Math.ceil(m.until - el)) + " s" : "" }); }
+  const perks = ESC_PERKS.filter(q => q.id !== "curar" && S.perk && S.perk[q.id]).map(q => ({ ic: q.icon, n: T(q.name), t: S.perk[q.id] > 1 ? "x" + S.perk[q.id] : "" }));
+  if (!mods.length && !perks.length) return; // nothing carried yet: no empty box
+  let mx = NaN; try { mx = escMaxMods(); } catch (_) {}
+  const none = `<p class="lvn0">${Lx("Ninguno todavía", "None yet")}</p>`;
+  const row = x => `<div class="lvni"><span class="ic">${x.ic || ""}</span><span class="nm">${x.n}</span><span class="tm">${x.t}</span></div>`;
+  const box = document.createElement("div"); box.className = "lvnow";
+  box.innerHTML = `<div class="lvnh">${Lx("LLEVAS AHORA", "YOU CARRY NOW")}<span>${Lx("NIVEL", "LEVEL")} ${S.lvl || 1}</span></div>
+    <div class="lvnc"><div class="lvnl">${Lx("MODIFICADORES", "MODIFIERS")} ${mods.length}${mx > 0 ? "/" + mx : ""}</div><div class="lvns">${mods.length ? mods.map(row).join("") : none}</div></div>
+    <div class="lvnc"><div class="lvnl">${Lx("MEJORAS", "UPGRADES")} ${perks.length}</div><div class="lvns">${perks.length ? perks.map(row).join("") : none}</div></div>`;
+  cards.after(box);
+  try { paintPxi(box); } catch (_) {}
+}
+{ const st = document.createElement("style"); st.textContent = `
+#ov > .lvnow { flex: none; margin: 12px auto 0; width: min(92%, 380px); height: 124px; box-sizing: border-box; background: #1b1829; border: 3px solid #3e3960; box-shadow: 0 0 0 3px #0a0812;
+  padding: 7px 9px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; gap: 4px 12px; font-family: Silkscreen, monospace; text-align: left; }
+#ov > .lvnow .lvnh { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 1px; color: #f2c14e; padding-bottom: 4px; border-bottom: 3px solid #2a2440; }
+#ov > .lvnow .lvnh span { color: #9a94b8; }
+#ov > .lvnow .lvnc { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+#ov > .lvnow .lvnl { font-size: 9px; letter-spacing: 1px; color: #9a94b8; margin-bottom: 2px; white-space: nowrap; }
+#ov > .lvnow .lvns { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+#ov > .lvnow .lvns::-webkit-scrollbar { display: none; }
+#ov > .lvnow .lvni { display: grid; grid-template-columns: 18px 1fr auto; gap: 5px; align-items: center; height: 18px; font-size: 10px; color: #ece8f5; }
+#ov > .lvnow .lvni .ic { display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; }
+#ov > .lvnow .lvni .ic img, #ov > .lvnow .lvni .ic canvas { width: 16px; height: 16px; image-rendering: pixelated; }
+#ov > .lvnow .lvni .nm { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-transform: uppercase; }
+#ov > .lvnow .lvni .tm { color: #5fd1c4; }
+#ov > .lvnow .lvn0 { margin: 0; font-size: 10px; color: #4a4470; text-transform: uppercase; }
+`; document.head.appendChild(st); }
+if (typeof ov !== "undefined" && ov) new MutationObserver(() => { try { lvNowFill(); } catch (er) { try { errLog(er.message, "lvnow"); } catch (_) {} } }).observe(ov, { childList: true });
 
 // ===== v175 (user 2026-11-13: "deberías poder mover los botones de posición con el menú", picked "recolocar los controles
 // táctiles"). Settings > Controles has MOVER BOTONES: the touch controls show over the screen and the d-pad (with its touch
