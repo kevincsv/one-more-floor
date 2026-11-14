@@ -96,6 +96,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Add :CADisableMinimumFrameDurationOnPhone bool true" ios/App/App/Info.plist
           plutil -replace CFBundleDisplayName -string "$APP_NAME" ios/App/App/Info.plist
+          plutil -p ios/App/App/Info.plist | grep -A5 -i "SupportedInterfaceOrientations" || true
       - name: Clave de App Store Connect
         env: { ASC_KEY_P8: "${{ secrets.ASC_KEY_P8 }}" }
         run: |
