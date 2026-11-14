@@ -60,6 +60,18 @@ jobs:
           # iOS 15 mínimo (Apple lo exige desde abril de 2027)
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 1[34].0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
           sed -i '' "s/platform :ios, '1[34].0'/platform :ios, '15.0'/" ios/App/Podfile
+          # Xcode 27 ya no acepta pods con mínimo iOS 14: forzar 15.0 en todos los pods
+          python3 - <<'PY'
+          p = "ios/App/Podfile"
+          s = open(p).read()
+          fix = "  installer.pods_project.targets.each { |t| t.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' } }\n"
+          if "post_install do |installer|" in s:
+              s = s.replace("post_install do |installer|\n", "post_install do |installer|\n" + fix, 1)
+          else:
+              s += "\npost_install do |installer|\n" + fix + "end\n"
+          open(p, "w").write(s)
+          print("Pods con iOS 15.0 mínimo")
+          PY
           grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 15.0' ios/App/App.xcodeproj/project.pbxproj
           npx cap sync ios
           # Entitlements: Game Center + iCloud key-value
