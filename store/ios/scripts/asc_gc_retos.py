@@ -48,6 +48,24 @@ for k, l in lbs.items():
     at = l["attributes"]
     print("LEADERBOARD", k, "recurring:", bool(at.get("recurrenceRule") or at.get("recurrenceDuration")), at.get("recurrenceDuration") or "")
 
+# leaderboard names: no "(unranked)" tag (user 2026-11-14)
+import re
+TAG = re.compile(r"\s*[\(\[]\s*(unranked|not ranked|sin ranking|sin clasificar|sin rango)\s*[\)\]]", re.I)
+for k, l in lbs.items():
+    try:
+        if "unranked" in (l["attributes"].get("referenceName") or "").lower():
+            new = TAG.sub("", l["attributes"]["referenceName"]).replace(" unranked", "").strip()
+            a.call("PATCH", f"/v1/gameCenterLeaderboards/{l['id']}", {"data": {"type": "gameCenterLeaderboards", "id": l["id"], "attributes": {"referenceName": new}}})
+            print("LEADERBOARD", k, "reference name ->", new)
+        for loc in a.all(f"/v1/gameCenterLeaderboards/{l['id']}/localizations"):
+            nm = loc["attributes"].get("name") or ""
+            if TAG.search(nm):
+                a.call("PATCH", f"/v1/gameCenterLeaderboardLocalizations/{loc['id']}", {"data": {"type": "gameCenterLeaderboardLocalizations",
+                       "id": loc["id"], "attributes": {"name": TAG.sub("", nm).strip()}}})
+                print("LEADERBOARD", k, loc["attributes"].get("locale"), ":", nm, "->", TAG.sub("", nm).strip())
+    except RuntimeError as e:
+        print("WARN leaderboard name", k, str(e)[:600])
+
 def texts(en, es, den, des):
     return {"en-US": (en, den), "es-ES": (es, des), "es-MX": (es, des)}
 

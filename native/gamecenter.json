@@ -32,9 +32,9 @@
    "formatter": "INTEGER",
    "suffix_en": " m",
    "suffix_es": " m",
-   "en": "Height · Easy (unranked)",
-   "es": "Altura · Fácil (sin ranking)",
-   "ref": "Height Easy unranked"
+   "en": "Height · Easy",
+   "es": "Altura · Fácil",
+   "ref": "Height Easy"
   },
   {
    "id": "daily_hard",
